@@ -304,6 +304,7 @@ function buildSupplements(): Supplement[] {
       name: "Sulfato ferroso 60 mg",
       dose: "1 tableta",
       schedule: "En ayunas, con agua o jugo de naranja",
+      timesPerDay: 1,
     },
     {
       id: `${patientId}-folico`,
@@ -311,6 +312,7 @@ function buildSupplements(): Supplement[] {
       name: "Ácido fólico 500 µg",
       dose: "1 tableta",
       schedule: "Con el almuerzo",
+      timesPerDay: 1,
     },
     {
       id: `${patientId}-calcio`,
@@ -318,6 +320,7 @@ function buildSupplements(): Supplement[] {
       name: "Calcio 500 mg",
       dose: "1 tableta",
       schedule: "Con la cena (separado del hierro)",
+      timesPerDay: 1,
     },
   ];
   return [
@@ -329,6 +332,7 @@ function buildSupplements(): Supplement[] {
       name: "Metildopa 250 mg",
       dose: "1 tableta",
       schedule: "Mañana y noche (control de presión)",
+      timesPerDay: 2,
     },
   ];
 }
@@ -344,11 +348,14 @@ function buildIntakes(
     "p-lucia": (day) => day % 5 < 3,
   };
   Object.keys(patterns).forEach((patientId) => {
-    const ids = supplements.filter((s) => s.patientId === patientId).map((s) => s.id);
+    // Cada id se repite según sus tomas diarias (día cumplido = día completo).
+    const ids = supplements
+      .filter((s) => s.patientId === patientId)
+      .flatMap((s) => Array<string>(Math.max(1, s.timesPerDay ?? 1)).fill(s.id));
     const perDay: Record<string, string[]> = {};
     for (let i = 1; i <= 29; i++) {
       if (patterns[patientId](i)) {
-        perDay[addDaysToKey(todayKey, -i)] = ids;
+        perDay[addDaysToKey(todayKey, -i)] = [...ids];
       }
     }
     logs[patientId] = perDay;

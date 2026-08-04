@@ -38,6 +38,7 @@ import type {
   Snapshot,
   StoredUser,
   Supplement,
+  SupplementFields,
   Visit,
 } from "./types";
 
@@ -64,6 +65,38 @@ function publicUser(u: StoredUser): PublicUser {
 
 function isActiveState(estado: Appointment["estado"]): boolean {
   return (ACTIVE_APPT_STATES as readonly string[]).includes(estado);
+}
+
+/** Tomas por día de un medicamento (1–6; registros antiguos valen 1). */
+function timesPerDayOf(s: Supplement): number {
+  return Math.max(1, Math.min(6, Math.round(s.timesPerDay ?? 1)));
+}
+
+/** El medicamento solo se espera desde el día en que fue asignado. */
+function isSupplementActiveOn(s: Supplement, dayKey: string): boolean {
+  return !s.startKey || s.startKey <= dayKey;
+}
+
+/** Cuántas tomas de un medicamento hay registradas en un día. */
+function countDoses(dayLogs: string[] | undefined, supplementId: string): number {
+  if (!dayLogs) return 0;
+  let n = 0;
+  for (const id of dayLogs) if (id === supplementId) n += 1;
+  return n;
+}
+
+/** Normaliza los campos de un medicamento; null si el nombre está vacío. */
+function sanitizeSupplementFields(
+  fields: SupplementFields | undefined,
+): { name: string; dose: string; schedule: string; timesPerDay: number } | null {
+  const name = (fields?.name ?? "").trim().slice(0, 60);
+  if (name.length === 0) return null;
+  return {
+    name,
+    dose: ((fields?.dose ?? "").trim() || "1 tableta").slice(0, 40),
+    schedule: (fields?.schedule ?? "").trim().slice(0, 90),
+    timesPerDay: Math.max(1, Math.min(6, Math.round(fields?.timesPerDay ?? 1))),
+  };
 }
 
 export class VitmaternaStore extends DurableObject {
@@ -230,6 +263,62 @@ export class VitmaternaStore extends DurableObject {
         if (action.taken && !has) day.push(action.supplementId);
         if (!action.taken && has) {
           perPatient[action.dayKey] = day.filter((id) => id !== action.supplementId);
+        }
+        return null;
+      }
+      case "set_intake_count": {
+        const patientId = user.role === "gestante" ? ownPatientId : action.patientId;
+        if (!patientId || (user.role === "gestante" && action.patientId !== patientId)) {
+          return "Paciente no válida";
+        }
+        const supplement = db.supplements.find((s) => s.id === action.supplementId);
+        if (!supplement || supplement.patientId !== patientId) return "Medicamento no válido";
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(action.dayKey)) return "Fecha no válida";
+        const count = Math.max(0, Math.min(timesPerDayOf(supplement), Math.round(action.count)));
+        const perPatient = db.intakes[patientId] ?? (db.intakes[patientId] = {});
+        const others = (perPatient[action.dayKey] ?? []).filter(
+          (id) => id !== action.supplementId,
+        );
+        perPatient[action.dayKey] = [
+          ...others,
+          ...(Array(count).fill(action.supplementId) as string[]),
+        ];
+        return null;
+      }
+      case "add_supplement": {
+        if (user.role === "gestante") return "Solo el personal de salud puede asignar medicamentos";
+        const patient = db.patients.find((p) => p.id === action.patientId);
+        if (!patient) return "Paciente no encontrada";
+        const fields = sanitizeSupplementFields(action.fields);
+        if (!fields) return "Escribe el nombre del medicamento";
+        const id = `s-${action.id}`;
+        if (!db.supplements.some((s) => s.id === id)) {
+          db.supplements.push({ id, patientId: patient.id, ...fields, startKey: peruDayKey() });
+        }
+        return null;
+      }
+      case "update_supplement": {
+        if (user.role === "gestante") return "Solo el personal de salud puede cambiar medicamentos";
+        const supplement = db.supplements.find((s) => s.id === action.supplementId);
+        if (!supplement) return "El medicamento ya no existe";
+        const fields = sanitizeSupplementFields(action.fields);
+        if (!fields) return "Escribe el nombre del medicamento";
+        supplement.name = fields.name;
+        supplement.dose = fields.dose;
+        supplement.schedule = fields.schedule;
+        supplement.timesPerDay = fields.timesPerDay;
+        return null;
+      }
+      case "remove_supplement": {
+        if (user.role === "gestante") return "Solo el personal de salud puede quitar medicamentos";
+        const supplement = db.supplements.find((s) => s.id === action.supplementId);
+        if (!supplement) return "El medicamento ya no existe";
+        db.supplements = db.supplements.filter((s) => s.id !== action.supplementId);
+        const perPatient = db.intakes[supplement.patientId];
+        if (perPatient) {
+          Object.keys(perPatient).forEach((key) => {
+            perPatient[key] = perPatient[key].filter((sid) => sid !== action.supplementId);
+          });
         }
         return null;
       }
@@ -616,6 +705,8 @@ export class VitmaternaStore extends DurableObject {
           name: "Sulfato ferroso 60 mg",
           dose: "1 tableta",
           schedule: "En ayunas, con agua o jugo de naranja",
+          timesPerDay: 1,
+          startKey: todayKey,
         },
         {
           id: `${patientId}-folico`,
@@ -623,6 +714,8 @@ export class VitmaternaStore extends DurableObject {
           name: "Ácido fólico 500 µg",
           dose: "1 tableta",
           schedule: "Con el almuerzo",
+          timesPerDay: 1,
+          startKey: todayKey,
         },
       );
     }
@@ -761,22 +854,33 @@ export class VitmaternaStore extends DurableObject {
     const mySupplements = db.supplements.filter((s) => s.patientId === p.id);
     const myLogs = db.intakes[p.id];
 
+    // Adherencia por tomas: cada medicamento aporta sus tomas diarias al total
+    // y solo cuenta desde el día en que fue asignado.
     let adherence30 = p.adherenceBase;
     if (mySupplements.length > 0 && myLogs && Object.keys(myLogs).length > 0) {
       let taken = 0;
       let total = 0;
       for (let i = 1; i <= 30; i++) {
         const key = addDaysToKey(todayKey, -i);
-        total += mySupplements.length;
-        taken += (myLogs[key] ?? []).filter((id) => mySupplements.some((s) => s.id === id)).length;
+        const dayLogs = myLogs[key];
+        for (const s of mySupplements) {
+          if (!isSupplementActiveOn(s, key)) continue;
+          const times = timesPerDayOf(s);
+          total += times;
+          taken += Math.min(countDoses(dayLogs, s.id), times);
+        }
       }
-      adherence30 = total > 0 ? Math.round((taken / total) * 100) : 0;
+      adherence30 = total > 0 ? Math.round((taken / total) * 100) : p.adherenceBase;
     }
 
     let streak = 0;
     if (mySupplements.length > 0 && myLogs) {
-      const complete = (key: string) =>
-        mySupplements.every((s) => (myLogs[key] ?? []).includes(s.id));
+      const complete = (key: string) => {
+        const active = mySupplements.filter((s) => isSupplementActiveOn(s, key));
+        if (active.length === 0) return false;
+        const dayLogs = myLogs[key];
+        return active.every((s) => countDoses(dayLogs, s.id) >= timesPerDayOf(s));
+      };
       let cursor = todayKey;
       if (!complete(cursor)) cursor = addDaysToKey(todayKey, -1);
       while (complete(cursor) && streak < 60) {

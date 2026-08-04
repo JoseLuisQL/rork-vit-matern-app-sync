@@ -79,9 +79,16 @@ export interface Supplement {
   name: string;
   dose: string;
   schedule: string;
+  /** Tomas por día (1–6). Los registros antiguos sin el campo valen 1. */
+  timesPerDay?: number;
+  /** Día (YYYY-MM-DD) desde el que se espera la toma; ausente = desde siempre. */
+  startKey?: string;
 }
 
-/** patientId → (YYYY-MM-DD → ids de suplementos tomados). */
+/**
+ * patientId → (YYYY-MM-DD → ids de suplementos tomados).
+ * Un id repetido representa varias tomas del mismo medicamento ese día.
+ */
 export type IntakeMap = Record<string, Record<string, string[]>>;
 
 export type MessageKind = "text" | "emergencia" | "alarma";
@@ -179,6 +186,14 @@ export interface Snapshot {
   reports?: { d30: ReportBlock; total: ReportBlock };
 }
 
+/** Campos de un medicamento asignado por la obstetra. */
+export interface SupplementFields {
+  name: string;
+  dose: string;
+  schedule: string;
+  timesPerDay: number;
+}
+
 /** Campos editables de la ficha clínica (solo obstetra/admin). */
 export interface PatientUpdateFields {
   age?: number;
@@ -214,6 +229,30 @@ export type ClientAction =
       dayKey: string;
       taken: boolean;
     }
+  | {
+      id: string;
+      atISO: string;
+      type: "set_intake_count";
+      patientId: string;
+      supplementId: string;
+      dayKey: string;
+      count: number;
+    }
+  | {
+      id: string;
+      atISO: string;
+      type: "add_supplement";
+      patientId: string;
+      fields: SupplementFields;
+    }
+  | {
+      id: string;
+      atISO: string;
+      type: "update_supplement";
+      supplementId: string;
+      fields: SupplementFields;
+    }
+  | { id: string; atISO: string; type: "remove_supplement"; supplementId: string }
   | { id: string; atISO: string; type: "send_message"; convId: string; text: string }
   | { id: string; atISO: string; type: "mark_read"; convId: string }
   | {

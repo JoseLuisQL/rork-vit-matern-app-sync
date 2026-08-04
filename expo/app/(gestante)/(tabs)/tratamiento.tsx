@@ -9,6 +9,7 @@ import React, { useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { gfonts, gwarm, spacing } from "@/constants/theme";
 import { GICON, ILU } from "@/constants/illustrations";
+import { countDoses, dayDoseTotals, doseName, timesPerDayOf } from "@/lib/doses";
 import { addDaysToKey, capitalize, fechaLarga } from "@/lib/format";
 import { useApp, useMyPatient } from "@/providers/AppProvider";
 import { BigCheckRow } from "@/components/gestante/BigCheckRow";
@@ -32,16 +33,15 @@ export default function PastillasGestante(): React.ReactElement {
     [view?.intakes, patient],
   );
   const todayIntakes = myLogs[todayKey] ?? [];
-  const allTaken =
-    supplements.length > 0 && supplements.every((s) => todayIntakes.includes(s.id));
+  const todayTotals = dayDoseTotals(supplements, todayIntakes, todayKey);
+  const allTaken = todayTotals.total > 0 && todayTotals.taken >= todayTotals.total;
 
   /** Últimos 7 días (hoy al final): completo / parcial / nada. */
   const week = useMemo(() => {
     const out: { key: string; letter: string; status: "full" | "partial" | "none" }[] = [];
     for (let i = 6; i >= 0; i--) {
       const key = addDaysToKey(todayKey, -i);
-      const logs = myLogs[key] ?? [];
-      const taken = supplements.filter((s) => logs.includes(s.id)).length;
+      const { taken, total } = dayDoseTotals(supplements, myLogs[key], key);
       const dow = new Date(
         parseInt(key.slice(0, 4), 10),
         parseInt(key.slice(5, 7), 10) - 1,
@@ -50,7 +50,7 @@ export default function PastillasGestante(): React.ReactElement {
       out.push({
         key,
         letter: DAY_LETTERS[dow],
-        status: taken === 0 ? "none" : taken >= supplements.length ? "full" : "partial",
+        status: taken === 0 ? "none" : total > 0 && taken >= total ? "full" : "partial",
       });
     }
     return out;
@@ -81,25 +81,26 @@ export default function PastillasGestante(): React.ReactElement {
             </View>
             <View style={styles.pillsList}>
               {supplements.map((s) => {
-                const taken = todayIntakes.includes(s.id);
-                return (
+                const times = timesPerDayOf(s);
+                const count = countDoses(todayIntakes, s.id);
+                return Array.from({ length: times }, (_, dose) => (
                   <BigCheckRow
-                    key={s.id}
-                    checked={taken}
+                    key={`${s.id}-${dose}`}
+                    checked={dose < count}
                     label={s.name}
-                    sublabel={s.schedule}
+                    sublabel={times > 1 ? doseName(dose, times) : s.schedule}
                     onToggle={() =>
                       dispatch({
-                        type: "toggle_intake",
+                        type: "set_intake_count",
                         patientId: patient.id,
                         supplementId: s.id,
                         dayKey: todayKey,
-                        taken: !taken,
+                        count: dose < count ? dose : dose + 1,
                       })
                     }
-                    testID={`trat-toggle-${s.id}`}
+                    testID={`trat-toggle-${s.id}-${dose}`}
                   />
-                );
+                ));
               })}
             </View>
             {allTaken ? (

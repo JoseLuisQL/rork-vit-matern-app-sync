@@ -4,6 +4,7 @@
  * que la app responda al instante aun sin señal. El servidor sigue siendo la
  * fuente de verdad: al sincronizar, su snapshot reemplaza esta vista.
  */
+import { timesPerDayOf } from "@/lib/doses";
 import { anemiaClassLocal, correctedHbLocal, fppKeyLocal, weeksLocal } from "@/lib/optimistic";
 import type { Alert, ClientAction, Message, Snapshot, User } from "@/types";
 
@@ -12,6 +13,7 @@ function cloneForMutation(snapshot: Snapshot): Snapshot {
     ...snapshot,
     patients: snapshot.patients.map((p) => ({ ...p })),
     appointments: snapshot.appointments.map((a) => ({ ...a })),
+    supplements: snapshot.supplements.map((s) => ({ ...s })),
     messages: snapshot.messages.map((m) => ({ ...m })),
     alerts: snapshot.alerts.map((a) => ({ ...a })),
     visits: snapshot.visits.map((v) => ({ ...v })),
@@ -52,6 +54,51 @@ export function applyOutbox(snapshot: Snapshot, actions: ClientAction[], user: U
         if (!action.taken && has) {
           perPatient[action.dayKey] = day.filter((id) => id !== action.supplementId);
         }
+        break;
+      }
+      case "set_intake_count": {
+        const perPatient = s.intakes[action.patientId] ?? (s.intakes[action.patientId] = {});
+        const supp = s.supplements.find((x) => x.id === action.supplementId);
+        const max = supp ? timesPerDayOf(supp) : Math.max(0, Math.round(action.count));
+        const count = Math.max(0, Math.min(max, Math.round(action.count)));
+        const others = (perPatient[action.dayKey] ?? []).filter(
+          (id) => id !== action.supplementId,
+        );
+        perPatient[action.dayKey] = [
+          ...others,
+          ...(Array(count).fill(action.supplementId) as string[]),
+        ];
+        break;
+      }
+      case "add_supplement": {
+        if (user.role === "gestante") break;
+        const name = action.fields.name.trim();
+        if (name.length === 0) break;
+        s.supplements.push({
+          id: `s-${action.id}`,
+          patientId: action.patientId,
+          name,
+          dose: action.fields.dose.trim() || "1 tableta",
+          schedule: action.fields.schedule.trim(),
+          timesPerDay: action.fields.timesPerDay,
+          startKey: s.todayKey,
+        });
+        break;
+      }
+      case "update_supplement": {
+        if (user.role === "gestante") break;
+        const supp = s.supplements.find((x) => x.id === action.supplementId);
+        if (!supp) break;
+        const name = action.fields.name.trim();
+        if (name.length > 0) supp.name = name;
+        supp.dose = action.fields.dose.trim() || "1 tableta";
+        supp.schedule = action.fields.schedule.trim();
+        supp.timesPerDay = action.fields.timesPerDay;
+        break;
+      }
+      case "remove_supplement": {
+        if (user.role === "gestante") break;
+        s.supplements = s.supplements.filter((x) => x.id !== action.supplementId);
         break;
       }
       case "send_message": {

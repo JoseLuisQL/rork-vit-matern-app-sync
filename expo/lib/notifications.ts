@@ -170,6 +170,19 @@ export async function notifySnapshotDelta(
   }
 
   if (role === "gestante") {
+    const prevSuppIds = new Set(prev.supplements.map((s) => s.id));
+    const newSupplements = next.supplements.filter((s) => !prevSuppIds.has(s.id));
+    for (const supp of newSupplements.slice(0, 2)) {
+      const times = Math.max(1, Math.min(6, Math.round(supp.timesPerDay ?? 1)));
+      await presentNow(
+        notifications,
+        "Tienes un medicamento nuevo",
+        `Tu obstetra te asignó ${supp.name}: ${
+          times === 1 ? "1 vez al día" : `${times} veces al día`
+        }. Márcalo cada día en Pastillas.`,
+      );
+    }
+
     const prevAppointments = new Map(prev.appointments.map((a) => [a.id, a]));
     for (const appt of next.appointments) {
       const before = prevAppointments.get(appt.id);
@@ -211,8 +224,8 @@ export async function syncReminders(
   if (settings.tomas) {
     await notifications.scheduleNotificationAsync({
       content: {
-        title: "Tu tratamiento de hoy",
-        body: "¿Ya tomaste tu hierro y ácido fólico? Márcalo en VitMaterna.",
+        title: "Tus pastillas de hoy",
+        body: "¿Ya marcaste todas tus tomas de hoy? Ábrelo en VitMaterna.",
       },
       trigger: {
         type: notifications.SchedulableTriggerInputTypes.DAILY,

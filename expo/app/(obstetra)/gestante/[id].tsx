@@ -11,6 +11,8 @@ import {
   MessageCircle,
   Pencil,
   Phone,
+  Pill,
+  Plus,
   UserRound,
   type LucideIcon,
 } from "lucide-react-native";
@@ -20,6 +22,7 @@ import { gfonts, gShadow, gwarm, risk, warmBlue } from "@/constants/theme";
 import { ANEMIA_LABEL } from "@/constants/labels";
 import { ILU } from "@/constants/illustrations";
 import { avatarUri } from "@/lib/api";
+import { countDoses, dayDoseTotals, timesLabel, timesPerDayOf } from "@/lib/doses";
 import { fechaCompleta, fechaCorta, horaAmigable } from "@/lib/format";
 import { useApp, usePatient } from "@/providers/AppProvider";
 import { AppButton } from "@/components/AppButton";
@@ -95,6 +98,7 @@ export default function FichaGestante(): React.ReactElement {
     [view?.supplements, id],
   );
   const todayIntakes = view?.intakes[id ?? ""]?.[todayKey] ?? [];
+  const doseTotals = dayDoseTotals(supplements, todayIntakes, todayKey);
 
   const upcoming = useMemo(() => {
     const list = (view?.appointments ?? []).filter(
@@ -134,6 +138,14 @@ export default function FichaGestante(): React.ReactElement {
 
   const goUpdate = () =>
     router.push({ pathname: "/(obstetra)/actualizar-datos", params: { id: patient.id } });
+
+  const goMedicamento = (supplementId?: string) =>
+    router.push({
+      pathname: "/(obstetra)/medicamento",
+      params: supplementId
+        ? { patientId: patient.id, supplementId }
+        : { patientId: patient.id },
+    });
 
   return (
     <View style={styles.container}>
@@ -273,7 +285,10 @@ export default function FichaGestante(): React.ReactElement {
         </PopIn>
 
         <PopIn delay={180}>
-          <SectionHeader title="Sus pastillas" />
+          <SectionHeader
+            title="Sus pastillas"
+            action={{ label: "Asignar", onPress: () => goMedicamento(), color: accent.main }}
+          />
           <Card style={styles.treatCard}>
             <View style={styles.treatTop}>
               <ProgressRing
@@ -293,30 +308,71 @@ export default function FichaGestante(): React.ReactElement {
               <View style={styles.flex}>
                 <Text style={styles.treatTitle}>Tomas en los últimos 30 días</Text>
                 <Text style={styles.treatMeta}>
-                  Hoy: {supplements.filter((s) => todayIntakes.includes(s.id)).length} de{" "}
-                  {supplements.length}
+                  Hoy: {doseTotals.taken} de {doseTotals.total} tomas
                   {patient.streak > 1 ? ` · ${patient.streak} días seguidos` : ""}
                 </Text>
               </View>
             </View>
-            {supplements.map((s) => (
-              <View key={s.id} style={styles.suppRow}>
-                <View
-                  style={[
-                    styles.suppDot,
-                    {
-                      backgroundColor: todayIntakes.includes(s.id)
-                        ? gwarm.teal
-                        : gwarm.borderStrong,
-                    },
-                  ]}
-                />
-                <Text style={styles.suppName}>{s.name}</Text>
-              </View>
-            ))}
+            {supplements.map((s, index) => {
+              const times = timesPerDayOf(s);
+              const taken = Math.min(countDoses(todayIntakes, s.id), times);
+              const done = taken >= times;
+              return (
+                <PressableScale
+                  key={s.id}
+                  onPress={() => goMedicamento(s.id)}
+                  accessibilityLabel={`Cambiar ${s.name}`}
+                  style={[styles.medRow, index > 0 && styles.rowBorder]}
+                  testID={`med-${s.id}`}
+                >
+                  <View
+                    style={[
+                      styles.medIcon,
+                      { backgroundColor: done ? gwarm.tealSoft : gwarm.surfaceSoft },
+                    ]}
+                  >
+                    <Pill size={18} color={done ? gwarm.teal : gwarm.inkSoft} />
+                  </View>
+                  <View style={styles.rowInfo}>
+                    <Text style={styles.medName} numberOfLines={1}>
+                      {s.name}
+                    </Text>
+                    <Text style={styles.apptMeta} numberOfLines={1}>
+                      {s.dose} · {timesLabel(times)}
+                    </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.medBadge,
+                      { backgroundColor: done ? gwarm.tealSoft : gwarm.surfaceSoft },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.medBadgeText,
+                        { color: done ? gwarm.tealDeep : gwarm.inkSoft },
+                      ]}
+                    >
+                      Hoy {taken}/{times}
+                    </Text>
+                  </View>
+                </PressableScale>
+              );
+            })}
             {supplements.length === 0 ? (
-              <Text style={styles.treatMeta}>Sin suplementos asignados.</Text>
+              <Text style={styles.treatMeta}>
+                Aún no le asignas medicamentos. Hazlo con el botón de abajo.
+              </Text>
             ) : null}
+            <AppButton
+              title="Asignar medicamento"
+              onPress={() => goMedicamento()}
+              color={accent.main}
+              variant="soft"
+              icon={Plus}
+              small
+              testID="btn-asignar-medicamento"
+            />
           </Card>
         </PopIn>
 
@@ -551,19 +607,37 @@ const styles = StyleSheet.create({
     color: gwarm.inkSoft,
     marginTop: 2,
   },
-  suppRow: {
+  medRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    minHeight: 28,
+    gap: 10,
+    paddingVertical: 9,
+    minHeight: 54,
   },
-  suppDot: { width: 9, height: 9, borderRadius: 999 },
-  suppName: {
-    fontFamily: gfonts.handBody,
-    fontSize: 15,
-    lineHeight: 22,
+  medIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  medName: {
+    fontFamily: gfonts.hand,
+    fontSize: 16.5,
+    lineHeight: 21,
     color: gwarm.ink,
-    flex: 1,
+  },
+  medBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    flexShrink: 0,
+  },
+  medBadgeText: {
+    fontFamily: gfonts.hand,
+    fontSize: 13.5,
+    lineHeight: 17,
   },
   emptyApptCard: { gap: 10, alignItems: "flex-start" },
   listCard: { paddingVertical: 6 },

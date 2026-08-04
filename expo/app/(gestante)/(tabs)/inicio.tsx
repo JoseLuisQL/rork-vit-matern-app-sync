@@ -14,6 +14,7 @@ import { gfonts, gwarm, spacing } from "@/constants/theme";
 import { GICON, ILU } from "@/constants/illustrations";
 import { avatarUri } from "@/lib/api";
 import { confirmAction } from "@/lib/confirm";
+import { countDoses, dayDoseTotals, doseName, timesPerDayOf } from "@/lib/doses";
 import { capitalize, fechaCompleta, fechaLarga } from "@/lib/format";
 import { useApp, useMyPatient } from "@/providers/AppProvider";
 import { AppButton } from "@/components/AppButton";
@@ -49,8 +50,8 @@ export default function InicioGestante(): React.ReactElement {
   }, [view, patient, todayKey]);
 
   const supplements = view?.supplements ?? [];
-  const takenCount = supplements.filter((s) => todayIntakes.includes(s.id)).length;
-  const allTaken = supplements.length > 0 && takenCount === supplements.length;
+  const todayTotals = dayDoseTotals(supplements, todayIntakes, todayKey);
+  const allTaken = todayTotals.total > 0 && todayTotals.taken >= todayTotals.total;
 
   const handleConfirm = useCallback(async () => {
     if (!nextAppt) return;
@@ -172,24 +173,26 @@ export default function InicioGestante(): React.ReactElement {
             />
             <View style={styles.pillsList}>
               {supplements.map((s) => {
-                const taken = todayIntakes.includes(s.id);
-                return (
+                const times = timesPerDayOf(s);
+                const count = countDoses(todayIntakes, s.id);
+                return Array.from({ length: times }, (_, dose) => (
                   <BigCheckRow
-                    key={s.id}
-                    checked={taken}
+                    key={`${s.id}-${dose}`}
+                    checked={dose < count}
                     label={s.name}
+                    sublabel={times > 1 ? doseName(dose, times) : undefined}
                     onToggle={() =>
                       dispatch({
-                        type: "toggle_intake",
+                        type: "set_intake_count",
                         patientId: patient.id,
                         supplementId: s.id,
                         dayKey: todayKey,
-                        taken: !taken,
+                        count: dose < count ? dose : dose + 1,
                       })
                     }
-                    testID={`toggle-${s.id}`}
+                    testID={`toggle-${s.id}-${dose}`}
                   />
-                );
+                ));
               })}
             </View>
             {allTaken ? (
