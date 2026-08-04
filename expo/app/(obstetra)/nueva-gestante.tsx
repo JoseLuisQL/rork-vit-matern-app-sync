@@ -1,10 +1,10 @@
 /**
- * Crear usuario (administración): formulario compacto en bloques con rol
- * segmentado. Para una gestante, el servidor crea también su ficha clínica
- * y genera automáticamente el cronograma de 8 controles MINSA.
+ * Registro de gestante (obstetra): crea la cuenta y la ficha clínica en un
+ * formulario compacto de dos bloques. El servidor valida el DNI, genera el
+ * cronograma de 8 controles MINSA y asigna los suplementos automáticamente.
  */
 import { useRouter } from "expo-router";
-import { UserPlus, WifiOff } from "lucide-react-native";
+import { UserRoundPlus, WifiOff } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -14,25 +14,22 @@ import {
   Text,
   View,
 } from "react-native";
-import { adminTheme, common, radius, semantic, spacing, type } from "@/constants/theme";
+import { common, obstetraTheme, radius, semantic, spacing, type } from "@/constants/theme";
 import { ApiError } from "@/lib/api";
 import { showNotice } from "@/lib/confirm";
 import { useApp } from "@/providers/AppProvider";
-import type { Role } from "@/types";
 import { AppButton } from "@/components/AppButton";
 import { Card } from "@/components/Card";
 import { Field } from "@/components/Field";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SectionHeader } from "@/components/SectionHeader";
-import { Segmented } from "@/components/Segmented";
 
-const accent = adminTheme;
+const accent = obstetraTheme;
 
-export default function NuevoUsuarioScreen(): React.ReactElement {
+export default function NuevaGestanteScreen(): React.ReactElement {
   const router = useRouter();
   const { createUser, online } = useApp();
 
-  const [role, setRole] = useState<Role>("gestante");
   const [dni, setDni] = useState<string>("");
   const [firstName, setFirstName] = useState<string>("");
   const [lastName, setLastName] = useState<string>("");
@@ -65,7 +62,7 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
       setError("La contraseña debe tener al menos 6 caracteres.");
       return;
     }
-    if (role === "gestante" && !/^\d{4}-\d{2}-\d{2}$/.test(fumKey)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fumKey)) {
       setError("La FUM debe tener el formato AAAA-MM-DD, por ejemplo 2026-05-10.");
       return;
     }
@@ -76,60 +73,38 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
         password,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        role,
+        role: "gestante",
         phone: phone.trim() || undefined,
-        patient:
-          role === "gestante"
-            ? {
-                fumKey,
-                age: parseInt(age, 10) || 25,
-                community: community.trim() || "Talavera",
-                hbObserved: parseFloat(hb) || 13,
-                bpSys: parseInt(bpSys, 10) || 110,
-                bpDia: parseInt(bpDia, 10) || 70,
-                imc: parseFloat(imc) || 24,
-                gestas: parseInt(gestas, 10) || 1,
-              }
-            : undefined,
+        patient: {
+          fumKey,
+          age: parseInt(age, 10) || 25,
+          community: community.trim() || "Talavera",
+          hbObserved: parseFloat(hb) || 13,
+          bpSys: parseInt(bpSys, 10) || 110,
+          bpDia: parseInt(bpDia, 10) || 70,
+          imc: parseFloat(imc) || 24,
+          gestas: parseInt(gestas, 10) || 1,
+        },
       });
       showNotice(
-        "Usuario creado",
-        role === "gestante"
-          ? `${firstName.trim()} ya puede iniciar sesión. El servidor generó su cronograma de controles MINSA.`
-          : `${firstName.trim()} ya puede iniciar sesión.`,
+        "Gestante registrada",
+        `${firstName.trim()} ya puede iniciar sesión con su DNI. Su cronograma de 8 controles se generó automáticamente.`,
       );
       router.back();
     } catch (e) {
       if (e instanceof ApiError && e.status === 0) {
-        setError("Necesitas conexión para crear usuarios.");
+        setError("Necesitas conexión para registrar gestantes.");
       } else {
-        setError(e instanceof Error ? e.message : "No se pudo crear el usuario.");
+        setError(e instanceof Error ? e.message : "No se pudo registrar a la gestante.");
       }
     } finally {
       setSubmitting(false);
     }
-  }, [
-    dni,
-    firstName,
-    lastName,
-    password,
-    role,
-    phone,
-    fumKey,
-    age,
-    community,
-    hb,
-    bpSys,
-    bpDia,
-    imc,
-    gestas,
-    createUser,
-    router,
-  ]);
+  }, [dni, firstName, lastName, password, phone, fumKey, age, community, hb, bpSys, bpDia, imc, gestas, createUser, router]);
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Nuevo usuario" subtitle="Validado por el servidor" showBack />
+      <ScreenHeader title="Nueva gestante" subtitle="Cuenta + ficha clínica" showBack />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -144,21 +119,10 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
             <View style={styles.offlineBox}>
               <WifiOff size={15} color={semantic.warning} />
               <Text style={styles.offlineText}>
-                Sin conexión: crear usuarios necesita al servidor.
+                Sin conexión: el registro necesita al servidor.
               </Text>
             </View>
           ) : null}
-
-          <SectionHeader title="Rol" />
-          <Segmented
-            options={[
-              { key: "gestante", label: "Gestante" },
-              { key: "obstetra", label: "Obstetra" },
-              { key: "admin", label: "Admin" },
-            ]}
-            value={role}
-            onChange={(k) => setRole(k as Role)}
-          />
 
           <SectionHeader title="Datos de la cuenta" />
           <Card style={styles.formCard}>
@@ -170,7 +134,7 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
               keyboardType="number-pad"
               maxLength={8}
               accent={accent.primary}
-              testID="nuevo-dni"
+              testID="ng-dni"
             />
             <View style={styles.row2}>
               <Field
@@ -181,6 +145,7 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
                 autoCapitalize="words"
                 accent={accent.primary}
                 style={styles.flex}
+                testID="ng-nombres"
               />
               <Field
                 label="Apellidos"
@@ -214,85 +179,81 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
             </View>
           </Card>
 
-          {role === "gestante" ? (
-            <>
-              <SectionHeader title="Ficha clínica inicial" />
-              <Card style={styles.formCard}>
-                <Field
-                  label="Última menstruación (FUM)"
-                  value={fumKey}
-                  onChangeText={setFumKey}
-                  placeholder="AAAA-MM-DD"
-                  keyboardType="numbers-and-punctuation"
-                  maxLength={10}
-                  accent={accent.primary}
-                  hint="Con la FUM se calculan la edad gestacional, la FPP y los 8 controles."
-                  testID="nuevo-fum"
-                />
-                <View style={styles.row2}>
-                  <Field
-                    label="Edad"
-                    value={age}
-                    onChangeText={setAge}
-                    keyboardType="number-pad"
-                    accent={accent.primary}
-                    style={styles.flex}
-                  />
-                  <Field
-                    label="Comunidad"
-                    value={community}
-                    onChangeText={setCommunity}
-                    autoCapitalize="words"
-                    accent={accent.primary}
-                    style={styles.flex}
-                  />
-                </View>
-                <View style={styles.row2}>
-                  <Field
-                    label="Hb observada (g/dL)"
-                    value={hb}
-                    onChangeText={setHb}
-                    keyboardType="decimal-pad"
-                    accent={accent.primary}
-                    style={styles.flex}
-                  />
-                  <Field
-                    label="IMC"
-                    value={imc}
-                    onChangeText={setImc}
-                    keyboardType="decimal-pad"
-                    accent={accent.primary}
-                    style={styles.flex}
-                  />
-                </View>
-                <View style={styles.row2}>
-                  <Field
-                    label="Presión sistólica"
-                    value={bpSys}
-                    onChangeText={setBpSys}
-                    keyboardType="number-pad"
-                    accent={accent.primary}
-                    style={styles.flex}
-                  />
-                  <Field
-                    label="Presión diastólica"
-                    value={bpDia}
-                    onChangeText={setBpDia}
-                    keyboardType="number-pad"
-                    accent={accent.primary}
-                    style={styles.flex}
-                  />
-                </View>
-                <Field
-                  label="Número de gestas"
-                  value={gestas}
-                  onChangeText={setGestas}
-                  keyboardType="number-pad"
-                  accent={accent.primary}
-                />
-              </Card>
-            </>
-          ) : null}
+          <SectionHeader title="Ficha clínica" />
+          <Card style={styles.formCard}>
+            <Field
+              label="Última menstruación (FUM)"
+              value={fumKey}
+              onChangeText={setFumKey}
+              placeholder="AAAA-MM-DD"
+              keyboardType="numbers-and-punctuation"
+              maxLength={10}
+              accent={accent.primary}
+              hint="Con la FUM se calculan la edad gestacional, la FPP y los 8 controles."
+              testID="ng-fum"
+            />
+            <View style={styles.row2}>
+              <Field
+                label="Edad"
+                value={age}
+                onChangeText={setAge}
+                keyboardType="number-pad"
+                accent={accent.primary}
+                style={styles.flex}
+              />
+              <Field
+                label="Comunidad"
+                value={community}
+                onChangeText={setCommunity}
+                autoCapitalize="words"
+                accent={accent.primary}
+                style={styles.flex}
+              />
+            </View>
+            <View style={styles.row2}>
+              <Field
+                label="Hb observada (g/dL)"
+                value={hb}
+                onChangeText={setHb}
+                keyboardType="decimal-pad"
+                accent={accent.primary}
+                style={styles.flex}
+              />
+              <Field
+                label="IMC"
+                value={imc}
+                onChangeText={setImc}
+                keyboardType="decimal-pad"
+                accent={accent.primary}
+                style={styles.flex}
+              />
+            </View>
+            <View style={styles.row2}>
+              <Field
+                label="Presión sistólica"
+                value={bpSys}
+                onChangeText={setBpSys}
+                keyboardType="number-pad"
+                accent={accent.primary}
+                style={styles.flex}
+              />
+              <Field
+                label="Presión diastólica"
+                value={bpDia}
+                onChangeText={setBpDia}
+                keyboardType="number-pad"
+                accent={accent.primary}
+                style={styles.flex}
+              />
+            </View>
+            <Field
+              label="Número de gestas"
+              value={gestas}
+              onChangeText={setGestas}
+              keyboardType="number-pad"
+              accent={accent.primary}
+            />
+          </Card>
 
           {error ? (
             <View style={styles.errorBox}>
@@ -301,14 +262,17 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
           ) : null}
 
           <AppButton
-            title="Crear usuario"
+            title="Registrar gestante"
             onPress={() => void submit()}
             color={accent.primary}
-            icon={UserPlus}
+            icon={UserRoundPlus}
             loading={submitting}
             disabled={!online || submitting}
-            testID="btn-crear-usuario"
+            testID="btn-registrar-gestante"
           />
+          <Text style={styles.footNote}>
+            La cuenta queda activa al instante y aparece en tu lista de gestantes.
+          </Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -348,4 +312,9 @@ const styles = StyleSheet.create({
     padding: spacing.sm2,
   },
   errorText: { ...type.bodySm, color: semantic.danger },
+  footNote: {
+    ...type.caption,
+    color: common.textTertiary,
+    textAlign: "center",
+  },
 });

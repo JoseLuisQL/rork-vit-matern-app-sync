@@ -1,15 +1,16 @@
 /**
- * Inicio de la obstetra: saludo con foto de perfil, emergencias abiertas
- * primero, panel de indicadores del día, botones de módulos y las listas
- * de citas de hoy y pacientes prioritarias.
+ * Inicio de la obstetra: saludo con foto de perfil, un bloque compacto de
+ * emergencias (filas, no tarjetones), indicadores del día, accesos y las
+ * listas de citas de hoy y pacientes prioritarias.
  */
 import { useRouter } from "expo-router";
 import {
   Bell,
-  CalendarDays,
   CalendarPlus,
+  ChevronRight,
   MessageCircle,
-  TriangleAlert,
+  Siren,
+  UserRoundPlus,
   Users,
 } from "lucide-react-native";
 import React, { useMemo } from "react";
@@ -19,7 +20,6 @@ import {
   common,
   gestanteTheme,
   obstetraTheme,
-  radius,
   risk,
   semantic,
   spacing,
@@ -29,7 +29,6 @@ import { RISK_WORD } from "@/constants/labels";
 import { avatarUri } from "@/lib/api";
 import { fechaLarga, tiempoRelativo } from "@/lib/format";
 import { useApp, usePatients, useUnreadCount } from "@/providers/AppProvider";
-import { AppButton } from "@/components/AppButton";
 import { Avatar } from "@/components/Avatar";
 import { Card } from "@/components/Card";
 import { HomeHeader } from "@/components/HomeHeader";
@@ -69,7 +68,8 @@ export default function InicioObstetra(): React.ReactElement {
     const score = { rojo: 0, amarillo: 1, verde: 2 } as const;
     return [...patients]
       .filter((p) => p.riskLevel !== "verde")
-      .sort((a, b) => score[a.riskLevel] - score[b.riskLevel] || b.riskScore - a.riskScore);
+      .sort((a, b) => score[a.riskLevel] - score[b.riskLevel] || b.riskScore - a.riskScore)
+      .slice(0, 5);
   }, [patients]);
 
   const redCount = patients.filter((p) => p.riskLevel === "rojo").length;
@@ -91,12 +91,12 @@ export default function InicioObstetra(): React.ReactElement {
         testID: "mod-nueva-cita",
       },
       {
-        key: "gestantes",
-        label: "Gestantes",
-        icon: Users,
+        key: "nueva-gestante",
+        label: "Gestante",
+        icon: UserRoundPlus,
         color: gestanteTheme.primary,
-        onPress: () => router.push("/(obstetra)/(tabs)/gestantes"),
-        testID: "mod-gestantes",
+        onPress: () => router.push("/(obstetra)/nueva-gestante"),
+        testID: "mod-nueva-gestante",
       },
       {
         key: "alertas",
@@ -139,56 +139,55 @@ export default function InicioObstetra(): React.ReactElement {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {emergencies.map((alert) => (
-          <Card key={alert.id} style={styles.emergencyCard}>
-            <View style={styles.emergencyTop}>
-              <View style={styles.emergencyTitleRow}>
-                <TriangleAlert size={16} color={semantic.danger} />
-                <Text style={styles.emergencyPatient} numberOfLines={1}>
-                  {patientName(alert.patientId)}
-                </Text>
-              </View>
-              <Text style={styles.emergencyTime}>{tiempoRelativo(alert.atISO)}</Text>
+        {emergencies.length > 0 ? (
+          <Card style={styles.urgentCard}>
+            <View style={styles.urgentHeader}>
+              <Text style={styles.urgentTitle}>Atención inmediata</Text>
+              <Text style={styles.urgentCount}>{emergencies.length}</Text>
             </View>
-            <Text style={styles.emergencyDetail} numberOfLines={2}>
-              {alert.detail}
-            </Text>
-            <AppButton
-              title="Atender"
-              onPress={() => router.push("/(obstetra)/(tabs)/alertas")}
-              variant="danger"
-              small
-            />
+            {emergencies.slice(0, 3).map((alert, index) => (
+              <PressableScale
+                key={alert.id}
+                onPress={() => router.push("/(obstetra)/(tabs)/alertas")}
+                accessibilityLabel={`Emergencia de ${patientName(alert.patientId)}`}
+                style={[styles.urgentRow, index > 0 && styles.rowBorder]}
+                testID={`urgente-${alert.id}`}
+              >
+                <Siren size={16} color={semantic.danger} />
+                <View style={styles.rowInfo}>
+                  <Text style={styles.urgentName} numberOfLines={1}>
+                    {patientName(alert.patientId)}
+                  </Text>
+                  <Text style={styles.urgentDetail} numberOfLines={1}>
+                    {alert.detail}
+                  </Text>
+                </View>
+                <Text style={styles.urgentTime}>{tiempoRelativo(alert.atISO)}</Text>
+                <ChevronRight size={15} color={common.textTertiary} />
+              </PressableScale>
+            ))}
           </Card>
-        ))}
+        ) : null}
 
         <StatGroup
           items={[
-            {
-              key: "citas",
-              value: `${todayAppointments.length}`,
-              label: "Citas hoy",
-              icon: CalendarDays,
-              color: accent.primary,
-            },
+            { key: "citas", value: `${todayAppointments.length}`, label: "Citas hoy" },
             {
               key: "alertas",
               value: `${openAlerts.length}`,
               label: "Alertas",
-              icon: Bell,
-              color: openAlerts.length > 0 ? semantic.warning : common.textSecondary,
+              color: openAlerts.length > 0 ? semantic.warning : common.text,
             },
             {
               key: "rojo",
               value: `${redCount}`,
               label: "Riesgo alto",
-              icon: TriangleAlert,
-              color: redCount > 0 ? semantic.danger : common.textSecondary,
+              color: redCount > 0 ? semantic.danger : common.text,
             },
           ]}
         />
 
-        <SectionHeader title="Módulos" />
+        <SectionHeader title="Accesos" />
         <ModuleGrid items={modules} />
 
         <SectionHeader
@@ -207,9 +206,8 @@ export default function InicioObstetra(): React.ReactElement {
           <Card style={styles.listCard}>
             {todayAppointments.map((appt, index) => (
               <View key={appt.id} style={[styles.apptRow, index > 0 && styles.rowBorder]}>
-                <View style={styles.timeChip}>
-                  <Text style={styles.timeText}>{appt.time}</Text>
-                </View>
+                <Text style={styles.timeText}>{appt.time}</Text>
+                <View style={styles.timeDivider} />
                 <View style={styles.rowInfo}>
                   <Text style={styles.rowName} numberOfLines={1}>
                     {patientName(appt.patientId)}
@@ -246,8 +244,7 @@ export default function InicioObstetra(): React.ReactElement {
                   uri={avatarUri(p.dni, p.avatarVersion)}
                   color={risk[p.riskLevel].solid}
                   background={risk[p.riskLevel].light}
-                  ring={risk[p.riskLevel].solid}
-                  size={38}
+                  size={36}
                 />
                 <View style={styles.rowInfo}>
                   <Text style={styles.rowName} numberOfLines={1}>
@@ -277,55 +274,73 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
     gap: spacing.sm2,
   },
-  emergencyCard: {
-    gap: spacing.sm,
-    borderColor: semantic.dangerMid,
-    backgroundColor: semantic.dangerLight,
+  urgentCard: {
+    gap: 0,
+    paddingVertical: spacing.sm,
+    borderLeftWidth: 3,
+    borderLeftColor: semantic.danger,
   },
-  emergencyTop: {
+  urgentHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: spacing.sm,
+    paddingVertical: spacing.xs,
   },
-  emergencyTitleRow: {
+  urgentTitle: {
+    ...type.overline,
+    fontSize: 11.5,
+    letterSpacing: 1,
+    color: semantic.danger,
+    textTransform: "uppercase" as const,
+  },
+  urgentCount: {
+    ...type.numericSm,
+    fontSize: 15,
+    color: semantic.danger,
+  },
+  urgentRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    flex: 1,
-    minWidth: 0,
+    gap: spacing.sm2,
+    paddingVertical: spacing.sm2,
+    minHeight: 52,
   },
-  emergencyPatient: { ...type.h4, fontSize: 16, color: common.text, flexShrink: 1 },
-  emergencyTime: { ...type.bodySm, color: common.textSecondary, flexShrink: 0 },
-  emergencyDetail: { ...type.body, color: common.textSecondary },
+  urgentName: { ...type.bodyMd, fontSize: 15, color: common.text },
+  urgentDetail: { ...type.bodySm, color: common.textSecondary },
+  urgentTime: { ...type.caption, color: common.textTertiary, flexShrink: 0 },
   listCard: { paddingVertical: spacing.xs, gap: 0 },
   apptRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm2,
     paddingVertical: spacing.sm2,
-    minHeight: 56,
+    minHeight: 52,
   },
   rowBorder: { borderTopWidth: 1, borderTopColor: common.border },
-  timeChip: {
-    width: 56,
-    height: 32,
-    borderRadius: radius.sm,
-    backgroundColor: obstetraTheme.primaryLight,
-    alignItems: "center",
-    justifyContent: "center",
+  timeText: {
+    ...type.numericSm,
+    fontSize: 15,
+    lineHeight: 20,
+    color: accent.primaryDark,
+    width: 44,
+    flexShrink: 0,
   },
-  timeText: { ...type.numericSm, fontSize: 15, lineHeight: 20, color: obstetraTheme.primaryDark },
+  timeDivider: {
+    width: 1,
+    alignSelf: "stretch",
+    marginVertical: 2,
+    backgroundColor: common.border,
+  },
   rowInfo: { flex: 1, minWidth: 0, gap: 1 },
-  rowName: { ...type.bodyMd, fontSize: 16, color: common.text },
+  rowName: { ...type.bodyMd, fontSize: 15, color: common.text },
   rowMeta: { ...type.bodySm, color: common.textSecondary },
   patientRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm2,
     paddingVertical: spacing.sm2,
-    minHeight: 60,
+    minHeight: 56,
   },
-  riskWord: { ...type.label, fontSize: 13, flexShrink: 0 },
+  riskWord: { ...type.label, fontSize: 12.5, flexShrink: 0 },
   emptyText: { ...type.body, color: common.textSecondary },
 });

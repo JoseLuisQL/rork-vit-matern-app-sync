@@ -487,8 +487,11 @@ export class VitmaternaStore extends DurableObject {
 
   // ---------- Administración ----------
 
+  /** Admin crea cualquier rol; la obstetra solo puede registrar gestantes. */
   private async handleCreateUser(request: Request, db: DBState, user: StoredUser): Promise<Response> {
-    if (user.role !== "admin") return json({ error: "Acción no permitida" }, 403);
+    if (user.role !== "admin" && user.role !== "obstetra") {
+      return json({ error: "Acción no permitida" }, 403);
+    }
     const body = (await request.json()) as {
       dni?: string;
       password?: string;
@@ -516,6 +519,9 @@ export class VitmaternaStore extends DurableObject {
     const role = body.role;
     const password = body.password ?? "";
 
+    if (user.role === "obstetra" && role !== "gestante") {
+      return json({ error: "La obstetra solo puede registrar cuentas de gestantes" }, 403);
+    }
     if (!/^\d{8}$/.test(dni)) return json({ error: "El DNI debe tener 8 dígitos" }, 400);
     if (db.users.some((u) => u.dni === dni) || db.patients.some((p) => p.dni === dni)) {
       return json({ error: "Ya existe un usuario o paciente con ese DNI" }, 400);

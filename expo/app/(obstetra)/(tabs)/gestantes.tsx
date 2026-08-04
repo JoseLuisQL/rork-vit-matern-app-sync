@@ -1,19 +1,24 @@
-/** Gestantes: buscador, filtro por riesgo y filas limpias con punto de semáforo. */
+/**
+ * Gestantes: buscador, filtro segmentado por riesgo, filas limpias con foto
+ * y el registro de nuevas gestantes desde el botón "Nueva".
+ */
 import { useRouter } from "expo-router";
-import { ChevronRight, Search, Users } from "lucide-react-native";
+import { ChevronRight, Search, UserRoundPlus, Users } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { cardBorder, common, obstetraTheme, radius, risk, spacing, type } from "@/constants/theme";
 import { RISK_WORD } from "@/constants/labels";
+import { avatarUri } from "@/lib/api";
 import { usePatients } from "@/providers/AppProvider";
 import type { RiskLevel } from "@/types";
+import { AppButton } from "@/components/AppButton";
+import { Avatar } from "@/components/Avatar";
 import { EmptyState } from "@/components/EmptyState";
 import { PressableScale } from "@/components/PressableScale";
-import { RiskDot } from "@/components/Badges";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { Segmented } from "@/components/Segmented";
 
 const accent = obstetraTheme;
-const FILTERS: ("todas" | RiskLevel)[] = ["todas", "rojo", "amarillo", "verde"];
 
 export default function GestantesScreen(): React.ReactElement {
   const router = useRouter();
@@ -39,9 +44,22 @@ export default function GestantesScreen(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Gestantes" subtitle={`${patients.length} en seguimiento`}>
+      <ScreenHeader
+        title="Gestantes"
+        subtitle={`${patients.length} en seguimiento`}
+        right={
+          <AppButton
+            title="Nueva"
+            onPress={() => router.push("/(obstetra)/nueva-gestante")}
+            color={accent.primary}
+            icon={UserRoundPlus}
+            small
+            testID="btn-nueva-gestante"
+          />
+        }
+      >
         <View style={styles.searchBox}>
-          <Search size={17} color={common.textTertiary} />
+          <Search size={16} color={common.textTertiary} />
           <TextInput
             value={query}
             onChangeText={setQuery}
@@ -51,32 +69,17 @@ export default function GestantesScreen(): React.ReactElement {
             testID="buscar-gestante"
           />
         </View>
-        <View style={styles.filterRow}>
-          {FILTERS.map((f) => {
-            const active = filter === f;
-            const color = f === "todas" ? accent.primary : risk[f].solid;
-            return (
-              <PressableScale
-                key={f}
-                onPress={() => setFilter(f)}
-                accessibilityLabel={`Filtro ${f}`}
-                style={[
-                  styles.filterChip,
-                  active
-                    ? { backgroundColor: color, borderColor: color }
-                    : { borderColor: common.border, backgroundColor: common.surface },
-                ]}
-              >
-                {f !== "todas" && !active ? <RiskDot level={f} size={9} /> : null}
-                <Text
-                  style={[styles.filterText, { color: active ? common.white : common.textSecondary }]}
-                >
-                  {f === "todas" ? "Todas" : RISK_WORD[f]}
-                </Text>
-              </PressableScale>
-            );
-          })}
-        </View>
+        <Segmented
+          options={[
+            { key: "todas", label: "Todas" },
+            { key: "rojo", label: RISK_WORD.rojo, dot: risk.rojo.solid },
+            { key: "amarillo", label: RISK_WORD.amarillo, dot: risk.amarillo.solid },
+            { key: "verde", label: RISK_WORD.verde, dot: risk.verde.solid },
+          ]}
+          value={filter}
+          onChange={(k) => setFilter(k as "todas" | RiskLevel)}
+          style={styles.segmented}
+        />
       </ScreenHeader>
 
       <ScrollView
@@ -103,7 +106,12 @@ export default function GestantesScreen(): React.ReactElement {
                 style={[styles.row, index > 0 && styles.rowBorder]}
                 testID={`gestante-${p.id}`}
               >
-                <RiskDot level={p.riskLevel} size={14} />
+                <Avatar
+                  uri={avatarUri(p.dni, p.avatarVersion)}
+                  color={risk[p.riskLevel].solid}
+                  background={risk[p.riskLevel].light}
+                  size={38}
+                />
                 <View style={styles.info}>
                   <Text style={styles.name} numberOfLines={1}>
                     {p.firstName} {p.lastName}
@@ -112,7 +120,10 @@ export default function GestantesScreen(): React.ReactElement {
                     Semana {p.weeks} · {p.community}
                   </Text>
                 </View>
-                <ChevronRight size={18} color={common.textTertiary} />
+                <Text style={[styles.riskWord, { color: risk[p.riskLevel].solid }]}>
+                  {RISK_WORD[p.riskLevel]}
+                </Text>
+                <ChevronRight size={16} color={common.textTertiary} />
               </PressableScale>
             ))}
           </View>
@@ -134,9 +145,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.sm,
     backgroundColor: common.surfaceAlt,
-    borderRadius: radius.sm,
+    borderRadius: radius.md,
     paddingHorizontal: spacing.sm2,
-    height: 46,
+    height: 44,
     marginTop: spacing.sm,
   },
   searchInput: {
@@ -144,22 +155,7 @@ const styles = StyleSheet.create({
     ...type.body,
     color: common.text,
   },
-  filterRow: {
-    flexDirection: "row",
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-  },
-  filterChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: spacing.sm2,
-    height: 38,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    justifyContent: "center",
-  },
-  filterText: { ...type.buttonSm, fontSize: 13 },
+  segmented: { marginTop: spacing.sm },
   listCard: {
     backgroundColor: common.surface,
     borderRadius: radius.lg,
@@ -171,10 +167,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.sm2,
     paddingVertical: spacing.sm2,
-    minHeight: 64,
+    minHeight: 62,
   },
   rowBorder: { borderTopWidth: 1, borderTopColor: common.border },
   info: { flex: 1, minWidth: 0, gap: 2 },
-  name: { ...type.bodyMd, fontSize: 16, color: common.text },
+  name: { ...type.bodyMd, fontSize: 15, color: common.text },
   meta: { ...type.bodySm, color: common.textSecondary },
+  riskWord: { ...type.label, fontSize: 12.5, flexShrink: 0 },
 });

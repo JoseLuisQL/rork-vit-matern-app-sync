@@ -21,6 +21,7 @@ export default function ObstetraLayout(): React.ReactElement | null {
       <Stack.Screen name="gestante/[id]" />
       <Stack.Screen name="chat/[id]" />
       <Stack.Screen name="programar" options={{ presentation: "modal" }} />
+      <Stack.Screen name="nueva-gestante" options={{ presentation: "modal" }} />
       <Stack.Screen name="perfil" />
     </Stack>
   );

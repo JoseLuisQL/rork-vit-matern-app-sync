@@ -1,7 +1,7 @@
 /**
  * Cuadrícula de horarios en filas parejas de 4: todas las casillas del mismo
  * tamaño (la última fila se completa con espacios vacíos, sin estirarse).
- * Los horarios ocupados se muestran tachados y deshabilitados.
+ * Libres: blancas con borde fino. Ocupados: apagados y tachados.
  */
 import React, { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -61,6 +61,7 @@ export function SlotGrid({ taken, selected, onSelect, accent }: SlotGridProps): 
                     style={[
                       styles.slotText,
                       { color: active ? common.white : isTaken ? common.disabled : common.text },
+                      active && styles.slotTextActive,
                       isTaken && styles.slotTextTaken,
                     ]}
                   >
@@ -88,7 +89,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   slot: {
-    height: 46,
+    height: 44,
     borderRadius: radius.sm,
     borderWidth: 1,
     alignItems: "center",
@@ -96,11 +97,14 @@ const styles = StyleSheet.create({
   },
   slotTaken: {
     backgroundColor: common.surfaceAlt,
-    borderColor: common.border,
+    borderColor: common.surfaceAlt,
   },
   slotText: {
     ...type.bodyMd,
     fontSize: 14,
+  },
+  slotTextActive: {
+    fontFamily: type.button.fontFamily,
   },
   slotTextTaken: {
     textDecorationLine: "line-through" as const,

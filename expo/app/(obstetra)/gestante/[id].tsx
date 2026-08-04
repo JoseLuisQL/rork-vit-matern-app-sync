@@ -147,7 +147,7 @@ export default function FichaGestante(): React.ReactElement {
         </View>
 
         <SectionHeader title="Riesgo" />
-        <Card style={[styles.riskCard, { borderColor: riskPalette.mid }]}>
+        <Card style={[styles.riskCard, { borderLeftColor: riskPalette.solid }]}>
           <RiskBadge level={patient.riskLevel} />
           {patient.riskFactors.length === 0 ? (
             <Text style={styles.riskNone}>Sin factores de riesgo identificados.</Text>
@@ -336,31 +336,45 @@ const styles = StyleSheet.create({
     gap: spacing.sm2,
   },
   actionsRow: { flexDirection: "row", gap: spacing.sm },
-  riskCard: { gap: spacing.sm },
+  riskCard: { gap: spacing.sm, borderLeftWidth: 3 },
   riskNone: { ...type.body, color: common.textSecondary },
   factorRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   factorDot: { width: 7, height: 7, borderRadius: radius.pill },
   factorText: { ...type.body, color: common.text, flex: 1 },
   dataCard: { gap: spacing.sm2 },
   hbBlock: { gap: 2 },
-  hbLabel: { ...type.label, color: common.textSecondary },
+  hbLabel: {
+    ...type.overline,
+    fontSize: 10.5,
+    lineHeight: 14,
+    letterSpacing: 0.6,
+    color: common.textTertiary,
+    textTransform: "uppercase" as const,
+  },
   hbValue: { ...type.numericMd, color: semantic.success },
-  hbStatus: { ...type.bodyMd, fontSize: 15 },
+  hbStatus: { ...type.bodyMd, fontSize: 14 },
   dataGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: spacing.sm,
+    rowGap: spacing.sm2,
+    borderTopWidth: 1,
+    borderTopColor: common.border,
+    paddingTop: spacing.sm2,
   },
   dataItem: {
-    flexBasis: "30%",
-    flexGrow: 1,
-    backgroundColor: common.surfaceAlt,
-    borderRadius: radius.sm,
-    padding: spacing.sm,
+    flexBasis: "33.33%",
     gap: 2,
+    paddingRight: spacing.sm,
   },
-  dataLabel: { ...type.caption, color: common.textTertiary },
-  dataValue: { ...type.bodyMd, color: common.text },
+  dataLabel: {
+    ...type.overline,
+    fontSize: 10.5,
+    lineHeight: 14,
+    letterSpacing: 0.6,
+    color: common.textTertiary,
+    textTransform: "uppercase" as const,
+  },
+  dataValue: { ...type.bodyMd, fontSize: 15, color: common.text },
   phoneRow: {
     flexDirection: "row",
     alignItems: "center",

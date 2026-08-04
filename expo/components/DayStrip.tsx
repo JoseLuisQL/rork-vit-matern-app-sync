@@ -1,6 +1,7 @@
 /**
- * Selector horizontal de días con altura FIJA (no se estira en ningún layout).
- * Cada día es una casilla del mismo tamaño: día de semana arriba, número abajo.
+ * Selector horizontal de días con altura FIJA. Diseño mínimo: los días
+ * flotan sin recuadro; el seleccionado se rellena con el acento y "hoy"
+ * se distingue por color y un punto.
  */
 import React from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
@@ -48,9 +49,10 @@ export function DayStrip({
                 style={[
                   styles.chip,
                   active
-                    ? { backgroundColor: accent, borderColor: accent }
-                    : { backgroundColor: common.surface, borderColor: common.border },
-                  !active && isToday && { borderColor: accent, backgroundColor: accentLight },
+                    ? { backgroundColor: accent }
+                    : isToday
+                      ? { backgroundColor: accentLight }
+                      : null,
                 ]}
               >
                 <Text
@@ -61,7 +63,12 @@ export function DayStrip({
                 >
                   {isToday ? "Hoy" : DOW[d.getDay()]}
                 </Text>
-                <Text style={[styles.num, { color: active ? common.white : common.text }]}>
+                <Text
+                  style={[
+                    styles.num,
+                    { color: active ? common.white : isToday ? accent : common.text },
+                  ]}
+                >
                   {d.getDate()}
                 </Text>
               </View>
@@ -79,25 +86,26 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   content: {
-    gap: spacing.sm,
+    gap: spacing.xs,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
   chip: {
-    width: 58,
-    height: 64,
+    width: 54,
+    height: 60,
     borderRadius: radius.md,
-    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
     gap: 2,
   },
   dow: {
     ...type.label,
-    fontSize: 12,
+    fontSize: 11.5,
+    lineHeight: 15,
   },
   num: {
     ...type.numericSm,
-    fontSize: 19,
+    fontSize: 18,
+    lineHeight: 23,
   },
 });

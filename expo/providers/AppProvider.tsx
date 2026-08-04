@@ -254,7 +254,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
     (params: ScheduleParams) => runOnline("/api/schedule", params),
     [runOnline],
   );
-  const adminCreateUser = useCallback(
+  /** Alta de usuarios: admin crea cualquier rol; la obstetra solo gestantes. */
+  const createUser = useCallback(
     (params: CreateUserParams) => runOnline("/api/admin/create-user", params),
     [runOnline],
   );
@@ -336,7 +337,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       logout: performLogout,
       dispatch,
       schedule,
-      adminCreateUser,
+      createUser,
       adminSetActive,
       adminReset,
       setAvatar,
@@ -359,7 +360,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       performLogout,
       dispatch,
       schedule,
-      adminCreateUser,
+      createUser,
       adminSetActive,
       adminReset,
       setAvatar,

@@ -33,7 +33,7 @@ export function AppButton({
   style,
   testID,
 }: AppButtonProps): React.ReactElement {
-  const height = small ? 42 : large ? 58 : 52;
+  const height = small ? 40 : large ? 56 : 48;
   const textStyle = small ? type.buttonSm : large ? { ...type.button, fontSize: 17 } : type.button;
   const accent = variant === "danger" ? semantic.danger : color;
   const contentColor = variant === "solid" || variant === "danger" ? common.white : accent;
@@ -53,17 +53,17 @@ export function AppButton({
           (variant === "solid" || variant === "danger") && { backgroundColor: accent },
           variant === "outline" && {
             backgroundColor: common.surface,
-            borderWidth: 1.5,
-            borderColor: accent,
+            borderWidth: 1,
+            borderColor: withAlpha(accent, 0.45),
           },
-          variant === "soft" && { backgroundColor: withAlpha(accent, 0.1) },
+          variant === "soft" && { backgroundColor: withAlpha(accent, 0.09) },
         ]}
       >
         {loading ? (
           <ActivityIndicator size="small" color={contentColor} />
         ) : (
           <View style={styles.row}>
-            {Icon ? <Icon size={small ? 16 : large ? 21 : 19} color={contentColor} /> : null}
+            {Icon ? <Icon size={small ? 15 : large ? 20 : 18} color={contentColor} /> : null}
             <Text style={[textStyle, { color: contentColor }]} numberOfLines={1}>
               {title}
             </Text>

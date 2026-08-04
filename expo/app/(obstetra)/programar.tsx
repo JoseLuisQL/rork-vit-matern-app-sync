@@ -204,7 +204,7 @@ export default function ProgramarScreen(): React.ReactElement {
                         : { borderColor: common.borderStrong },
                     ]}
                   >
-                    {active ? <Check size={15} color={common.white} /> : null}
+                    {active ? <Check size={13} color={common.white} /> : null}
                   </View>
                   <View style={styles.rowInfo}>
                     <Text
@@ -236,10 +236,8 @@ export default function ProgramarScreen(): React.ReactElement {
         </View>
 
         <StepTitle n={3} title="Elige la hora" />
-        <Card>
-          <SlotGrid taken={taken} selected={slot} onSelect={setSlot} accent={accent.primary} />
-          <Text style={styles.slotHint}>Los horarios tachados ya están ocupados.</Text>
-        </Card>
+        <SlotGrid taken={taken} selected={slot} onSelect={setSlot} accent={accent.primary} />
+        <Text style={styles.slotHint}>Los horarios tachados ya están ocupados.</Text>
 
         {mode !== "reprogramar" ? (
           <Field
@@ -295,9 +293,16 @@ const styles = StyleSheet.create({
     padding: spacing.sm2,
   },
   offlineText: { ...type.body, color: semantic.warning, flex: 1 },
-  currentCard: { gap: 2 },
-  currentLabel: { ...type.label, color: common.textSecondary },
-  currentText: { ...type.bodyMd, fontSize: 16, color: common.text },
+  currentCard: { gap: 2, borderLeftWidth: 3, borderLeftColor: semantic.info },
+  currentLabel: {
+    ...type.overline,
+    fontSize: 10.5,
+    lineHeight: 14,
+    letterSpacing: 0.6,
+    color: common.textTertiary,
+    textTransform: "uppercase" as const,
+  },
+  currentText: { ...type.bodyMd, fontSize: 15, color: common.text },
   stepRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -305,15 +310,16 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   stepNum: {
-    width: 28,
-    height: 28,
+    width: 26,
+    height: 26,
     borderRadius: radius.pill,
-    backgroundColor: obstetraTheme.primary,
+    borderWidth: 1.5,
+    borderColor: obstetraTheme.primary,
     alignItems: "center",
     justifyContent: "center",
   },
-  stepNumText: { ...type.buttonSm, color: common.white },
-  stepTitle: { ...type.h3, fontSize: 17, color: common.text },
+  stepNumText: { ...type.buttonSm, fontSize: 13, lineHeight: 17, color: obstetraTheme.primary },
+  stepTitle: { ...type.h4, fontSize: 16, color: common.text },
   patientFixed: { gap: 2 },
   listCard: {
     backgroundColor: common.surface,
@@ -330,18 +336,18 @@ const styles = StyleSheet.create({
   },
   rowBorder: { borderTopWidth: 1, borderTopColor: common.border },
   radio: {
-    width: 26,
-    height: 26,
+    width: 22,
+    height: 22,
     borderRadius: radius.pill,
-    borderWidth: 2,
+    borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
   },
   rowInfo: { flex: 1, minWidth: 0, gap: 1 },
-  patientName: { ...type.bodyMd, fontSize: 16, color: common.text },
+  patientName: { ...type.bodyMd, fontSize: 15, color: common.text },
   patientMeta: { ...type.bodySm, color: common.textSecondary },
   dayStripWrap: { marginHorizontal: -spacing.md },
-  slotHint: { ...type.bodySm, color: common.textTertiary, marginTop: spacing.sm },
+  slotHint: { ...type.caption, color: common.textTertiary },
   errorBox: {
     backgroundColor: semantic.dangerLight,
     borderRadius: radius.sm,

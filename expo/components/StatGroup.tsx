@@ -1,6 +1,6 @@
 /**
- * Indicadores en una sola tarjeta con separadores finos: etiqueta corta
- * arriba (con icono pequeño) y número grande debajo. Estilo panel clínico.
+ * Panel de indicadores: número grande arriba y etiqueta pequeña debajo,
+ * separados por líneas finas. Sin adornos — estilo tablero clínico.
  */
 import type { LucideIcon } from "lucide-react-native";
 import React from "react";
@@ -11,6 +11,7 @@ export interface StatItem {
   key: string;
   value: string;
   label: string;
+  /** Se mantiene por compatibilidad; el panel ya no dibuja iconos. */
   icon?: LucideIcon;
   color?: string;
 }
@@ -18,23 +19,16 @@ export interface StatItem {
 export function StatGroup({ items }: { items: StatItem[] }): React.ReactElement {
   return (
     <View style={styles.card}>
-      {items.map((item, index) => {
-        const Icon = item.icon;
-        const color = item.color ?? common.text;
-        return (
-          <View key={item.key} style={[styles.cell, index > 0 && styles.cellBorder]}>
-            <View style={styles.labelRow}>
-              {Icon ? <Icon size={13} color={color} strokeWidth={2.2} /> : null}
-              <Text style={styles.label} numberOfLines={1}>
-                {item.label}
-              </Text>
-            </View>
-            <Text style={[styles.value, { color }]} numberOfLines={1}>
-              {item.value}
-            </Text>
-          </View>
-        );
-      })}
+      {items.map((item, index) => (
+        <View key={item.key} style={[styles.cell, index > 0 && styles.cellBorder]}>
+          <Text style={[styles.value, { color: item.color ?? common.text }]} numberOfLines={1}>
+            {item.value}
+          </Text>
+          <Text style={styles.label} numberOfLines={1}>
+            {item.label}
+          </Text>
+        </View>
+      ))}
     </View>
   );
 }
@@ -49,30 +43,24 @@ const styles = StyleSheet.create({
   },
   cell: {
     flex: 1,
-    paddingHorizontal: spacing.sm2,
-    gap: 4,
+    paddingHorizontal: spacing.md,
+    gap: 3,
   },
   cellBorder: {
     borderLeftWidth: 1,
     borderLeftColor: common.border,
   },
-  labelRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    minHeight: 16,
+  value: {
+    ...type.numeric,
+    fontSize: 26,
+    lineHeight: 32,
   },
   label: {
     ...type.overline,
     fontSize: 10.5,
     lineHeight: 14,
-    color: common.textSecondary,
+    letterSpacing: 0.7,
+    color: common.textTertiary,
     textTransform: "uppercase" as const,
-    flexShrink: 1,
-  },
-  value: {
-    ...type.numeric,
-    fontSize: 27,
-    lineHeight: 33,
   },
 });

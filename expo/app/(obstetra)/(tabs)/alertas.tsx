@@ -1,6 +1,7 @@
 /**
- * Alertas tempranas: tarjetas ligeras — quién, hace cuánto y qué pasa —
- * con un solo botón principal "Atender" y el chat como icono.
+ * Alertas tempranas: filtro segmentado y tarjetas blancas ligeras — quién,
+ * hace cuánto y qué pasa. Las urgencias se marcan con una barra roja fina,
+ * un botón compacto "Atender" y el chat como icono.
  */
 import { useRouter } from "expo-router";
 import { BellOff, CheckCircle2, MapPin, MessageCircle } from "lucide-react-native";
@@ -19,6 +20,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Field } from "@/components/Field";
 import { PressableScale } from "@/components/PressableScale";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { Segmented } from "@/components/Segmented";
 
 const accent = obstetraTheme;
 type Filter = "abiertas" | "atendidas" | "todas";
@@ -63,30 +65,16 @@ export default function AlertasScreen(): React.ReactElement {
   return (
     <View style={styles.container}>
       <ScreenHeader title="Alertas" subtitle={`${openCount} por atender`}>
-        <View style={styles.filterRow}>
-          {(["abiertas", "atendidas", "todas"] as Filter[]).map((f) => {
-            const active = filter === f;
-            return (
-              <PressableScale
-                key={f}
-                onPress={() => setFilter(f)}
-                accessibilityLabel={`Filtro ${f}`}
-                style={[
-                  styles.filterChip,
-                  active
-                    ? { backgroundColor: accent.primary, borderColor: accent.primary }
-                    : { borderColor: common.border, backgroundColor: common.surface },
-                ]}
-              >
-                <Text
-                  style={[styles.filterText, { color: active ? common.white : common.textSecondary }]}
-                >
-                  {f === "abiertas" ? "Abiertas" : f === "atendidas" ? "Atendidas" : "Todas"}
-                </Text>
-              </PressableScale>
-            );
-          })}
-        </View>
+        <Segmented
+          options={[
+            { key: "abiertas", label: "Abiertas" },
+            { key: "atendidas", label: "Atendidas" },
+            { key: "todas", label: "Todas" },
+          ]}
+          value={filter}
+          onChange={(k) => setFilter(k as Filter)}
+          style={styles.segmented}
+        />
       </ScreenHeader>
 
       <ScrollView
@@ -131,7 +119,7 @@ export default function AlertasScreen(): React.ReactElement {
                         uri={avatarUri(p.dni, p.avatarVersion)}
                         color={isUrgent ? semantic.danger : accent.primary}
                         background={isUrgent ? semantic.dangerLight : accent.primaryLight}
-                        size={38}
+                        size={36}
                       />
                     ) : null}
                     <View style={styles.rowInfo}>
@@ -152,7 +140,7 @@ export default function AlertasScreen(): React.ReactElement {
                     accessibilityLabel="Ver ubicación en el mapa"
                     style={styles.mapLink}
                   >
-                    <MapPin size={15} color={accent.primary} />
+                    <MapPin size={14} color={accent.primary} />
                     <Text style={[styles.mapText, { color: accent.primary }]}>Ver ubicación</Text>
                   </PressableScale>
                 ) : null}
@@ -160,7 +148,7 @@ export default function AlertasScreen(): React.ReactElement {
                 {alert.status === "atendida" ? (
                   <View style={styles.attendedBox}>
                     <View style={styles.attendedRow}>
-                      <CheckCircle2 size={15} color={semantic.success} />
+                      <CheckCircle2 size={14} color={semantic.success} />
                       <Text style={styles.attendedLabel}>
                         Atendida {alert.attendedAtISO ? tiempoRelativo(alert.attendedAtISO) : ""}
                       </Text>
@@ -178,7 +166,7 @@ export default function AlertasScreen(): React.ReactElement {
                       accent={accent.primary}
                       maxLength={300}
                     />
-                    <View style={styles.actionsRow}>
+                    <View style={styles.formActions}>
                       <AppButton
                         title="Cerrar alerta"
                         onPress={() => attend(alert.id)}
@@ -211,7 +199,6 @@ export default function AlertasScreen(): React.ReactElement {
                       color={isUrgent ? semantic.danger : accent.primary}
                       variant={isUrgent ? "danger" : "solid"}
                       small
-                      style={styles.flex}
                       testID={`atender-${alert.id}`}
                     />
                     <PressableScale
@@ -224,7 +211,7 @@ export default function AlertasScreen(): React.ReactElement {
                       accessibilityLabel="Abrir chat"
                       style={styles.chatIconButton}
                     >
-                      <MessageCircle size={20} color={accent.primary} />
+                      <MessageCircle size={18} color={accent.primary} />
                     </PressableScale>
                   </View>
                 )}
@@ -245,24 +232,11 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
     gap: spacing.sm2,
   },
-  filterRow: {
-    flexDirection: "row",
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-  },
-  filterChip: {
-    paddingHorizontal: spacing.sm2,
-    height: 38,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  filterText: { ...type.buttonSm, fontSize: 13 },
+  segmented: { marginTop: spacing.sm },
   alertCard: { gap: spacing.sm },
   alertUrgent: {
-    borderColor: semantic.dangerMid,
-    backgroundColor: semantic.dangerLight,
+    borderLeftWidth: 3,
+    borderLeftColor: semantic.danger,
   },
   alertTop: {
     flexDirection: "row",
@@ -278,16 +252,16 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   rowInfo: { flex: 1, minWidth: 0 },
-  alertName: { ...type.bodyMd, fontSize: 16, color: common.text },
-  alertTime: { ...type.bodySm, color: common.textSecondary },
-  alertDetail: { ...type.body, color: common.text },
+  alertName: { ...type.bodyMd, fontSize: 15, color: common.text },
+  alertTime: { ...type.caption, color: common.textTertiary },
+  alertDetail: { ...type.body, fontSize: 14, lineHeight: 21, color: common.textSecondary },
   mapLink: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    minHeight: 32,
+    minHeight: 28,
   },
-  mapText: { ...type.label, fontSize: 14 },
+  mapText: { ...type.label, fontSize: 13 },
   attendedBox: {
     backgroundColor: common.surfaceAlt,
     borderRadius: radius.sm,
@@ -295,16 +269,23 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   attendedRow: { flexDirection: "row", alignItems: "center", gap: 5 },
-  attendedLabel: { ...type.label, fontSize: 13, color: semantic.success },
-  attendedNote: { ...type.body, color: common.textSecondary },
+  attendedLabel: { ...type.label, fontSize: 12.5, color: semantic.success },
+  attendedNote: { ...type.bodySm, color: common.textSecondary },
   attendForm: { gap: spacing.sm },
-  actionsRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  formActions: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  actionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+    marginTop: 2,
+  },
   chatIconButton: {
-    width: 46,
-    height: 42,
+    width: 40,
+    height: 40,
     borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: obstetraTheme.primaryMid,
+    borderWidth: 1,
+    borderColor: common.border,
     backgroundColor: common.surface,
     alignItems: "center",
     justifyContent: "center",

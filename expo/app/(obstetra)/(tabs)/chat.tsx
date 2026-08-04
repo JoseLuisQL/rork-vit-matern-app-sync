@@ -61,7 +61,7 @@ export default function ChatListScreen(): React.ReactElement {
                   uri={avatarUri(patient.dni, patient.avatarVersion)}
                   color={risk[patient.riskLevel].solid}
                   background={risk[patient.riskLevel].light}
-                  size={46}
+                  size={42}
                 />
                 <View style={styles.info}>
                   <View style={styles.nameRow}>
@@ -121,28 +121,28 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.sm2,
     paddingVertical: spacing.sm2,
-    minHeight: 68,
+    minHeight: 64,
   },
   rowBorder: { borderTopWidth: 1, borderTopColor: common.border },
-  info: { flex: 1, gap: 2 },
+  info: { flex: 1, minWidth: 0, gap: 2 },
   nameRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: spacing.sm,
   },
-  name: { ...type.bodyMd, color: common.text, flex: 1 },
-  time: { ...type.caption, color: common.textTertiary },
+  name: { ...type.bodyMd, fontSize: 15, color: common.text, flex: 1 },
+  time: { ...type.caption, fontSize: 11, color: common.textTertiary },
   previewRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   preview: { ...type.bodySm, color: common.textSecondary, flex: 1 },
   previewUnread: { color: common.text, fontFamily: type.bodyMd.fontFamily },
   unreadBadge: {
-    minWidth: 22,
-    height: 22,
+    minWidth: 20,
+    height: 20,
     borderRadius: radius.pill,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 6,
   },
-  unreadText: { ...type.label, fontSize: 11, color: common.white },
+  unreadText: { ...type.label, fontSize: 10.5, lineHeight: 13, color: common.white },
 });

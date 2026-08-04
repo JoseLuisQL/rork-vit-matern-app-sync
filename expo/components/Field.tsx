@@ -1,4 +1,7 @@
-/** Campo de formulario accesible: etiqueta, entrada bordeada y error visible. */
+/**
+ * Campo de formulario profesional: etiqueta pequeña, entrada rellena que se
+ * aviva al enfocar (borde de acento sobre fondo blanco) y error visible.
+ */
 import React, { useState } from "react";
 import {
   KeyboardTypeOptions,
@@ -45,6 +48,7 @@ export function Field({
   testID,
 }: FieldProps): React.ReactElement {
   const [focused, setFocused] = useState<boolean>(false);
+  const hasError = error != null && error.length > 0;
 
   return (
     <View style={[styles.container, style]}>
@@ -64,12 +68,12 @@ export function Field({
         style={[
           styles.input,
           multiline && styles.multiline,
-          focused && { borderColor: accent },
-          error != null && error.length > 0 && { borderColor: semantic.danger },
+          focused && { borderColor: accent, backgroundColor: common.surface },
+          hasError && { borderColor: semantic.danger, backgroundColor: common.surface },
         ]}
         testID={testID}
       />
-      {error != null && error.length > 0 ? (
+      {hasError ? (
         <Text style={styles.error}>{error}</Text>
       ) : hint ? (
         <Text style={styles.hint}>{hint}</Text>
@@ -80,7 +84,7 @@ export function Field({
 
 const styles = StyleSheet.create({
   container: {
-    gap: 6,
+    gap: 5,
   },
   label: {
     ...type.label,
@@ -89,16 +93,16 @@ const styles = StyleSheet.create({
   input: {
     ...type.body,
     color: common.text,
-    backgroundColor: common.surface,
-    borderWidth: 1.5,
+    backgroundColor: common.surfaceAlt,
+    borderWidth: 1,
     borderColor: common.border,
-    borderRadius: radius.sm,
+    borderRadius: radius.md,
     paddingHorizontal: spacing.sm2,
-    paddingVertical: 12,
-    minHeight: 48,
+    paddingVertical: 11,
+    minHeight: 46,
   },
   multiline: {
-    minHeight: 88,
+    minHeight: 92,
     textAlignVertical: "top" as const,
   },
   error: {

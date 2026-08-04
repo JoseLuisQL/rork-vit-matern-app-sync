@@ -1,4 +1,4 @@
-/** Encabezado de sección con acción opcional ("Ver todo"). */
+/** Encabezado de sección editorial: etiqueta pequeña en mayúsculas + acción opcional. */
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { common, spacing, type } from "@/constants/theme";
@@ -28,17 +28,20 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: spacing.xs,
-    marginTop: spacing.sm,
+    marginTop: spacing.sm2,
+    marginBottom: 2,
   },
   title: {
-    ...type.h3,
-    fontSize: 16,
-    color: common.text,
+    ...type.overline,
+    fontSize: 12,
+    lineHeight: 16,
+    letterSpacing: 1.1,
+    color: common.textTertiary,
+    textTransform: "uppercase" as const,
   },
   action: {
     ...type.buttonSm,
-    fontSize: 14,
+    fontSize: 13,
     color: common.textSecondary,
   },
 });
