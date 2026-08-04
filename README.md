@@ -19,7 +19,9 @@ La plataforma tiene una app móvil muy fácil de usar para la gestante y paneles
 
 - **Todos los cálculos clínicos se hacen del lado del servidor**, nunca en el teléfono: fecha probable de parto, edad gestacional, corrección de hemoglobina por altitud, clasificación de anemia y semáforo de riesgo.
 - El servidor es la **fuente de verdad**: la app trabaja sobre el último snapshot recibido y sincroniza al reconectar.
-- El backend está desplegado en `https://vit-matern-app-sync-backend.rork.app`.
+- Hay **dos backends intercambiables con la misma API**:
+  - `functions/` — nube de Rork (Cloudflare Worker + Durable Object), desplegado en `https://vit-matern-app-sync-backend.rork.app`. Es el que usa la vista previa.
+  - `server/` — **autoalojado con PostgreSQL 17** (Bun + Hono + Docker), para tu propio VPS. Guía completa en [`server/README.md`](server/README.md).
 
 ## Estructura del repositorio
 
@@ -31,12 +33,16 @@ La plataforma tiene una app móvil muy fácil de usar para la gestante y paneles
 │   ├── lib/               # Cliente API, cola offline, notificaciones, formato
 │   ├── providers/         # Estado global (sesión, snapshot, sincronización)
 │   └── types/             # Tipos compartidos del dominio
-├── functions/             # Backend (Cloudflare Worker + Durable Object)
+├── functions/             # Backend en la nube (Cloudflare Worker + Durable Object)
 │   ├── index.ts           # Entrypoint del Worker (CORS y despacho a /api/*)
 │   ├── store.ts           # Durable Object: rutas, sesiones y persistencia
 │   ├── clinical.ts        # Motor clínico (cálculos del servidor)
 │   ├── seed.ts            # Datos de demostración
 │   └── types.ts           # Contratos de la API
+├── server/                # Backend autoalojado (Bun + Hono + PostgreSQL 17)
+│   ├── src/               # Misma API: esquema SQL, migraciones, rutas y seeds
+│   ├── docker-compose.yml # PostgreSQL 17 + API listos para tu VPS
+│   └── README.md          # Guía de despliegue y conexión del APK
 └── rork.json              # Manifiesto del workspace (apps y rutas)
 ```
 
@@ -115,7 +121,17 @@ bun run start
 bun run start-web
 ```
 
-El backend ya está desplegado, así que la app funciona sin configuración extra. Para apuntar a otro servidor, define la variable `EXPO_PUBLIC_RORK_FUNCTIONS_URL`.
+El backend en la nube ya está desplegado, así que la app funciona sin configuración extra.
+
+### Conectar la app a tu propio servidor (VPS)
+
+Para compilar un APK que use tu backend autoalojado con PostgreSQL 17, define en `expo/.env`:
+
+```bash
+EXPO_PUBLIC_API_URL=https://api.tudominio.com
+```
+
+(sin definir `EXPO_PUBLIC_RORK_FUNCTIONS_URL`, que tiene prioridad y apunta a la nube). El paso a paso completo — despliegue con Docker, HTTPS, respaldos y compilación del APK — está en [`server/README.md`](server/README.md).
 
 ## Cuentas de demostración
 

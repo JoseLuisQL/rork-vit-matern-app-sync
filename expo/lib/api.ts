@@ -2,10 +2,18 @@
  * VITMATERNA — Cliente HTTP del servidor central.
  * Timeout corto para detectar rápido la falta de señal; los errores de red
  * se convierten en ApiError(status 0) que la app trata como "sin conexión".
+ *
+ * Orden de conexión:
+ * 1. EXPO_PUBLIC_RORK_FUNCTIONS_URL — backend en la nube de Rork (vista previa).
+ * 2. EXPO_PUBLIC_API_URL — backend propio autoalojado (VPS con PostgreSQL;
+ *    defínela en expo/.env al compilar tu APK; ver server/README.md).
+ * 3. URL fija del backend en la nube (respaldo).
  */
 
 const BASE_URL =
-  process.env.EXPO_PUBLIC_RORK_FUNCTIONS_URL ?? "https://vit-matern-app-sync-backend.rork.app";
+  process.env.EXPO_PUBLIC_RORK_FUNCTIONS_URL ??
+  process.env.EXPO_PUBLIC_API_URL ??
+  "https://vit-matern-app-sync-backend.rork.app";
 
 export class ApiError extends Error {
   status: number;

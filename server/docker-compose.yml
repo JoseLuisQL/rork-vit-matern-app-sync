@@ -1,0 +1,45 @@
+# VITMATERNA — Despliegue autoalojado con PostgreSQL 17.
+# 1) Copia .env.example a .env y define POSTGRES_PASSWORD.
+# 2) docker compose up -d --build
+# 3) La API queda en http://TU_SERVIDOR:8080 (ponle HTTPS con Caddy o Nginx).
+name: vitmaterna
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-vitmaterna}
+      POSTGRES_USER: ${POSTGRES_USER:-vitmaterna}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en el archivo .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vitmaterna} -d ${POSTGRES_DB:-vitmaterna}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    # Descomenta SOLO si necesitas entrar a la base desde fuera del servidor:
+    # ports:
+    #   - "5432:5432"
+
+  api:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-vitmaterna}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-vitmaterna}
+      PORT: 8080
+      # demo = cuentas y casos de prueba · produccion = plataforma limpia con solo admin
+      SEED_MODE: ${SEED_MODE:-demo}
+      ADMIN_DNI: ${ADMIN_DNI:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_FIRST_NAME: ${ADMIN_FIRST_NAME:-}
+      ADMIN_LAST_NAME: ${ADMIN_LAST_NAME:-}
+    ports:
+      - "${API_PORT:-8080}:8080"
+
+volumes:
+  pgdata:
