@@ -7,13 +7,28 @@
  * 1. EXPO_PUBLIC_RORK_FUNCTIONS_URL — backend en la nube de Rork (vista previa).
  * 2. EXPO_PUBLIC_API_URL — backend propio autoalojado (VPS con PostgreSQL;
  *    defínela en expo/.env al compilar tu APK; ver server/README.md).
- * 3. URL fija del backend en la nube (respaldo).
+ * 3. Web sin variables: el MISMO dominio desde el que se sirve la página —
+ *    así funciona la versión web del docker compose (nginx pasa /api a la API).
+ * 4. URL fija del backend en la nube (respaldo).
  */
+import { Platform } from "react-native";
 
-const BASE_URL =
-  process.env.EXPO_PUBLIC_RORK_FUNCTIONS_URL ??
-  process.env.EXPO_PUBLIC_API_URL ??
-  "https://vit-matern-app-sync-backend.rork.app";
+function resolveBaseUrl(): string {
+  const rorkCloud = process.env.EXPO_PUBLIC_RORK_FUNCTIONS_URL?.trim();
+  if (rorkCloud) return rorkCloud.replace(/\/+$/, "");
+  const selfHosted = process.env.EXPO_PUBLIC_API_URL?.trim();
+  if (selfHosted) return selfHosted.replace(/\/+$/, "");
+  if (
+    Platform.OS === "web" &&
+    typeof window !== "undefined" &&
+    window.location?.origin?.startsWith("http")
+  ) {
+    return window.location.origin;
+  }
+  return "https://vit-matern-app-sync-backend.rork.app";
+}
+
+const BASE_URL = resolveBaseUrl();
 
 export class ApiError extends Error {
   status: number;

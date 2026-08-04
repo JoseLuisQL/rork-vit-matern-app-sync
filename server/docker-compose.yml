@@ -1,7 +1,8 @@
-# VITMATERNA — Despliegue autoalojado con PostgreSQL 17.
+# VITMATERNA — Despliegue autoalojado: WEB + API + PostgreSQL 17 en un solo compose.
 # 1) Copia .env.example a .env y define POSTGRES_PASSWORD.
 # 2) docker compose up -d --build
-# 3) La API queda en http://TU_SERVIDOR:8080 (ponle HTTPS con Caddy o Nginx).
+# 3) Todo queda en http://TU_SERVIDOR:8080 — la página web en "/" y la API en
+#    "/api" (el APK usa esta MISMA dirección). Ponle HTTPS con Caddy o Nginx.
 name: vitmaterna
 
 services:
@@ -38,8 +39,27 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       ADMIN_FIRST_NAME: ${ADMIN_FIRST_NAME:-}
       ADMIN_LAST_NAME: ${ADMIN_LAST_NAME:-}
+    # La API no se publica directamente: todo entra por el servicio "web"
+    # (nginx), que sirve la página y le pasa /api, /ping y /health.
+    # Si además quieres exponerla en su propio puerto, descomenta:
+    # ports:
+    #   - "${API_PORT:-8081}:8080"
+
+  # Versión web de la app (la misma app, en el navegador) + puerta de entrada
+  # única: nginx sirve la web y pasa /api, /ping y /health al contenedor api.
+  web:
+    build:
+      context: ../expo
+      dockerfile: Dockerfile.web
+      args:
+        # Vacío = la web se conecta a su MISMO dominio (recomendado). Defínela
+        # solo si la web vivirá en un dominio distinto al de la API.
+        EXPO_PUBLIC_API_URL: ${WEB_API_URL:-}
+    restart: unless-stopped
+    depends_on:
+      - api
     ports:
-      - "${API_PORT:-8080}:8080"
+      - "${WEB_PORT:-8080}:80"
 
 volumes:
   pgdata:

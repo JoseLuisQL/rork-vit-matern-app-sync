@@ -21,7 +21,7 @@ La plataforma tiene una app móvil muy fácil de usar para la gestante y paneles
 - El servidor es la **fuente de verdad**: la app trabaja sobre el último snapshot recibido y sincroniza al reconectar.
 - Hay **dos backends intercambiables con la misma API**:
   - `functions/` — nube de Rork (Cloudflare Worker + Durable Object), desplegado en `https://vit-matern-app-sync-backend.rork.app`. Es el que usa la vista previa.
-  - `server/` — **autoalojado con PostgreSQL 17** (Bun + Hono + Docker), para tu propio VPS. Guía completa en [`server/README.md`](server/README.md).
+  - `server/` — **autoalojado con PostgreSQL 17** (Bun + Hono + Docker), para tu propio VPS. El mismo `docker compose` incluye la **versión web de la app** servida con Nginx: una sola dirección con la web en `/` y la API en `/api`. Guía completa en [`server/README.md`](server/README.md).
 
 ## Estructura del repositorio
 
@@ -32,17 +32,18 @@ La plataforma tiene una app móvil muy fácil de usar para la gestante y paneles
 │   ├── constants/         # Tema de diseño, textos, contenido educativo offline
 │   ├── lib/               # Cliente API, cola offline, notificaciones, formato
 │   ├── providers/         # Estado global (sesión, snapshot, sincronización)
-│   └── types/             # Tipos compartidos del dominio
+│   ├── types/             # Tipos compartidos del dominio
+│   └── Dockerfile.web     # Versión web: export estático servido con Nginx
 ├── functions/             # Backend en la nube (Cloudflare Worker + Durable Object)
 │   ├── index.ts           # Entrypoint del Worker (CORS y despacho a /api/*)
 │   ├── store.ts           # Durable Object: rutas, sesiones y persistencia
 │   ├── clinical.ts        # Motor clínico (cálculos del servidor)
 │   ├── seed.ts            # Datos de demostración
 │   └── types.ts           # Contratos de la API
-├── server/                # Backend autoalojado (Bun + Hono + PostgreSQL 17)
+├── server/                # Despliegue autoalojado (Bun + Hono + PostgreSQL 17)
 │   ├── src/               # Misma API: esquema SQL, migraciones, rutas y seeds
-│   ├── docker-compose.yml # PostgreSQL 17 + API listos para tu VPS
-│   └── README.md          # Guía de despliegue y conexión del APK
+│   ├── docker-compose.yml # Web + API + PostgreSQL 17 listos para tu VPS
+│   └── README.md          # Guía de despliegue, versión web y conexión del APK
 └── rork.json              # Manifiesto del workspace (apps y rutas)
 ```
 
@@ -123,15 +124,17 @@ bun run start-web
 
 El backend en la nube ya está desplegado, así que la app funciona sin configuración extra.
 
-### Conectar la app a tu propio servidor (VPS)
+### Desplegar en tu propio servidor (VPS)
 
-Para compilar un APK que use tu backend autoalojado con PostgreSQL 17, define en `expo/.env`:
+Un solo `docker compose` (carpeta `server/`) levanta **PostgreSQL 17 + API + versión web** de la app en una misma dirección: la web en `/` y la API en `/api`.
+
+Para compilar un APK que use tu servidor, define en `expo/.env`:
 
 ```bash
-EXPO_PUBLIC_API_URL=https://api.tudominio.com
+EXPO_PUBLIC_API_URL=https://vitmaterna.tudominio.com
 ```
 
-(sin definir `EXPO_PUBLIC_RORK_FUNCTIONS_URL`, que tiene prioridad y apunta a la nube). El paso a paso completo — despliegue con Docker, HTTPS, respaldos y compilación del APK — está en [`server/README.md`](server/README.md).
+(sin definir `EXPO_PUBLIC_RORK_FUNCTIONS_URL`, que tiene prioridad y apunta a la nube). La versión web no necesita configuración: se conecta sola al mismo dominio desde el que se sirve. El paso a paso completo — despliegue con Docker, HTTPS, respaldos y compilación del APK — está en [`server/README.md`](server/README.md).
 
 ## Cuentas de demostración
 

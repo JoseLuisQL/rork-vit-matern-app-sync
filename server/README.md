@@ -1,30 +1,27 @@
-# VitMaterna — Backend autoalojado (PostgreSQL 17)
+# VitMaterna — Despliegue autoalojado: Web + API + PostgreSQL 17
 
-API HTTP de VitMaterna lista para desplegar en **tu propio VPS con Docker**. Expone **exactamente la misma API** que el backend en la nube (`functions/`), por lo que la app móvil funciona sin ningún cambio de código: solo apuntas el APK a tu servidor.
+Todo el sistema listo para **tu propio VPS con Docker**, en un solo `docker compose`:
+
+- **`web`** — la versión web de la app (la misma app móvil, en el navegador), servida con Nginx.
+- **`api`** — la API HTTP (Bun + Hono), **exactamente la misma API** que el backend en la nube (`functions/`), por lo que el APK funciona sin ningún cambio de código.
+- **`db`** — PostgreSQL 17 con volumen persistente.
 
 ```
-┌─────────────────────────────┐         ┌───────────────────────────────────┐
-│   App móvil (carpeta expo/) │  HTTPS  │  Tu VPS (docker compose)          │
-│   Expo · React Native       │ ──────► │  ┌─────────┐    ┌──────────────┐  │
-│   EXPO_PUBLIC_API_URL       │ ◄────── │  │ api      │───►│ PostgreSQL 17│  │
-│                             │ snapshot│  │ Bun+Hono │    │ (datos)      │  │
-└─────────────────────────────┘         │  └─────────┘    └──────────────┘  │
-                                        └───────────────────────────────────┘
+                                   Tu VPS (docker compose) ─ puerto 8080
+┌──────────────────────┐          ┌──────────────────────────────────────────────┐
+│  Navegador (web)     │  "/"     │  ┌───────────┐   /api   ┌─────┐    ┌───────┐ │
+│  Obstetra · Admin    │ ───────► │  │ web        │ ───────► │ api │───►│ db     │ │
+├──────────────────────┤          │  │ Nginx      │          │ Bun │    │ Postgre│ │
+│  APK (app móvil)     │  "/api"  │  │ + estáticos│          │ Hono│    │ SQL 17 │ │
+│  Gestantes en campo  │ ───────► │  └───────────┘          └─────┘    └───────┘ │
+└──────────────────────┘          └──────────────────────────────────────────────┘
 ```
 
-## Qué incluye
-
-- **PostgreSQL 17** como base de datos real y relacional: usuarios, pacientes, citas, medicamentos, tomas, mensajes, alertas, visitas, sesiones y fotos de perfil en tablas con claves foráneas, índices y borrado en cascada.
-- **Contraseñas con hash bcrypt** (nunca en texto plano).
-- **Migraciones automáticas**: al arrancar, el esquema se crea/actualiza solo.
-- **Seeds configurables**: demostración completa o producción limpia.
-- **Motor clínico idéntico** al de la nube: FPP, edad gestacional, corrección de hemoglobina por altitud, semáforo de riesgo, alertas automáticas, agenda sin cruces, reportes MINSA.
-- **Transacciones**: la cola offline se aplica de forma atómica e idempotente.
-- Presencia del chat (en línea / escribiendo…) en memoria, igual que en la nube (es información efímera por diseño).
+Una sola puerta de entrada: **el navegador y el APK usan la misma dirección** (la web vive en `/` y la API en `/api`), sin problemas de CORS.
 
 ## Requisitos
 
-- Un VPS con Linux (Ubuntu 22.04+ recomendado) y **Docker + Docker Compose** instalados:
+- Un VPS con Linux (Ubuntu 22.04+ recomendado), **2 GB de RAM** (o 1 GB + swap, ver nota abajo) y **Docker + Docker Compose**:
 
 ```bash
 curl -fsSL https://get.docker.com | sh
@@ -32,32 +29,38 @@ curl -fsSL https://get.docker.com | sh
 
 ## Despliegue en 4 pasos
 
+La compilación de la web necesita la carpeta `expo/`, así que sube **el proyecto completo** (no solo `server/`):
+
 ```bash
-# 1. Sube la carpeta server/ a tu VPS (o clona tu repositorio)
-scp -r server usuario@TU_SERVIDOR:~/vitmaterna-server
-ssh usuario@TU_SERVIDOR && cd ~/vitmaterna-server
+# 1. Sube el proyecto al VPS (o clona tu repositorio)
+scp -r . usuario@TU_SERVIDOR:~/vitmaterna
+ssh usuario@TU_SERVIDOR && cd ~/vitmaterna/server
 
 # 2. Configura las variables
 cp .env.example .env
 nano .env        # define POSTGRES_PASSWORD (obligatoria) y SEED_MODE
 
-# 3. Levanta todo (PostgreSQL 17 + API)
+# 3. Levanta todo (PostgreSQL 17 + API + Web)
 docker compose up -d --build
 
 # 4. Verifica
-curl http://localhost:8080/ping     # → {"ok":true,...}
+curl http://localhost:8080/ping     # → {"ok":true,...}   (API a través de nginx)
 curl http://localhost:8080/health   # → {"ok":true,"db":true,...}
+# y abre http://TU_SERVIDOR:8080 en el navegador → la app web con el login
 ```
 
 Los datos viven en el volumen Docker `pgdata` y sobreviven reinicios y actualizaciones.
 
+> **Nota (RAM):** compilar la web dentro de Docker usa ~2 GB de RAM una sola vez. Si tu VPS tiene 1 GB, crea swap antes del primer `--build`:
+> `sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile`
+
 ## HTTPS con tu dominio (obligatorio para el APK)
 
-Android exige HTTPS en producción. Lo más simple es [Caddy](https://caddyserver.com), que saca el certificado solo:
+Android exige HTTPS en producción, y en web el GPS/portapapeles también lo piden. Un solo dominio sirve para todo. Lo más simple es [Caddy](https://caddyserver.com), que saca el certificado solo:
 
 ```bash
 # /etc/caddy/Caddyfile
-api.tudominio.com {
+vitmaterna.tudominio.com {
     reverse_proxy localhost:8080
 }
 ```
@@ -65,7 +68,8 @@ api.tudominio.com {
 ```bash
 sudo apt install caddy
 sudo systemctl reload caddy
-curl https://api.tudominio.com/ping   # → {"ok":true,...}
+curl https://vitmaterna.tudominio.com/ping   # → {"ok":true,...}
+# https://vitmaterna.tudominio.com  → app web
 ```
 
 (Con Nginx + certbot también funciona; cualquier proxy inverso hacia `localhost:8080` sirve.)
@@ -76,7 +80,8 @@ curl https://api.tudominio.com/ping   # → {"ok":true,...}
 | --- | --- | --- |
 | `POSTGRES_PASSWORD` | Sí | Contraseña de PostgreSQL (elige una larga y única) |
 | `POSTGRES_DB` / `POSTGRES_USER` | No | Nombre de base y usuario (por defecto `vitmaterna`) |
-| `API_PORT` | No | Puerto público de la API (por defecto `8080`) |
+| `WEB_PORT` | No | Puerto público único: web en `/`, API en `/api` (por defecto `8080`) |
+| `WEB_API_URL` | No | Solo si la web vivirá en un dominio distinto al de la API (caso raro) |
 | `SEED_MODE` | No | Primer arranque: `demo` (por defecto) o `produccion` |
 | `ADMIN_DNI`, `ADMIN_PASSWORD`, `ADMIN_FIRST_NAME`, `ADMIN_LAST_NAME` | Solo con `SEED_MODE=produccion` | Cuenta de administración inicial |
 | `DATABASE_URL` | Auto | La arma el compose; solo cámbiala si usas un PostgreSQL externo |
@@ -88,9 +93,16 @@ curl https://api.tudominio.com/ping   # → {"ok":true,...}
 - **`SEED_MODE=produccion`**: plataforma limpia con una sola cuenta de administración (la de `ADMIN_*`). Desde la app, administración registra al personal real.
 - El **interruptor de producción dentro de la app** (Administración → Sistema) funciona igual que en la nube: limpia los datos demo en tiempo real, conserva solo las cuentas de administración y oculta los accesos demo del login. En entorno de producción **nunca** se borran datos reales automáticamente.
 
+## La versión web
+
+- Es **la misma app** (mismo código de `expo/`): login por DNI, panel de la obstetra, administración con reportes (PDF se imprime desde el navegador y el Excel se descarga directo) y la vista de la gestante.
+- Se conecta **al mismo dominio** desde el que se sirve — sin configurar nada.
+- Lo único que no existe en el navegador son los recordatorios/notificaciones del teléfono (funciones del celular); todo lo demás funciona igual, incluido el chat en vivo.
+- Para reconstruir solo la web después de un cambio: `docker compose up -d --build web`.
+
 ## Conectar tu APK a este servidor
 
-La app decide a qué servidor conectarse al momento de **compilar**:
+La app decide a qué servidor conectarse al momento de **compilar**. Usa la misma dirección que la web:
 
 ```bash
 # En tu computadora, dentro de la carpeta expo/ del proyecto:
@@ -98,7 +110,7 @@ cd expo
 
 # 1. Define la URL de TU servidor (crea/edita el archivo .env):
 #    (borra o no incluyas EXPO_PUBLIC_RORK_FUNCTIONS_URL, que apunta a la nube de Rork)
-echo "EXPO_PUBLIC_API_URL=https://api.tudominio.com" > .env
+echo "EXPO_PUBLIC_API_URL=https://vitmaterna.tudominio.com" > .env
 
 # 2. Genera el proyecto Android y compila el APK:
 bun install
@@ -113,7 +125,8 @@ Orden de conexión de la app (`expo/lib/api.ts`):
 
 1. `EXPO_PUBLIC_RORK_FUNCTIONS_URL` — nube de Rork (así funciona la vista previa).
 2. `EXPO_PUBLIC_API_URL` — **tu VPS** (para tu APK propio).
-3. URL fija de respaldo (nube).
+3. En web sin variables: **el mismo dominio de la página** (así funciona la web de este compose).
+4. URL fija de respaldo (nube).
 
 ## Copias de seguridad
 
@@ -128,22 +141,23 @@ gunzip -c respaldo_2026-08-04.sql.gz | docker compose exec -T db psql -U vitmate
 Respaldo automático diario a las 2 a.m. (crontab -e):
 
 ```
-0 2 * * * cd ~/vitmaterna-server && docker compose exec -T db pg_dump -U vitmaterna vitmaterna | gzip > ~/respaldos/vitmaterna_$(date +\%F).sql.gz
+0 2 * * * cd ~/vitmaterna/server && docker compose exec -T db pg_dump -U vitmaterna vitmaterna | gzip > ~/respaldos/vitmaterna_$(date +\%F).sql.gz
 ```
 
 ## Actualizar el servidor
 
 ```bash
-# Sube la carpeta server/ actualizada y luego:
-docker compose up -d --build   # migraciones automáticas; los datos se conservan
+# Sube el proyecto actualizado y luego:
+docker compose up -d --build   # reconstruye API y web; migraciones automáticas; los datos se conservan
 ```
 
 ## Operación diaria
 
 ```bash
+docker compose ps              # estado de los contenedores (web, api, db)
+docker compose logs -f web     # accesos a la web / proxy
 docker compose logs -f api     # logs de la API
 docker compose logs -f db      # logs de PostgreSQL
-docker compose ps              # estado de los contenedores
 docker compose exec db psql -U vitmaterna vitmaterna   # consola SQL
 ```
 

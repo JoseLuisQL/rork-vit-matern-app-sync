@@ -25,7 +25,9 @@
       "package": "app.rork.ztb4shx7jxkj17tpuz62u"
     },
     "web": {
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "bundler": "metro",
+      "output": "single"
     },
     "plugins": [
       [
