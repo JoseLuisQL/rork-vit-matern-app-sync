@@ -1,4 +1,8 @@
-/** Envoltura presionable con escala + haptics (micro-interacción del original). */
+/**
+ * Envoltura presionable con escala + haptics (micro-interacción del original).
+ * El estilo se aplica directamente al nodo presionable (AnimatedPressable):
+ * así `flex`, anchos y disposición participan en el layout del padre.
+ */
 import * as Haptics from "expo-haptics";
 import React, { useCallback, useRef } from "react";
 import {
@@ -8,6 +12,8 @@ import {
   StyleProp,
   ViewStyle,
 } from "react-native";
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface PressableScaleProps {
   onPress?: () => void;
@@ -52,7 +58,7 @@ export function PressableScale({
   }, [haptic, onPress]);
 
   return (
-    <Pressable
+    <AnimatedPressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       testID={testID}
@@ -61,10 +67,9 @@ export function PressableScale({
       onLongPress={onLongPress}
       onPressIn={() => animateTo(0.97)}
       onPressOut={() => animateTo(1)}
+      style={[style, { transform: [{ scale }] }, disabled && { opacity: 0.6 }]}
     >
-      <Animated.View style={[style, { transform: [{ scale }] }, disabled && { opacity: 0.6 }]}>
-        {children}
-      </Animated.View>
-    </Pressable>
+      {children}
+    </AnimatedPressable>
   );
 }
