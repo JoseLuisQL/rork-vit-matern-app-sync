@@ -2,7 +2,7 @@
 import React from "react";
 import { ActivityIndicator, StyleProp, StyleSheet, Text, View, ViewStyle } from "react-native";
 import type { LucideIcon } from "lucide-react-native";
-import { common, radius, semantic, spacing, type, withAlpha } from "@/constants/theme";
+import { common, gfonts, radius, semantic, spacing, type, withAlpha } from "@/constants/theme";
 import { PressableScale } from "@/components/PressableScale";
 
 interface AppButtonProps {
@@ -16,6 +16,8 @@ interface AppButtonProps {
   small?: boolean;
   /** Botón alto con letra grande (sección gestante). */
   large?: boolean;
+  /** Letra manuscrita a crayola (sección gestante). */
+  hand?: boolean;
   style?: StyleProp<ViewStyle>;
   testID?: string;
 }
@@ -30,11 +32,23 @@ export function AppButton({
   disabled = false,
   small = false,
   large = false,
+  hand = false,
   style,
   testID,
 }: AppButtonProps): React.ReactElement {
   const height = small ? 40 : large ? 56 : 48;
-  const textStyle = small ? type.buttonSm : large ? { ...type.button, fontSize: 17 } : type.button;
+  const textStyle = hand
+    ? {
+        fontFamily: gfonts.hand,
+        fontSize: small ? 16 : large ? 21 : 18,
+        lineHeight: small ? 20 : large ? 26 : 23,
+        letterSpacing: 0.3,
+      }
+    : small
+      ? type.buttonSm
+      : large
+        ? { ...type.button, fontSize: 17 }
+        : type.button;
   const accent = variant === "danger" ? semantic.danger : color;
   const contentColor = variant === "solid" || variant === "danger" ? common.white : accent;
 

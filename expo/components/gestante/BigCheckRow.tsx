@@ -7,7 +7,7 @@ import * as Haptics from "expo-haptics";
 import { Check, type LucideIcon } from "lucide-react-native";
 import React, { useEffect, useRef } from "react";
 import { Animated, Platform, StyleSheet, Text, View } from "react-native";
-import { fonts, gwarm, spacing } from "@/constants/theme";
+import { gfonts, gwarm, spacing } from "@/constants/theme";
 import { PressableScale } from "@/components/PressableScale";
 
 interface BigCheckRowProps {
@@ -122,14 +122,14 @@ const styles = StyleSheet.create({
   },
   info: { flex: 1, minWidth: 0, gap: 2 },
   label: {
-    fontFamily: fonts.semibold,
-    fontSize: 18,
-    lineHeight: 24,
+    fontFamily: gfonts.hand,
+    fontSize: 20,
+    lineHeight: 26,
     color: gwarm.ink,
   },
   sublabel: {
-    fontFamily: fonts.regular,
-    fontSize: 14.5,
+    fontFamily: gfonts.handBody,
+    fontSize: 14,
     lineHeight: 19,
     color: gwarm.inkSoft,
   },

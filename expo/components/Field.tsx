@@ -12,7 +12,7 @@ import {
   View,
   ViewStyle,
 } from "react-native";
-import { common, radius, semantic, spacing, type } from "@/constants/theme";
+import { common, gfonts, gwarm, radius, semantic, spacing, type } from "@/constants/theme";
 
 interface FieldProps {
   label: string;
@@ -27,6 +27,8 @@ interface FieldProps {
   multiline?: boolean;
   accent?: string;
   hint?: string;
+  /** Letra manuscrita (sección gestante). */
+  hand?: boolean;
   style?: StyleProp<ViewStyle>;
   testID?: string;
 }
@@ -44,6 +46,7 @@ export function Field({
   multiline = false,
   accent = "#0C8174",
   hint,
+  hand = false,
   style,
   testID,
 }: FieldProps): React.ReactElement {
@@ -52,7 +55,7 @@ export function Field({
 
   return (
     <View style={[styles.container, style]}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={[styles.label, hand && styles.labelHand]}>{label}</Text>
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -67,6 +70,7 @@ export function Field({
         onBlur={() => setFocused(false)}
         style={[
           styles.input,
+          hand && styles.inputHand,
           multiline && styles.multiline,
           focused && { borderColor: accent, backgroundColor: common.surface },
           hasError && { borderColor: semantic.danger, backgroundColor: common.surface },
@@ -90,6 +94,13 @@ const styles = StyleSheet.create({
     ...type.label,
     color: common.textSecondary,
   },
+  labelHand: {
+    fontFamily: gfonts.handBody,
+    fontSize: 14,
+    lineHeight: 19,
+    letterSpacing: 0,
+    color: gwarm.inkSoft,
+  },
   input: {
     ...type.body,
     color: common.text,
@@ -100,6 +111,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm2,
     paddingVertical: 11,
     minHeight: 46,
+  },
+  inputHand: {
+    fontFamily: gfonts.handBody,
+    fontSize: 16,
+    backgroundColor: gwarm.surfaceSoft,
+    borderColor: gwarm.border,
+    color: gwarm.ink,
   },
   multiline: {
     minHeight: 92,

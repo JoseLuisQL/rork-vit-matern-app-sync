@@ -32,7 +32,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ALARM_SIGNS } from "@/constants/content";
-import { fonts, gwarm, semantic, spacing } from "@/constants/theme";
+import { gfonts, gwarm, semantic, spacing } from "@/constants/theme";
 import { ILU } from "@/constants/illustrations";
 import { confirmAction } from "@/lib/confirm";
 import { useApp, useMyPatient } from "@/providers/AppProvider";
@@ -212,11 +212,13 @@ export default function AlarmasScreen(): React.ReactElement {
               ? "Mantén la calma. Si puedes movilizarte, acude al centro de salud mientras te contactan."
               : "No hay señal ahora. Tu aviso se enviará solo apenas vuelva la conexión. Si puedes, acude al centro de salud o pide apoyo a tu promotor de salud."}
           </Text>
+          <Illustration source={ILU.flores} width={150} height={44} />
           <AppButton
             title="Volver al inicio"
             onPress={() => router.back()}
             color={gwarm.teal}
             large
+            hand
             style={styles.successButton}
           />
         </View>
@@ -267,6 +269,7 @@ export default function AlarmasScreen(): React.ReactElement {
           onChangeText={setNote}
           placeholder="Desde cuándo, qué tan fuerte…"
           multiline
+          hand
           accent={semantic.danger}
           maxLength={280}
         />
@@ -276,6 +279,7 @@ export default function AlarmasScreen(): React.ReactElement {
           onPress={() => void sendReport()}
           variant="danger"
           large
+          hand
           disabled={selectedLabels.length === 0}
           loading={sending}
           testID="btn-enviar-reporte"
@@ -309,23 +313,22 @@ const styles = StyleSheet.create({
     gap: spacing.sm2,
   },
   question: {
-    fontFamily: fonts.bold,
-    fontSize: 24,
-    lineHeight: 30,
-    letterSpacing: -0.3,
+    fontFamily: gfonts.hand,
+    fontSize: 26,
+    lineHeight: 33,
     color: gwarm.ink,
   },
   hint: {
-    fontFamily: fonts.regular,
-    fontSize: 16,
-    lineHeight: 22,
+    fontFamily: gfonts.handBody,
+    fontSize: 15,
+    lineHeight: 21,
     color: gwarm.inkSoft,
     marginTop: 2,
   },
   signsList: { gap: spacing.sm },
   reportHint: {
-    fontFamily: fonts.regular,
-    fontSize: 14.5,
+    fontFamily: gfonts.handBody,
+    fontSize: 14,
     lineHeight: 19,
     color: gwarm.inkFaint,
     textAlign: "center",
@@ -339,9 +342,9 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   sosBarText: {
-    fontFamily: fonts.semibold,
-    fontSize: 16.5,
-    lineHeight: 22,
+    fontFamily: gfonts.hand,
+    fontSize: 18,
+    lineHeight: 24,
     color: gwarm.ink,
     textAlign: "center",
   },
@@ -355,10 +358,10 @@ const styles = StyleSheet.create({
     gap: spacing.sm2,
   },
   sosButtonText: {
-    fontFamily: fonts.bold,
-    fontSize: 22,
+    fontFamily: gfonts.hand,
+    fontSize: 24,
     color: "#FFFFFF",
-    letterSpacing: 3,
+    letterSpacing: 4,
   },
   successWrap: {
     flex: 1,
@@ -374,15 +377,15 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   successBadgeText: {
-    fontFamily: fonts.bold,
-    fontSize: 20,
-    lineHeight: 26,
+    fontFamily: gfonts.hand,
+    fontSize: 21,
+    lineHeight: 27,
     textAlign: "center",
   },
   successText: {
-    fontFamily: fonts.regular,
-    fontSize: 16.5,
-    lineHeight: 25,
+    fontFamily: gfonts.handBody,
+    fontSize: 15.5,
+    lineHeight: 24,
     color: gwarm.inkSoft,
     textAlign: "center",
   },

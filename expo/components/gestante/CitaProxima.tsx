@@ -3,10 +3,11 @@
  * palabras ("9:00 de la mañana") y un solo botón grande "Sí, iré".
  * Compartida entre Inicio y Citas.
  */
-import { CalendarHeart, Check, CheckCircle2, Clock3, MapPin } from "lucide-react-native";
+import { Check, CheckCircle2, Clock3, MapPin } from "lucide-react-native";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { fonts, gwarm, semantic, spacing } from "@/constants/theme";
+import { GICON } from "@/constants/illustrations";
+import { gfonts, gwarm, semantic, spacing } from "@/constants/theme";
 import { capitalize, etiquetaRelativa, fechaLarga, horaAmigable } from "@/lib/format";
 import type { Appointment } from "@/types";
 import { AppButton } from "@/components/AppButton";
@@ -38,7 +39,7 @@ export function CitaProxima({
   return (
     <SoftCard style={styles.card}>
       <BlockTitle
-        icon={CalendarHeart}
+        illu={GICON.citas}
         title="Mi próxima cita"
         color={gwarm.teal}
         soft={gwarm.tealSoft}
@@ -70,6 +71,7 @@ export function CitaProxima({
             onPress={onConfirm}
             color={gwarm.teal}
             large
+            hand
             icon={Check}
             testID="btn-confirmar-cita"
           />
@@ -114,41 +116,41 @@ const styles = StyleSheet.create({
     gap: 1,
   },
   leafMonth: {
-    fontFamily: fonts.semibold,
-    fontSize: 12,
-    letterSpacing: 1.2,
+    fontFamily: gfonts.hand,
+    fontSize: 14,
+    letterSpacing: 1.5,
     color: gwarm.tealDeep,
   },
   leafDay: {
-    fontFamily: fonts.bold,
-    fontSize: 32,
-    lineHeight: 36,
+    fontFamily: gfonts.hand,
+    fontSize: 36,
+    lineHeight: 40,
     color: gwarm.tealDeep,
   },
   info: { flex: 1, minWidth: 0, gap: 2 },
   when: {
-    fontFamily: fonts.bold,
-    fontSize: 24,
-    lineHeight: 30,
+    fontFamily: gfonts.hand,
+    fontSize: 26,
+    lineHeight: 32,
     color: gwarm.teal,
   },
   date: {
-    fontFamily: fonts.medium,
-    fontSize: 16,
-    lineHeight: 22,
+    fontFamily: gfonts.handBody,
+    fontSize: 15,
+    lineHeight: 21,
     color: gwarm.ink,
   },
   timeRow: { flexDirection: "row", alignItems: "center", gap: 5 },
   time: {
-    fontFamily: fonts.semibold,
-    fontSize: 16.5,
-    lineHeight: 23,
+    fontFamily: gfonts.hand,
+    fontSize: 18,
+    lineHeight: 24,
     color: gwarm.terracotta,
   },
   placeRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   placeText: {
-    fontFamily: fonts.regular,
-    fontSize: 15,
+    fontFamily: gfonts.handBody,
+    fontSize: 14.5,
     lineHeight: 20,
     color: gwarm.inkSoft,
     flex: 1,
@@ -160,8 +162,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   linkText: {
-    fontFamily: fonts.medium,
-    fontSize: 16,
+    fontFamily: gfonts.handBody,
+    fontSize: 15.5,
     color: gwarm.inkSoft,
     textDecorationLine: "underline",
   },
@@ -175,9 +177,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   confirmedText: {
-    fontFamily: fonts.semibold,
-    fontSize: 16.5,
-    lineHeight: 22,
+    fontFamily: gfonts.hand,
+    fontSize: 18,
+    lineHeight: 24,
     color: semantic.success,
     flex: 1,
   },
@@ -188,8 +190,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   pendingText: {
-    fontFamily: fonts.medium,
-    fontSize: 15.5,
+    fontFamily: gfonts.handBody,
+    fontSize: 15,
     lineHeight: 22,
     color: gwarm.amber,
   },

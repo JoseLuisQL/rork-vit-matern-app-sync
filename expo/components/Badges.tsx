@@ -13,7 +13,7 @@ import {
 } from "lucide-react-native";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { radius, risk, semantic, type } from "@/constants/theme";
+import { gfonts, radius, risk, semantic, type } from "@/constants/theme";
 import { ALERT_LABEL, RISK_LABEL, STATUS_LABEL } from "@/constants/labels";
 import type { AlertType, AppointmentStatus, RiskLevel } from "@/types";
 
@@ -25,13 +25,19 @@ export const STATUS_COLOR: Record<AppointmentStatus, string> = {
   solicitud_reprogramacion: semantic.warning,
 };
 
-/** Estado de cita: punto de color + una palabra. */
-export function StatusWord({ estado }: { estado: AppointmentStatus }): React.ReactElement {
+/** Estado de cita: punto de color + una palabra. `hand` usa letra manuscrita (gestante). */
+export function StatusWord({
+  estado,
+  hand = false,
+}: {
+  estado: AppointmentStatus;
+  hand?: boolean;
+}): React.ReactElement {
   const color = STATUS_COLOR[estado];
   return (
     <View style={styles.wordRow}>
       <View style={[styles.dot, { backgroundColor: color }]} />
-      <Text style={[styles.wordText, { color }]} numberOfLines={1}>
+      <Text style={[styles.wordText, hand && styles.wordTextHand, { color }]} numberOfLines={1}>
         {STATUS_LABEL[estado]}
       </Text>
     </View>
@@ -100,6 +106,11 @@ const styles = StyleSheet.create({
     ...type.label,
     fontSize: 13,
     lineHeight: 18,
+  },
+  wordTextHand: {
+    fontFamily: gfonts.handBody,
+    fontSize: 13.5,
+    letterSpacing: 0,
   },
   dot: {
     width: 8,

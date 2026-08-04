@@ -145,6 +145,17 @@ export const fonts = {
   bold: "Inter_700Bold",
 } as const;
 
+/**
+ * Fuentes manuscritas de la sección gestante ("cuaderno de cuidado"):
+ * Patrick Hand para títulos, números y botones (trazo de plumón a mano) y
+ * Delius para el cuerpo (letra a mano redonda, muy legible incluso para
+ * quien lee poco). Cargadas en el layout raíz.
+ */
+export const gfonts = {
+  hand: "PatrickHand_400Regular",
+  handBody: "Delius_400Regular",
+} as const;
+
 interface TypeToken {
   fontFamily: string;
   fontSize: number;

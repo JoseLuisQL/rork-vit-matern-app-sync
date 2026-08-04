@@ -7,7 +7,7 @@ import { useRouter } from "expo-router";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { fonts, gShadow, gwarm, spacing } from "@/constants/theme";
+import { gfonts, gShadow, gwarm, spacing } from "@/constants/theme";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { PressableScale } from "@/components/PressableScale";
 
@@ -73,15 +73,14 @@ const styles = StyleSheet.create({
   },
   titles: { flex: 1, minWidth: 0 },
   title: {
-    fontFamily: fonts.bold,
-    fontSize: 26,
-    lineHeight: 33,
-    letterSpacing: -0.4,
+    fontFamily: gfonts.hand,
+    fontSize: 30,
+    lineHeight: 37,
     color: gwarm.ink,
   },
-  titleSm: { fontSize: 22, lineHeight: 28 },
+  titleSm: { fontSize: 26, lineHeight: 32 },
   subtitle: {
-    fontFamily: fonts.regular,
+    fontFamily: gfonts.handBody,
     fontSize: 14,
     lineHeight: 19,
     color: gwarm.inkSoft,

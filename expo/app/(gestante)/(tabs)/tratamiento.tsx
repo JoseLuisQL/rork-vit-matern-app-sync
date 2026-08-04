@@ -4,11 +4,11 @@
  * recordatorio diario. Al completar el día aparece el sol andino celebrando.
  */
 import { useRouter } from "expo-router";
-import { Bell, CalendarDays, Check, ChevronRight, Flame } from "lucide-react-native";
+import { Check, ChevronRight, Flame } from "lucide-react-native";
 import React, { useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { fonts, gwarm, spacing } from "@/constants/theme";
-import { ILU } from "@/constants/illustrations";
+import { gfonts, gwarm, spacing } from "@/constants/theme";
+import { GICON, ILU } from "@/constants/illustrations";
 import { addDaysToKey, capitalize, fechaLarga } from "@/lib/format";
 import { useApp, useMyPatient } from "@/providers/AppProvider";
 import { BigCheckRow } from "@/components/gestante/BigCheckRow";
@@ -111,7 +111,7 @@ export default function PastillasGestante(): React.ReactElement {
         <PopIn delay={100}>
           <SoftCard style={styles.block}>
             <BlockTitle
-              icon={CalendarDays}
+              illu={GICON.citas}
               title="Tu semana"
               color={gwarm.teal}
               soft={gwarm.tealSoft}
@@ -160,7 +160,7 @@ export default function PastillasGestante(): React.ReactElement {
             testID="card-recordatorio"
           >
             <View style={styles.reminderIcon}>
-              <Bell size={22} color={gwarm.teal} strokeWidth={2.2} />
+              <Illustration source={GICON.campana} width={30} height={30} />
             </View>
             <View style={styles.flex}>
               <Text style={styles.reminderTitle}>Recordatorio diario</Text>
@@ -194,15 +194,14 @@ const styles = StyleSheet.create({
   },
   headInfo: { flex: 1, minWidth: 0, gap: 4 },
   question: {
-    fontFamily: fonts.bold,
-    fontSize: 22,
-    lineHeight: 28,
-    letterSpacing: -0.3,
+    fontFamily: gfonts.hand,
+    fontSize: 24,
+    lineHeight: 31,
     color: gwarm.ink,
   },
   dateText: {
-    fontFamily: fonts.regular,
-    fontSize: 15,
+    fontFamily: gfonts.handBody,
+    fontSize: 14.5,
     lineHeight: 20,
     color: gwarm.inkSoft,
   },
@@ -226,23 +225,23 @@ const styles = StyleSheet.create({
   weekDotFull: { backgroundColor: gwarm.teal, borderColor: gwarm.teal },
   weekDotPartial: { backgroundColor: gwarm.tealMid, borderColor: gwarm.tealMid },
   weekLetter: {
-    fontFamily: fonts.medium,
+    fontFamily: gfonts.handBody,
     fontSize: 13,
     color: gwarm.inkFaint,
   },
-  weekLetterToday: { color: gwarm.teal, fontFamily: fonts.bold },
+  weekLetterToday: { color: gwarm.teal, fontFamily: gfonts.hand, fontSize: 14.5 },
   progressText: {
-    fontFamily: fonts.regular,
-    fontSize: 16.5,
+    fontFamily: gfonts.handBody,
+    fontSize: 15.5,
     lineHeight: 24,
     color: gwarm.ink,
   },
-  progressStrong: { fontFamily: fonts.semibold, color: gwarm.teal },
+  progressStrong: { fontFamily: gfonts.hand, fontSize: 17, color: gwarm.teal },
   streakRow: { flexDirection: "row", alignItems: "center", gap: 7 },
   streakText: {
-    fontFamily: fonts.semibold,
-    fontSize: 16,
-    lineHeight: 22,
+    fontFamily: gfonts.hand,
+    fontSize: 17,
+    lineHeight: 23,
     color: gwarm.amber,
   },
   reminderCard: {
@@ -260,14 +259,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   reminderTitle: {
-    fontFamily: fonts.semibold,
-    fontSize: 17,
-    lineHeight: 23,
+    fontFamily: gfonts.hand,
+    fontSize: 19,
+    lineHeight: 25,
     color: gwarm.ink,
   },
   reminderText: {
-    fontFamily: fonts.regular,
-    fontSize: 14.5,
+    fontFamily: gfonts.handBody,
+    fontSize: 14,
     lineHeight: 19,
     color: gwarm.inkSoft,
     marginTop: 2,

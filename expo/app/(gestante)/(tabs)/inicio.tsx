@@ -6,12 +6,12 @@
  * ayuda → consejos.
  */
 import { useRouter } from "expo-router";
-import { Baby, ChevronRight, Pill, Siren } from "lucide-react-native";
+import { Baby, ChevronRight, Siren } from "lucide-react-native";
 import React, { useCallback, useMemo } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { fonts, gwarm, spacing } from "@/constants/theme";
-import { ILU } from "@/constants/illustrations";
+import { gfonts, gwarm, spacing } from "@/constants/theme";
+import { GICON, ILU } from "@/constants/illustrations";
 import { avatarUri } from "@/lib/api";
 import { confirmAction } from "@/lib/confirm";
 import { capitalize, fechaCompleta, fechaLarga } from "@/lib/format";
@@ -165,7 +165,7 @@ export default function InicioGestante(): React.ReactElement {
         <PopIn delay={160}>
           <SoftCard style={styles.pillsCard}>
             <BlockTitle
-              icon={Pill}
+              illu={GICON.pastillas}
               title="Mis pastillas de hoy"
               color={gwarm.terracotta}
               soft={gwarm.terracottaSoft}
@@ -212,6 +212,7 @@ export default function InicioGestante(): React.ReactElement {
               onPress={() => router.push("/(gestante)/alarmas")}
               variant="danger"
               large
+              hand
               icon={Siren}
               testID="btn-sos"
             />
@@ -224,7 +225,7 @@ export default function InicioGestante(): React.ReactElement {
             style={styles.learnCard}
             testID="card-educacion"
           >
-            <Illustration source={ILU.comida} width={66} height={66} />
+            <Illustration source={GICON.libro} width={64} height={64} />
             <View style={styles.flex}>
               <Text style={styles.learnTitle}>Consejos para ti</Text>
               <Text style={styles.learnMeta}>Se leen aunque no tengas señal</Text>
@@ -248,7 +249,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm2,
   },
   loadingText: {
-    fontFamily: fonts.regular,
+    fontFamily: gfonts.handBody,
     fontSize: 15,
     color: gwarm.inkSoft,
   },
@@ -261,16 +262,15 @@ const styles = StyleSheet.create({
   },
   headerInfo: { flex: 1, minWidth: 0, gap: 2 },
   headerDate: {
-    fontFamily: fonts.medium,
+    fontFamily: gfonts.handBody,
     fontSize: 14,
     lineHeight: 19,
     color: gwarm.inkSoft,
   },
   headerTitle: {
-    fontFamily: fonts.bold,
-    fontSize: 26,
-    lineHeight: 33,
-    letterSpacing: -0.4,
+    fontFamily: gfonts.hand,
+    fontSize: 30,
+    lineHeight: 37,
     color: gwarm.ink,
   },
   content: {
@@ -286,29 +286,29 @@ const styles = StyleSheet.create({
   },
   babyInfo: { flex: 1, minWidth: 0, gap: 4 },
   babyKicker: {
-    fontFamily: fonts.semibold,
-    fontSize: 14,
-    lineHeight: 19,
+    fontFamily: gfonts.hand,
+    fontSize: 16,
+    lineHeight: 21,
+    letterSpacing: 0.4,
     color: gwarm.terracotta,
   },
   weekBig: {
-    fontFamily: fonts.bold,
-    fontSize: 28,
-    lineHeight: 36,
-    letterSpacing: -0.4,
+    fontFamily: gfonts.hand,
+    fontSize: 30,
+    lineHeight: 38,
     color: gwarm.ink,
   },
-  weekNum: { color: gwarm.teal, fontSize: 32 },
+  weekNum: { color: gwarm.teal, fontSize: 38 },
   babyMeta: {
-    fontFamily: fonts.regular,
-    fontSize: 15.5,
+    fontFamily: gfonts.handBody,
+    fontSize: 15,
     lineHeight: 21,
     color: gwarm.inkSoft,
   },
   fppRow: { flexDirection: "row", alignItems: "center", gap: 7 },
   fppText: {
-    fontFamily: fonts.medium,
-    fontSize: 15,
+    fontFamily: gfonts.handBody,
+    fontSize: 14.5,
     lineHeight: 20,
     color: gwarm.ink,
     flex: 1,
@@ -319,15 +319,15 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   emptyCitaTitle: {
-    fontFamily: fonts.semibold,
-    fontSize: 18,
-    lineHeight: 24,
+    fontFamily: gfonts.hand,
+    fontSize: 20,
+    lineHeight: 26,
     color: gwarm.ink,
   },
   emptyCitaText: {
-    fontFamily: fonts.regular,
-    fontSize: 15,
-    lineHeight: 21,
+    fontFamily: gfonts.handBody,
+    fontSize: 14.5,
+    lineHeight: 20,
     color: gwarm.inkSoft,
     marginTop: 2,
   },
@@ -345,14 +345,14 @@ const styles = StyleSheet.create({
   },
   helpInfo: { flex: 1, minWidth: 0, gap: 4 },
   helpTitle: {
-    fontFamily: fonts.bold,
-    fontSize: 21,
-    lineHeight: 27,
+    fontFamily: gfonts.hand,
+    fontSize: 24,
+    lineHeight: 30,
     color: gwarm.ink,
   },
   helpText: {
-    fontFamily: fonts.regular,
-    fontSize: 15,
+    fontFamily: gfonts.handBody,
+    fontSize: 14.5,
     lineHeight: 20,
     color: gwarm.inkSoft,
   },
@@ -363,14 +363,14 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   learnTitle: {
-    fontFamily: fonts.semibold,
-    fontSize: 18,
-    lineHeight: 24,
+    fontFamily: gfonts.hand,
+    fontSize: 20,
+    lineHeight: 26,
     color: gwarm.ink,
   },
   learnMeta: {
-    fontFamily: fonts.regular,
-    fontSize: 14.5,
+    fontFamily: gfonts.handBody,
+    fontSize: 14,
     lineHeight: 19,
     color: gwarm.inkSoft,
     marginTop: 2,

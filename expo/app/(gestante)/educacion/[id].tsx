@@ -4,10 +4,12 @@ import { BookOpenCheck, ChevronRight, Clock3 } from "lucide-react-native";
 import React, { useEffect, useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { ARTICLES } from "@/constants/content";
-import { fonts, gwarm, spacing } from "@/constants/theme";
+import { gfonts, gwarm, spacing } from "@/constants/theme";
+import { CATEGORY_ILU, GICON } from "@/constants/illustrations";
 import { useApp } from "@/providers/AppProvider";
 import { EmptyState } from "@/components/EmptyState";
 import { GHeader } from "@/components/gestante/GHeader";
+import { Illustration } from "@/components/gestante/Illustration";
 import { SoftCard } from "@/components/gestante/SoftCard";
 
 export default function ArticuloScreen(): React.ReactElement {
@@ -49,6 +51,13 @@ export default function ArticuloScreen(): React.ReactElement {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
+        <View style={styles.heroWrap}>
+          <Illustration
+            source={CATEGORY_ILU[article.category] ?? GICON.libro}
+            width={112}
+            height={112}
+          />
+        </View>
         <Text style={styles.title}>{article.title}</Text>
         <View style={styles.metaRow}>
           <Clock3 size={14} color={gwarm.inkFaint} />
@@ -96,21 +105,26 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     paddingBottom: spacing.xxl,
   },
+  heroWrap: {
+    alignItems: "center",
+    marginBottom: spacing.sm2,
+  },
   title: {
-    fontFamily: fonts.bold,
-    fontSize: 26,
-    lineHeight: 33,
-    letterSpacing: -0.4,
+    fontFamily: gfonts.hand,
+    fontSize: 28,
+    lineHeight: 35,
     color: gwarm.ink,
+    textAlign: "center",
   },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 5,
     marginTop: spacing.sm,
   },
   meta: {
-    fontFamily: fonts.medium,
+    fontFamily: gfonts.handBody,
     fontSize: 13.5,
     color: gwarm.inkFaint,
   },
@@ -119,8 +133,8 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   paragraph: {
-    fontFamily: fonts.regular,
-    fontSize: 17,
+    fontFamily: gfonts.handBody,
+    fontSize: 16.5,
     lineHeight: 28,
     color: gwarm.ink,
   },
@@ -136,8 +150,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   readText: {
-    fontFamily: fonts.semibold,
-    fontSize: 14,
+    fontFamily: gfonts.hand,
+    fontSize: 16,
     color: gwarm.teal,
   },
   nextCard: {
@@ -148,16 +162,16 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   nextLabel: {
-    fontFamily: fonts.semibold,
-    fontSize: 13,
-    letterSpacing: 0.4,
+    fontFamily: gfonts.hand,
+    fontSize: 13.5,
+    letterSpacing: 1,
     textTransform: "uppercase",
     color: gwarm.terracotta,
   },
   nextTitle: {
-    fontFamily: fonts.semibold,
-    fontSize: 16.5,
-    lineHeight: 22,
+    fontFamily: gfonts.hand,
+    fontSize: 18,
+    lineHeight: 24,
     color: gwarm.ink,
     marginTop: 3,
   },

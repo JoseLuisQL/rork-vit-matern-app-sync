@@ -3,11 +3,11 @@
  * camino de controles — círculos unidos por una línea, como un sendero que
  * se va completando. Confirmar o pedir otra fecha funciona también sin señal.
  */
-import { CalendarDays, Check, ClipboardCheck, HousePlus } from "lucide-react-native";
+import { Check } from "lucide-react-native";
 import React, { useCallback, useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { fonts, gwarm, spacing } from "@/constants/theme";
-import { ILU } from "@/constants/illustrations";
+import { gfonts, gwarm, spacing } from "@/constants/theme";
+import { GICON, ILU } from "@/constants/illustrations";
 import { confirmAction } from "@/lib/confirm";
 import { capitalize, fechaLarga, horaAmigable } from "@/lib/format";
 import { useApp, useMyPatient } from "@/providers/AppProvider";
@@ -104,7 +104,7 @@ export default function CitasGestante(): React.ReactElement {
           <PopIn delay={70}>
             <SoftCard style={styles.visitCard}>
               <View style={styles.visitIcon}>
-                <HousePlus size={23} color={gwarm.teal} strokeWidth={2.2} />
+                <Illustration source={GICON.casa} width={30} height={30} />
               </View>
               <View style={styles.flex}>
                 <Text style={styles.visitTitle}>Te visitarán en casa</Text>
@@ -119,7 +119,7 @@ export default function CitasGestante(): React.ReactElement {
         <PopIn delay={140}>
           <SoftCard style={styles.pathCard}>
             <BlockTitle
-              icon={ClipboardCheck}
+              illu={GICON.citas}
               title="Mis controles"
               color={gwarm.teal}
               soft={gwarm.tealSoft}
@@ -161,7 +161,7 @@ export default function CitasGestante(): React.ReactElement {
                       </Text>
                     </View>
                     <View style={styles.pathStatus}>
-                      <StatusWord estado={appt.estado} />
+                      <StatusWord estado={appt.estado} hand />
                     </View>
                   </View>
                 );
@@ -174,7 +174,7 @@ export default function CitasGestante(): React.ReactElement {
           <PopIn delay={210}>
             <SoftCard style={styles.pathCard}>
               <BlockTitle
-                icon={CalendarDays}
+                illu={ILU.obstetra}
                 title="Otras citas"
                 color={gwarm.amber}
                 soft={gwarm.amberSoft}
@@ -190,7 +190,7 @@ export default function CitasGestante(): React.ReactElement {
                         {capitalize(fechaLarga(appt.dateKey))} · {appt.time}
                       </Text>
                     </View>
-                    <StatusWord estado={appt.estado} />
+                    <StatusWord estado={appt.estado} hand />
                   </View>
                 ))}
               </View>
@@ -216,15 +216,15 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   emptyTitle: {
-    fontFamily: fonts.semibold,
-    fontSize: 18,
-    lineHeight: 24,
+    fontFamily: gfonts.hand,
+    fontSize: 20,
+    lineHeight: 26,
     color: gwarm.ink,
   },
   emptyText: {
-    fontFamily: fonts.regular,
-    fontSize: 15,
-    lineHeight: 21,
+    fontFamily: gfonts.handBody,
+    fontSize: 14.5,
+    lineHeight: 20,
     color: gwarm.inkSoft,
     marginTop: 2,
   },
@@ -244,14 +244,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   visitTitle: {
-    fontFamily: fonts.semibold,
-    fontSize: 17,
-    lineHeight: 23,
+    fontFamily: gfonts.hand,
+    fontSize: 19,
+    lineHeight: 25,
     color: gwarm.ink,
   },
   visitText: {
-    fontFamily: fonts.regular,
-    fontSize: 15,
+    fontFamily: gfonts.handBody,
+    fontSize: 14.5,
     lineHeight: 20,
     color: gwarm.inkSoft,
     marginTop: 2,
@@ -284,20 +284,20 @@ const styles = StyleSheet.create({
   nodeDone: { backgroundColor: gwarm.teal, borderColor: gwarm.teal },
   nodeNext: { borderColor: gwarm.teal },
   nodeNum: {
-    fontFamily: fonts.bold,
-    fontSize: 17,
+    fontFamily: gfonts.hand,
+    fontSize: 18,
     color: gwarm.inkFaint,
   },
   pathInfo: { flex: 1, minWidth: 0, justifyContent: "center", gap: 2 },
   pathTitle: {
-    fontFamily: fonts.semibold,
-    fontSize: 17,
-    lineHeight: 23,
+    fontFamily: gfonts.hand,
+    fontSize: 18.5,
+    lineHeight: 24,
     color: gwarm.ink,
   },
   pathMeta: {
-    fontFamily: fonts.regular,
-    fontSize: 14.5,
+    fontFamily: gfonts.handBody,
+    fontSize: 14,
     lineHeight: 19,
     color: gwarm.inkSoft,
   },

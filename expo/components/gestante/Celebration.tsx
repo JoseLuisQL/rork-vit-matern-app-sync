@@ -1,7 +1,7 @@
 /** Mensaje de celebración con el sol andino: aparece con un rebote alegre. */
 import React, { useEffect, useRef } from "react";
 import { Animated, Platform, StyleSheet, Text, View } from "react-native";
-import { fonts, gwarm, spacing } from "@/constants/theme";
+import { gfonts, gwarm, spacing } from "@/constants/theme";
 import { ILU } from "@/constants/illustrations";
 import { Illustration } from "./Illustration";
 
@@ -55,14 +55,14 @@ const styles = StyleSheet.create({
   },
   info: { flex: 1, minWidth: 0, gap: 2 },
   title: {
-    fontFamily: fonts.bold,
-    fontSize: 17,
-    lineHeight: 22,
+    fontFamily: gfonts.hand,
+    fontSize: 19,
+    lineHeight: 25,
     color: gwarm.amber,
   },
   text: {
-    fontFamily: fonts.regular,
-    fontSize: 14.5,
+    fontFamily: gfonts.handBody,
+    fontSize: 14,
     lineHeight: 19,
     color: gwarm.inkSoft,
   },

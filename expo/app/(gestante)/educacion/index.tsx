@@ -1,38 +1,28 @@
 /**
- * Consejos para el embarazo: cada lectura con su dibujito de color por tema
+ * Consejos para el embarazo: cada lectura con su dibujo a crayola por tema
  * (comida, urgencias, pastillas…), disponibles siempre, incluso sin señal.
  */
 import { useRouter } from "expo-router";
-import {
-  Apple,
-  Baby,
-  Backpack,
-  BookOpen,
-  CheckCircle2,
-  ChevronRight,
-  HeartHandshake,
-  Pill,
-  Siren,
-  type LucideIcon,
-} from "lucide-react-native";
+import { CheckCircle2, ChevronRight } from "lucide-react-native";
 import React from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { ARTICLES } from "@/constants/content";
-import { fonts, gwarm, semantic, spacing } from "@/constants/theme";
-import { ILU } from "@/constants/illustrations";
+import { gfonts, gwarm, spacing } from "@/constants/theme";
+import { CATEGORY_ILU, GICON } from "@/constants/illustrations";
 import { useApp } from "@/providers/AppProvider";
 import { GHeader } from "@/components/gestante/GHeader";
 import { Illustration } from "@/components/gestante/Illustration";
 import { PopIn } from "@/components/gestante/PopIn";
 import { SoftCard } from "@/components/gestante/SoftCard";
 
-const CATEGORY_META: Record<string, { icon: LucideIcon; color: string; soft: string }> = {
-  Nutrición: { icon: Apple, color: gwarm.terracotta, soft: gwarm.terracottaSoft },
-  Urgencias: { icon: Siren, color: semantic.danger, soft: gwarm.redSoft },
-  Tratamiento: { icon: Pill, color: gwarm.teal, soft: gwarm.tealSoft },
-  Preparación: { icon: Backpack, color: gwarm.amber, soft: gwarm.amberSoft },
-  Posparto: { icon: Baby, color: gwarm.rose, soft: gwarm.roseSoft },
-  "Salud mental": { icon: HeartHandshake, color: "#2C6EA8", soft: "#EAF2F9" },
+/** Fondo suave de la ficha ilustrada de cada tema. */
+const CATEGORY_SOFT: Record<string, string> = {
+  "Nutrición": gwarm.terracottaSoft,
+  "Urgencias": gwarm.redSoft,
+  "Tratamiento": gwarm.tealSoft,
+  "Preparación": gwarm.amberSoft,
+  "Posparto": gwarm.roseSoft,
+  "Salud mental": "#EAF2F9",
 };
 
 export default function EducacionGestante(): React.ReactElement {
@@ -49,7 +39,7 @@ export default function EducacionGestante(): React.ReactElement {
       >
         <PopIn delay={0}>
           <View style={styles.heroRow}>
-            <Illustration source={ILU.comida} width={86} height={86} />
+            <Illustration source={GICON.libro} width={84} height={84} />
             <View style={styles.flex}>
               <Text style={styles.heroTitle}>Aprende para ti y tu bebé</Text>
               <Text style={styles.heroText}>Se leen aunque no tengas señal.</Text>
@@ -59,12 +49,8 @@ export default function EducacionGestante(): React.ReactElement {
 
         {ARTICLES.map((article, index) => {
           const read = readArticles.includes(article.id);
-          const meta = CATEGORY_META[article.category] ?? {
-            icon: BookOpen,
-            color: gwarm.teal,
-            soft: gwarm.tealSoft,
-          };
-          const Icon = meta.icon;
+          const illu = CATEGORY_ILU[article.category] ?? GICON.libro;
+          const soft = CATEGORY_SOFT[article.category] ?? gwarm.tealSoft;
           return (
             <PopIn key={article.id} delay={70 + index * 55}>
               <SoftCard
@@ -77,8 +63,8 @@ export default function EducacionGestante(): React.ReactElement {
                 style={styles.card}
                 testID={`article-${article.id}`}
               >
-                <View style={[styles.icon, { backgroundColor: meta.soft }]}>
-                  <Icon size={24} color={meta.color} strokeWidth={2.2} />
+                <View style={[styles.icon, { backgroundColor: soft }]}>
+                  <Illustration source={illu} width={44} height={44} />
                 </View>
                 <View style={styles.flex}>
                   <Text style={styles.title} numberOfLines={2}>
@@ -120,15 +106,14 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xs,
   },
   heroTitle: {
-    fontFamily: fonts.bold,
-    fontSize: 20,
-    lineHeight: 26,
-    letterSpacing: -0.2,
+    fontFamily: gfonts.hand,
+    fontSize: 23,
+    lineHeight: 29,
     color: gwarm.ink,
   },
   heroText: {
-    fontFamily: fonts.regular,
-    fontSize: 15,
+    fontFamily: gfonts.handBody,
+    fontSize: 14.5,
     lineHeight: 20,
     color: gwarm.inkSoft,
     marginTop: 2,
@@ -140,16 +125,16 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   icon: {
-    width: 52,
-    height: 52,
-    borderRadius: 17,
+    width: 58,
+    height: 58,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
   },
   title: {
-    fontFamily: fonts.semibold,
-    fontSize: 16.5,
-    lineHeight: 22,
+    fontFamily: gfonts.hand,
+    fontSize: 18.5,
+    lineHeight: 24,
     color: gwarm.ink,
   },
   metaRow: {
@@ -159,8 +144,8 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
   meta: {
-    fontFamily: fonts.medium,
-    fontSize: 14,
+    fontFamily: gfonts.handBody,
+    fontSize: 13.5,
     lineHeight: 18,
     color: gwarm.inkFaint,
   },

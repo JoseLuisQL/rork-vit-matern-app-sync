@@ -3,10 +3,11 @@
  * configurables y cierre de sesión — en el mismo tono cálido de la sección.
  */
 import { useRouter } from "expo-router";
-import { Bell, CalendarHeart, LogOut } from "lucide-react-native";
+import { LogOut } from "lucide-react-native";
 import React, { useCallback } from "react";
 import { ScrollView, StyleSheet, Switch, Text, View } from "react-native";
-import { fonts, gwarm, semantic, spacing } from "@/constants/theme";
+import { gfonts, gwarm, semantic, spacing } from "@/constants/theme";
+import { GICON, ILU } from "@/constants/illustrations";
 import { confirmAction, showNotice } from "@/lib/confirm";
 import { fechaCompleta } from "@/lib/format";
 import {
@@ -19,6 +20,7 @@ import { AppButton } from "@/components/AppButton";
 import { PressableScale } from "@/components/PressableScale";
 import { ProfilePhoto } from "@/components/ProfilePhoto";
 import { GHeader } from "@/components/gestante/GHeader";
+import { Illustration } from "@/components/gestante/Illustration";
 import { SoftCard } from "@/components/gestante/SoftCard";
 
 function InfoRow({ label, value }: { label: string; value: string }): React.ReactElement {
@@ -120,6 +122,7 @@ export default function PerfilGestante(): React.ReactElement {
           <Text style={styles.photoMeta}>
             Semana {patient.weeks} · {patient.community}
           </Text>
+          <Illustration source={ILU.flores} width={132} height={38} />
         </SoftCard>
 
         <Text style={styles.sectionTitle}>Mis datos</Text>
@@ -140,7 +143,7 @@ export default function PerfilGestante(): React.ReactElement {
         <SoftCard style={styles.card}>
           <View style={styles.switchRow}>
             <View style={styles.switchIcon}>
-              <Bell size={19} color={gwarm.teal} strokeWidth={2.2} />
+              <Illustration source={GICON.campana} width={26} height={26} />
             </View>
             <View style={styles.flex}>
               <Text style={styles.switchTitle}>Aviso para tus pastillas</Text>
@@ -184,7 +187,7 @@ export default function PerfilGestante(): React.ReactElement {
 
           <View style={[styles.switchRow, styles.switchRowBorder]}>
             <View style={styles.switchIcon}>
-              <CalendarHeart size={19} color={gwarm.teal} strokeWidth={2.2} />
+              <Illustration source={GICON.citas} width={26} height={26} />
             </View>
             <View style={styles.flex}>
               <Text style={styles.switchTitle}>Aviso de cita</Text>
@@ -206,6 +209,7 @@ export default function PerfilGestante(): React.ReactElement {
           onPress={() => void handleLogout()}
           variant="outline"
           color={semantic.danger}
+          hand
           icon={LogOut}
         />
 
@@ -229,23 +233,23 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   photoName: {
-    fontFamily: fonts.bold,
-    fontSize: 22,
-    lineHeight: 28,
+    fontFamily: gfonts.hand,
+    fontSize: 25,
+    lineHeight: 31,
     color: gwarm.ink,
     textAlign: "center",
     marginTop: spacing.xs,
   },
   photoMeta: {
-    fontFamily: fonts.regular,
-    fontSize: 15,
+    fontFamily: gfonts.handBody,
+    fontSize: 14.5,
     lineHeight: 20,
     color: gwarm.inkSoft,
   },
   sectionTitle: {
-    fontFamily: fonts.semibold,
-    fontSize: 15,
-    lineHeight: 20,
+    fontFamily: gfonts.hand,
+    fontSize: 17,
+    lineHeight: 22,
     color: gwarm.inkSoft,
     marginTop: spacing.xs,
     marginLeft: spacing.xs,
@@ -258,13 +262,13 @@ const styles = StyleSheet.create({
     minHeight: 36,
   },
   infoLabel: {
-    fontFamily: fonts.regular,
-    fontSize: 15,
+    fontFamily: gfonts.handBody,
+    fontSize: 14.5,
     color: gwarm.inkSoft,
   },
   infoValue: {
-    fontFamily: fonts.semibold,
-    fontSize: 16.5,
+    fontFamily: gfonts.hand,
+    fontSize: 18,
     color: gwarm.ink,
     flexShrink: 1,
     textAlign: "right",
@@ -289,14 +293,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   switchTitle: {
-    fontFamily: fonts.semibold,
-    fontSize: 16.5,
-    lineHeight: 22,
+    fontFamily: gfonts.hand,
+    fontSize: 18,
+    lineHeight: 24,
     color: gwarm.ink,
   },
   switchText: {
-    fontFamily: fonts.regular,
-    fontSize: 14.5,
+    fontFamily: gfonts.handBody,
+    fontSize: 14,
     lineHeight: 19,
     color: gwarm.inkSoft,
   },
@@ -316,11 +320,11 @@ const styles = StyleSheet.create({
     backgroundColor: gwarm.surface,
   },
   hourText: {
-    fontFamily: fonts.semibold,
-    fontSize: 14.5,
+    fontFamily: gfonts.hand,
+    fontSize: 16,
   },
   about: {
-    fontFamily: fonts.regular,
+    fontFamily: gfonts.handBody,
     fontSize: 12.5,
     color: gwarm.inkFaint,
     textAlign: "center",
