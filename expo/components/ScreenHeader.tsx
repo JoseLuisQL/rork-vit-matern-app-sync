@@ -15,6 +15,8 @@ import { PressableScale } from "@/components/PressableScale";
 interface ScreenHeaderProps {
   title: string;
   subtitle?: string;
+  /** Subtítulo como componente (p. ej. estado "En línea" del chat). */
+  subtitleNode?: React.ReactNode;
   showBack?: boolean;
   right?: React.ReactNode;
   children?: React.ReactNode;
@@ -23,6 +25,7 @@ interface ScreenHeaderProps {
 export function ScreenHeader({
   title,
   subtitle,
+  subtitleNode,
   showBack = false,
   right,
   children,
@@ -47,11 +50,12 @@ export function ScreenHeader({
             <Text style={[styles.title, showBack && styles.titleSm]} numberOfLines={1}>
               {title}
             </Text>
-            {subtitle ? (
-              <Text style={styles.subtitle} numberOfLines={1}>
-                {subtitle}
-              </Text>
-            ) : null}
+            {subtitleNode ??
+              (subtitle ? (
+                <Text style={styles.subtitle} numberOfLines={1}>
+                  {subtitle}
+                </Text>
+              ) : null)}
           </View>
           {right ? <View style={styles.actions}>{right}</View> : null}
         </View>

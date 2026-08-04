@@ -191,7 +191,7 @@ export default function AlarmasScreen(): React.ReactElement {
       <View style={styles.container}>
         <GHeader title={sent === "sos" ? "SOS enviado" : "Aviso enviado"} back />
         <View style={styles.successWrap}>
-          <Illustration source={ILU.manos} width={132} height={132} />
+          <Illustration source={sent === "sos" ? ILU.sos : ILU.sintomas} width={132} height={132} />
           <View style={styles.successBadge}>
             {online ? (
               <CheckCircle2 size={22} color={semantic.success} />
@@ -240,7 +240,7 @@ export default function AlarmasScreen(): React.ReactElement {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.introRow}>
-          <Illustration source={ILU.manos} width={70} height={70} />
+          <Illustration source={ILU.sintomas} width={74} height={74} />
           <View style={styles.flex}>
             <Text style={styles.question}>¿Qué sientes?</Text>
             <Text style={styles.hint}>Marca todo lo que te pasa.</Text>
@@ -292,7 +292,10 @@ export default function AlarmasScreen(): React.ReactElement {
       </ScrollView>
 
       <View style={[styles.sosBar, { paddingBottom: Math.max(insets.bottom, spacing.sm2) }]}>
-        <Text style={styles.sosBarText}>¿Es una emergencia?</Text>
+        <View style={styles.sosBarRow}>
+          <Illustration source={ILU.sos} width={52} height={52} />
+          <Text style={styles.sosBarText}>¿Es una emergencia?</Text>
+        </View>
         <SOSButton onPress={() => void sendSOS()} disabled={sending} />
       </View>
     </View>
@@ -340,6 +343,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm2,
     gap: spacing.sm,
+  },
+  sosBarRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm2,
   },
   sosBarText: {
     fontFamily: gfonts.hand,

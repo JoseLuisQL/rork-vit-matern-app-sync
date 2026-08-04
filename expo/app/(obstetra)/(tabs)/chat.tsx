@@ -1,21 +1,23 @@
 /**
- * Conversaciones de la obstetra ("cuaderno"): no-leídos visibles, último
- * mensaje y emergencias destacadas en rosa. Las filas son amplias y toda la
- * lista vive en una sola tarjeta cálida.
+ * Conversaciones de la obstetra ("cuaderno") con presencia en vivo: punto
+ * verde de "en línea" sobre la foto, "Escribiendo…" animado en la vista
+ * previa, no-leídos visibles y emergencias destacadas en rosa.
  */
 import { useRouter } from "expo-router";
 import { ChevronRight, MessageCircle, Siren } from "lucide-react-native";
 import React, { useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { gfonts, gShadow, gwarm, risk } from "@/constants/theme";
+import { gfonts, gShadow, gwarm, risk, semantic, warmBlue } from "@/constants/theme";
 import { ILU } from "@/constants/illustrations";
 import { avatarUri } from "@/lib/api";
 import { tiempoRelativo } from "@/lib/format";
 import { useApp, usePatients, useUnreadCount } from "@/providers/AppProvider";
 import { Avatar } from "@/components/Avatar";
 import { EmptyState } from "@/components/EmptyState";
+import { Illustration } from "@/components/gestante/Illustration";
 import { PressableScale } from "@/components/PressableScale";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { TypingDots } from "@/components/TypingDots";
 
 export default function ChatListScreen(): React.ReactElement {
   const router = useRouter();
@@ -25,19 +27,25 @@ export default function ChatListScreen(): React.ReactElement {
 
   const conversations = useMemo(() => {
     const messages = view?.messages ?? [];
+    const presence = view?.presence ?? {};
     return patients
       .map((p) => {
         const conv = messages.filter((m) => m.convId === p.id);
         const last = conv.length > 0 ? conv[conv.length - 1] : null;
         const unread = conv.filter((m) => m.sender === "gestante" && !m.readByObstetra).length;
-        return { patient: p, last, unread };
+        return { patient: p, last, unread, presence: presence[p.id] ?? null };
       })
       .sort((a, b) => {
         if (!!a.last !== !!b.last) return a.last ? -1 : 1;
         if (a.last && b.last) return b.last.atISO.localeCompare(a.last.atISO);
         return a.patient.firstName.localeCompare(b.patient.firstName);
       });
-  }, [patients, view?.messages]);
+  }, [patients, view?.messages, view?.presence]);
+
+  const onlineCount = useMemo(
+    () => conversations.filter((c) => c.presence?.online === true).length,
+    [conversations],
+  );
 
   return (
     <View style={styles.container}>
@@ -46,8 +54,11 @@ export default function ChatListScreen(): React.ReactElement {
         subtitle={
           totalUnread > 0
             ? `${totalUnread} ${totalUnread === 1 ? "mensaje sin leer" : "mensajes sin leer"}`
-            : "Conversaciones con tus pacientes"
+            : onlineCount > 0
+              ? `${onlineCount} ${onlineCount === 1 ? "paciente en línea" : "pacientes en línea"}`
+              : "Conversaciones con tus pacientes"
         }
+        right={<Illustration source={ILU.chatVivo} width={58} height={46} />}
       />
       <ScrollView
         style={styles.flex}
@@ -55,10 +66,10 @@ export default function ChatListScreen(): React.ReactElement {
         showsVerticalScrollIndicator={false}
       >
         {conversations.length === 0 ? (
-          <EmptyState icon={MessageCircle} illu={ILU.chat} title="Sin conversaciones" />
+          <EmptyState icon={MessageCircle} illu={ILU.chatVivo} title="Sin conversaciones" />
         ) : (
           <View style={styles.listCard}>
-            {conversations.map(({ patient, last, unread }, index) => {
+            {conversations.map(({ patient, last, unread, presence }, index) => {
               const urgent = last?.kind === "emergencia" || last?.kind === "alarma";
               return (
                 <PressableScale
@@ -70,12 +81,15 @@ export default function ChatListScreen(): React.ReactElement {
                   style={[styles.row, index > 0 && styles.rowBorder]}
                   testID={`conv-${patient.id}`}
                 >
-                  <Avatar
-                    uri={avatarUri(patient.dni, patient.avatarVersion)}
-                    color={risk[patient.riskLevel].solid}
-                    background={risk[patient.riskLevel].light}
-                    size={46}
-                  />
+                  <View style={styles.avatarWrap}>
+                    <Avatar
+                      uri={avatarUri(patient.dni, patient.avatarVersion)}
+                      color={risk[patient.riskLevel].solid}
+                      background={risk[patient.riskLevel].light}
+                      size={46}
+                    />
+                    {presence?.online === true ? <View style={styles.onlineDot} /> : null}
+                  </View>
                   <View style={styles.info}>
                     <View style={styles.nameRow}>
                       <Text
@@ -86,21 +100,30 @@ export default function ChatListScreen(): React.ReactElement {
                       </Text>
                       {last ? <Text style={styles.time}>{tiempoRelativo(last.atISO)}</Text> : null}
                     </View>
-                    <View style={styles.previewRow}>
-                      {urgent ? <Siren size={13} color={gwarm.rose} /> : null}
-                      <Text
-                        style={[
-                          styles.preview,
-                          urgent && { color: gwarm.rose },
-                          unread > 0 && styles.previewUnread,
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {last
-                          ? `${last.sender === "obstetra" ? "Tú: " : ""}${last.text}`
-                          : "Iniciar conversación"}
-                      </Text>
-                    </View>
+                    {presence?.typing === true ? (
+                      <View style={styles.previewRow}>
+                        <TypingDots color={warmBlue.main} size={5} />
+                        <Text style={[styles.preview, styles.typingText]} numberOfLines={1}>
+                          Escribiendo…
+                        </Text>
+                      </View>
+                    ) : (
+                      <View style={styles.previewRow}>
+                        {urgent ? <Siren size={13} color={gwarm.rose} /> : null}
+                        <Text
+                          style={[
+                            styles.preview,
+                            urgent && { color: gwarm.rose },
+                            unread > 0 && styles.previewUnread,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {last
+                            ? `${last.sender === "obstetra" ? "Tú: " : ""}${last.text}`
+                            : "Iniciar conversación"}
+                        </Text>
+                      </View>
+                    )}
                   </View>
                   {unread > 0 ? (
                     <View style={styles.unreadBadge}>
@@ -139,6 +162,18 @@ const styles = StyleSheet.create({
     minHeight: 70,
   },
   rowBorder: { borderTopWidth: 1, borderTopColor: gwarm.border },
+  avatarWrap: { position: "relative" },
+  onlineDot: {
+    position: "absolute",
+    right: -1,
+    bottom: -1,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: semantic.success,
+    borderWidth: 2.5,
+    borderColor: gwarm.surface,
+  },
   info: { flex: 1, minWidth: 0, gap: 2 },
   nameRow: {
     flexDirection: "row",
@@ -172,6 +207,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   previewUnread: { color: gwarm.ink },
+  typingText: { color: warmBlue.main },
   unreadBadge: {
     minWidth: 23,
     height: 23,

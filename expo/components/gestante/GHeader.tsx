@@ -14,11 +14,19 @@ import { PressableScale } from "@/components/PressableScale";
 interface GHeaderProps {
   title: string;
   subtitle?: string;
+  /** Subtítulo como componente (p. ej. estado "En línea" del chat). */
+  subtitleNode?: React.ReactNode;
   back?: boolean;
   right?: React.ReactNode;
 }
 
-export function GHeader({ title, subtitle, back = false, right }: GHeaderProps): React.ReactElement {
+export function GHeader({
+  title,
+  subtitle,
+  subtitleNode,
+  back = false,
+  right,
+}: GHeaderProps): React.ReactElement {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -38,11 +46,12 @@ export function GHeader({ title, subtitle, back = false, right }: GHeaderProps):
           <Text style={[styles.title, back && styles.titleSm]} numberOfLines={1}>
             {title}
           </Text>
-          {subtitle ? (
-            <Text style={styles.subtitle} numberOfLines={1}>
-              {subtitle}
-            </Text>
-          ) : null}
+          {subtitleNode ??
+            (subtitle ? (
+              <Text style={styles.subtitle} numberOfLines={1}>
+                {subtitle}
+              </Text>
+            ) : null)}
         </View>
         {right ? <View style={styles.right}>{right}</View> : null}
       </View>

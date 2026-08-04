@@ -158,6 +158,16 @@ export interface PatientView extends Patient {
   avatarVersion?: number;
 }
 
+/**
+ * Presencia de chat calculada por el servidor (efímera, solo en memoria):
+ * en línea, última conexión y si está escribiendo en la conversación.
+ */
+export interface PresenceView {
+  online: boolean;
+  lastSeenISO: string | null;
+  typing: boolean;
+}
+
 export interface ReportBlock {
   gestantes: number;
   riesgo: Record<RiskLevel, number>;
@@ -182,6 +192,11 @@ export interface Snapshot {
   messages: Message[];
   alerts: Alert[];
   visits: Visit[];
+  /**
+   * Presencia por interlocutor: la gestante ve la clave "obstetra" y la
+   * obstetra ve una clave por cada id de paciente (su conversación).
+   */
+  presence?: Record<string, PresenceView>;
   users?: PublicUser[];
   reports?: { d30: ReportBlock; total: ReportBlock };
 }

@@ -9,7 +9,7 @@ import { BellOff, CheckCircle2, MapPin, MessageCircle } from "lucide-react-nativ
 import React, { useCallback, useMemo, useState } from "react";
 import { Linking, ScrollView, StyleSheet, Text, View } from "react-native";
 import { gfonts, gwarm, warmBlue } from "@/constants/theme";
-import { GICON } from "@/constants/illustrations";
+import { ILU } from "@/constants/illustrations";
 import { avatarUri } from "@/lib/api";
 import { tiempoRelativo } from "@/lib/format";
 import { useApp, usePatients } from "@/providers/AppProvider";
@@ -20,6 +20,7 @@ import { Avatar } from "@/components/Avatar";
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { Field } from "@/components/Field";
+import { Illustration } from "@/components/gestante/Illustration";
 import { PressableScale } from "@/components/PressableScale";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Segmented } from "@/components/Segmented";
@@ -100,11 +101,11 @@ export default function AlertasScreen(): React.ReactElement {
         {alerts.length === 0 ? (
           <EmptyState
             icon={BellOff}
-            illu={GICON.campana}
-            title={filter === "abiertas" ? "Sin alertas por atender" : "Nada por aquí"}
+            illu={ILU.calma}
+            title={filter === "abiertas" ? "Todo tranquilo" : "Nada por aquí"}
             text={
               filter === "abiertas"
-                ? "Las alertas se generan solas: inasistencias, pastillas, anemia y emergencias."
+                ? "No hay alertas por atender. Se generan solas: inasistencias, pastillas, anemia y emergencias."
                 : "Cambia el filtro para ver otras alertas."
             }
           />
@@ -149,7 +150,18 @@ export default function AlertasScreen(): React.ReactElement {
                   <AlertTypeWord alertType={alert.type} />
                 </View>
 
-                <Text style={styles.alertDetail}>{alert.detail}</Text>
+                {isUrgent ? (
+                  <View style={styles.detailRow}>
+                    <Illustration
+                      source={alert.type === "emergencia" ? ILU.sos : ILU.sintomas}
+                      width={54}
+                      height={54}
+                    />
+                    <Text style={[styles.alertDetail, styles.flex]}>{alert.detail}</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.alertDetail}>{alert.detail}</Text>
+                )}
 
                 {alert.lat != null && alert.lng != null ? (
                   <PressableScale
@@ -286,6 +298,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
     color: gwarm.inkFaint,
+  },
+  detailRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
   alertDetail: {
     fontFamily: gfonts.handBody,

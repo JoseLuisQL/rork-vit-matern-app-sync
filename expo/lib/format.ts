@@ -122,6 +122,21 @@ export function horaDeISO(iso: string): string {
   return `${`${d.getHours()}`.padStart(2, "0")}:${`${d.getMinutes()}`.padStart(2, "0")}`;
 }
 
+/**
+ * Última conexión estilo WhatsApp: "Últ. vez hoy a las 14:05",
+ * "Últ. vez ayer a las 20:12" o "Últ. vez el 2 ago".
+ */
+export function ultimaConexion(iso: string | null | undefined): string {
+  if (!iso) return "Sin conexión reciente";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "Sin conexión reciente";
+  const key = dayKey(d);
+  const hoy = todayKeyLocal();
+  if (key === hoy) return `Últ. vez hoy a las ${horaDeISO(iso)}`;
+  if (key === addDaysToKey(hoy, -1)) return `Últ. vez ayer a las ${horaDeISO(iso)}`;
+  return `Últ. vez el ${fechaCorta(iso)}`;
+}
+
 /** "hace 2 h" / "hace 5 min" / hora si es de hoy / fecha corta. */
 export function tiempoRelativo(iso: string): string {
   const d = new Date(iso);

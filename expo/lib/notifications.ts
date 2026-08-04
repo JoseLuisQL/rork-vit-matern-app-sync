@@ -112,10 +112,13 @@ async function presentNow(
  * Compara el snapshot anterior con el nuevo y avisa en la bandeja nativa
  * del teléfono lo que llegó mientras tanto: mensajes nuevos, emergencias y
  * signos de alarma (obstetra) y cambios de cita (gestante).
+ * `activeConvId`: conversación abierta en pantalla — sus mensajes no se
+ * notifican (ya se están viendo en vivo), igual que WhatsApp.
  */
 export async function notifySnapshotDelta(
   prev: Snapshot | null,
   next: Snapshot,
+  activeConvId: string | null = null,
 ): Promise<void> {
   const notifications = getNotifications();
   if (!notifications || !prev) return;
@@ -133,7 +136,11 @@ export async function notifySnapshotDelta(
   const unreadByMe = (m: Message): boolean =>
     role === "gestante" ? !m.readByGestante : !m.readByObstetra;
   const freshMessages = next.messages.filter(
-    (m) => !prevMessageIds.has(m.id) && m.sender !== role && unreadByMe(m),
+    (m) =>
+      !prevMessageIds.has(m.id) &&
+      m.sender !== role &&
+      unreadByMe(m) &&
+      m.convId !== activeConvId,
   );
   if (freshMessages.length === 1) {
     const m = freshMessages[0];

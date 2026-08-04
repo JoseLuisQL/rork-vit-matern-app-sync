@@ -1,12 +1,13 @@
 /**
- * Hilo de mensajes cálido de la gestante ("cuaderno de cuidado"):
- * burbujas redondas con letra a mano, separadores de día, avisos de
- * emergencia como notas suaves (rojo) y de síntomas (ámbar), y una caja
- * de escribir grande. Lo escrito sin señal queda con relojito y se envía
- * solo al reconectar.
+ * Hilo de mensajes cálido de la gestante ("cuaderno de cuidado") con chat en
+ * vivo estilo WhatsApp: palomitas de enviado ✓ / recibido ✓✓ / visto ✓✓ en
+ * color, burbuja "escribiendo…" animada, aviso de teclado hacia la obstetra,
+ * separadores de día y avisos de emergencia como notas ilustradas. Lo escrito
+ * sin señal queda con relojito y se envía solo al reconectar.
  */
-import { Check, CheckCheck, Clock3, Send, Siren, TriangleAlert } from "lucide-react-native";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { Check, CheckCheck, Clock3, Send } from "lucide-react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -26,17 +27,21 @@ import {
   horaDeISO,
   todayKeyLocal,
 } from "@/lib/format";
-import { useApp } from "@/providers/AppProvider";
+import { useApp, usePresence } from "@/providers/AppProvider";
 import type { Message } from "@/types";
 import { PressableScale } from "@/components/PressableScale";
+import { TypingDots } from "@/components/TypingDots";
 import { Illustration } from "./Illustration";
 
 /** Colores de hora y palomitas sobre la burbuja teal. */
 const onTeal = {
   time: "rgba(255,255,255,0.85)",
   tick: "rgba(255,255,255,0.7)",
-  read: "#B9F2E2",
+  read: "#8FF5DC",
 } as const;
+
+/** Tras 3.5 s sin teclear se apaga el "escribiendo…" del otro lado. */
+const TYPING_IDLE_MS = 3500;
 
 interface GChatThreadProps {
   convId: string;
@@ -52,9 +57,23 @@ function diaDelMensaje(iso: string): string {
 }
 
 export function GChatThread({ convId }: GChatThreadProps): React.ReactElement {
-  const { view, dispatch } = useApp();
+  const { view, dispatch, setChatPresence } = useApp();
+  const presence = usePresence("obstetra");
   const [draft, setDraft] = useState<string>("");
+  const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const canSend = draft.trim().length > 0;
+
+  // Con la pantalla abierta se avisa qué conversación se está viendo
+  // (sincronización rápida + no llegan notificaciones de este chat).
+  useFocusEffect(
+    useCallback(() => {
+      setChatPresence(convId, false);
+      return () => {
+        if (typingTimer.current) clearTimeout(typingTimer.current);
+        setChatPresence(null, false);
+      };
+    }, [convId, setChatPresence]),
+  );
 
   const messages = useMemo(() => {
     const list = (view?.messages ?? []).filter((m) => m.convId === convId);
@@ -72,12 +91,41 @@ export function GChatThread({ convId }: GChatThreadProps): React.ReactElement {
     }
   }, [unreadIncoming, convId, dispatch]);
 
+  /** Cada tecla avisa "escribiendo…"; se apaga sola al dejar de teclear. */
+  const handleChangeText = useCallback(
+    (text: string) => {
+      setDraft(text);
+      setChatPresence(convId, text.trim().length > 0);
+      if (typingTimer.current) clearTimeout(typingTimer.current);
+      typingTimer.current = setTimeout(() => setChatPresence(convId, false), TYPING_IDLE_MS);
+    },
+    [convId, setChatPresence],
+  );
+
   const handleSend = useCallback(() => {
     const text = draft.trim();
     if (text.length === 0) return;
+    if (typingTimer.current) clearTimeout(typingTimer.current);
+    setChatPresence(convId, false);
     dispatch({ type: "send_message", convId, text });
     setDraft("");
-  }, [draft, convId, dispatch]);
+  }, [draft, convId, dispatch, setChatPresence]);
+
+  /** Palomitas: reloj (en cola), ✓ enviado, ✓✓ recibido, ✓✓ teal = visto. */
+  const renderTicks = useCallback(
+    (item: Message) => {
+      if (item.pending === true) return <Clock3 size={13} color={onTeal.tick} />;
+      if (item.readByObstetra) return <CheckCheck size={15} color={onTeal.read} />;
+      const delivered =
+        presence?.lastSeenISO != null && presence.lastSeenISO >= item.atISO;
+      return delivered ? (
+        <CheckCheck size={15} color={onTeal.tick} />
+      ) : (
+        <Check size={15} color={onTeal.tick} />
+      );
+    },
+    [presence?.lastSeenISO],
+  );
 
   const renderItem = useCallback(
     ({ item, index }: { item: Message; index: number }) => {
@@ -94,14 +142,12 @@ export function GChatThread({ convId }: GChatThreadProps): React.ReactElement {
         body = (
           <View style={[styles.note, esEmergencia ? styles.noteRoja : styles.noteAmbar]}>
             <View style={styles.noteHeader}>
-              <View style={styles.noteIconCircle}>
-                {esEmergencia ? (
-                  <Siren size={18} color={tinta} strokeWidth={2.4} />
-                ) : (
-                  <TriangleAlert size={18} color={tinta} strokeWidth={2.4} />
-                )}
-              </View>
-              <Text style={[styles.noteTitle, { color: tinta }]} numberOfLines={1}>
+              <Illustration
+                source={esEmergencia ? ILU.sos : ILU.sintomas}
+                width={46}
+                height={46}
+              />
+              <Text style={[styles.noteTitle, { color: tinta }]} numberOfLines={2}>
                 {esEmergencia ? "Pediste ayuda urgente" : "Avisaste tus síntomas"}
               </Text>
             </View>
@@ -119,7 +165,6 @@ export function GChatThread({ convId }: GChatThreadProps): React.ReactElement {
           </View>
         );
       } else {
-        const readByPeer = item.readByObstetra;
         body = (
           <View style={[styles.bubble, own ? styles.bubbleOwn : styles.bubbleOther]}>
             <Text style={[styles.msgText, own && styles.msgTextOwn]}>{item.text}</Text>
@@ -127,15 +172,7 @@ export function GChatThread({ convId }: GChatThreadProps): React.ReactElement {
               <Text style={[styles.msgTime, own && styles.msgTimeOwn]}>
                 {item.pending === true ? "esperando señal" : horaDeISO(item.atISO)}
               </Text>
-              {own ? (
-                item.pending === true ? (
-                  <Clock3 size={13} color={onTeal.tick} />
-                ) : readByPeer ? (
-                  <CheckCheck size={15} color={onTeal.read} />
-                ) : (
-                  <Check size={15} color={onTeal.tick} />
-                )
-              ) : null}
+              {own ? renderTicks(item) : null}
             </View>
           </View>
         );
@@ -152,7 +189,35 @@ export function GChatThread({ convId }: GChatThreadProps): React.ReactElement {
         </View>
       );
     },
-    [messages],
+    [messages, renderTicks],
+  );
+
+  /** Burbuja "escribiendo…" en vivo (lista invertida: header = abajo). */
+  const typingBubble =
+    presence?.typing === true ? (
+      <View style={[styles.bubble, styles.bubbleOther, styles.typingBubble]}>
+        <TypingDots color={gwarm.teal} size={8} />
+      </View>
+    ) : null;
+
+  /** Nota de inicio de conversación (lista invertida: footer = arriba). */
+  const introCard = (
+    <View style={styles.introCard}>
+      <Illustration source={ILU.chatVivo} width={120} height={96} />
+      <Text style={styles.introTitle}>Habla con tu obstetra</Text>
+      <Text style={styles.introText}>
+        Tu mensaje le llega a su teléfono con aviso. Aquí ves cuándo está en
+        línea y cuándo lo leyó.
+      </Text>
+      <View style={styles.legendRow}>
+        <Check size={14} color={gwarm.inkFaint} />
+        <Text style={styles.legendText}>enviado</Text>
+        <CheckCheck size={14} color={gwarm.inkFaint} />
+        <Text style={styles.legendText}>recibido</Text>
+        <CheckCheck size={14} color={gwarm.teal} />
+        <Text style={[styles.legendText, { color: gwarm.teal }]}>visto</Text>
+      </View>
+    </View>
   );
 
   return (
@@ -161,12 +226,15 @@ export function GChatThread({ convId }: GChatThreadProps): React.ReactElement {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       {messages.length === 0 ? (
-        <View style={styles.empty}>
-          <Illustration source={ILU.chat} width={120} height={120} />
-          <Text style={styles.emptyTitle}>Aún no hay mensajes</Text>
-          <Text style={styles.emptyText}>
-            Escríbele a tu obstetra cuando tengas alguna duda. Ella te responderá por aquí.
-          </Text>
+        <View style={styles.flex}>
+          <View style={styles.empty}>
+            <Illustration source={ILU.chatVivo} width={150} height={120} />
+            <Text style={styles.emptyTitle}>Aún no hay mensajes</Text>
+            <Text style={styles.emptyText}>
+              Escríbele a tu obstetra cuando tengas alguna duda. Ella te responderá por aquí.
+            </Text>
+            {typingBubble ? <View style={styles.emptyTyping}>{typingBubble}</View> : null}
+          </View>
         </View>
       ) : (
         <FlatList
@@ -174,6 +242,8 @@ export function GChatThread({ convId }: GChatThreadProps): React.ReactElement {
           keyExtractor={(m) => m.id}
           renderItem={renderItem}
           inverted
+          ListHeaderComponent={typingBubble}
+          ListFooterComponent={introCard}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           testID="chat-thread"
@@ -182,7 +252,7 @@ export function GChatThread({ convId }: GChatThreadProps): React.ReactElement {
       <View style={styles.inputBar}>
         <TextInput
           value={draft}
-          onChangeText={setDraft}
+          onChangeText={handleChangeText}
           placeholder="Escribe un mensaje…"
           placeholderTextColor={gwarm.inkFaint}
           style={styles.input}
@@ -232,6 +302,44 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     overflow: "hidden" as const,
   },
+  introCard: {
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: gwarm.surfaceSoft,
+    borderWidth: 1,
+    borderColor: gwarm.border,
+    borderRadius: 22,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm2,
+  },
+  introTitle: {
+    fontFamily: gfonts.hand,
+    fontSize: 21,
+    lineHeight: 26,
+    color: gwarm.ink,
+    textAlign: "center",
+  },
+  introText: {
+    fontFamily: gfonts.handBody,
+    fontSize: 14.5,
+    lineHeight: 21,
+    color: gwarm.inkSoft,
+    textAlign: "center",
+  },
+  legendRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 2,
+  },
+  legendText: {
+    fontFamily: gfonts.handBody,
+    fontSize: 12.5,
+    lineHeight: 17,
+    color: gwarm.inkFaint,
+    marginRight: 6,
+  },
   bubble: {
     maxWidth: "84%",
     borderRadius: 22,
@@ -250,6 +358,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: gwarm.border,
     borderBottomLeftRadius: 8,
+  },
+  typingBubble: {
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    marginBottom: spacing.xs,
   },
   msgText: {
     fontFamily: gfonts.handBody,
@@ -293,14 +406,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.sm,
   },
-  noteIconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: gwarm.surface,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   noteTitle: {
     fontFamily: gfonts.hand,
     fontSize: 18,
@@ -341,6 +446,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     maxWidth: 280,
   },
+  emptyTyping: { alignSelf: "flex-start", marginTop: spacing.sm },
   inputBar: {
     flexDirection: "row",
     alignItems: "flex-end",

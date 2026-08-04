@@ -1,12 +1,14 @@
 /**
- * Hilo de chat cálido (obstetra ↔ gestante) en tiempo casi real, con el
- * mismo estilo "cuaderno" de toda la app: burbujas redondas con letra a
- * mano, separadores de día y avisos de emergencia como notas suaves.
+ * Hilo de chat cálido (obstetra ↔ gestante) con funciones en vivo estilo
+ * WhatsApp: palomitas de enviado ✓ / recibido ✓✓ / visto ✓✓ en color,
+ * burbuja "escribiendo…" animada, aviso de teclado al otro lado,
+ * separadores de día y avisos de emergencia como notas ilustradas.
  * Los mensajes escritos sin señal se muestran con relojito y se envían
  * solos al reconectar.
  */
-import { Check, CheckCheck, Clock3, Send, Siren, TriangleAlert } from "lucide-react-native";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { Check, CheckCheck, Clock3, Send } from "lucide-react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -17,6 +19,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ILU } from "@/constants/illustrations";
 import { gfonts, gShadow, gwarm, spacing } from "@/constants/theme";
 import {
   addDaysToKey,
@@ -26,9 +29,11 @@ import {
   horaDeISO,
   todayKeyLocal,
 } from "@/lib/format";
-import { useApp } from "@/providers/AppProvider";
+import { useApp, usePresence } from "@/providers/AppProvider";
 import type { Message } from "@/types";
 import { PressableScale } from "@/components/PressableScale";
+import { TypingDots } from "@/components/TypingDots";
+import { Illustration } from "@/components/gestante/Illustration";
 
 /** Colores de hora y palomitas sobre la burbuja de acento. */
 const onAccent = {
@@ -37,11 +42,16 @@ const onAccent = {
   read: "#BDEBFF",
 } as const;
 
+/** Tras 3.5 s sin teclear se apaga el "escribiendo…" del otro lado. */
+const TYPING_IDLE_MS = 3500;
+
 interface ChatThreadProps {
   convId: string;
   accent: string;
   /** Padding inferior extra cuando no hay tab bar debajo. */
   bottomInset?: boolean;
+  /** Nombre corto del interlocutor para la nota de inicio. */
+  peerName?: string;
 }
 
 /** "Hoy" / "Ayer" / "Lunes 3 de agosto" para los separadores del hilo. */
@@ -57,12 +67,27 @@ export function ChatThread({
   convId,
   accent,
   bottomInset = false,
+  peerName,
 }: ChatThreadProps): React.ReactElement {
   const insets = useSafeAreaInsets();
-  const { view, user, dispatch } = useApp();
+  const { view, user, dispatch, setChatPresence } = useApp();
   const [draft, setDraft] = useState<string>("");
+  const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const myRole = user?.role === "obstetra" ? "obstetra" : "gestante";
+  const presence = usePresence(myRole === "gestante" ? "obstetra" : convId);
   const canSend = draft.trim().length > 0;
+
+  // Con la pantalla abierta se avisa qué conversación se está viendo
+  // (sincronización rápida + no llegan notificaciones de este chat).
+  useFocusEffect(
+    useCallback(() => {
+      setChatPresence(convId, false);
+      return () => {
+        if (typingTimer.current) clearTimeout(typingTimer.current);
+        setChatPresence(null, false);
+      };
+    }, [convId, setChatPresence]),
+  );
 
   const messages = useMemo(() => {
     const list = (view?.messages ?? []).filter((m) => m.convId === convId);
@@ -84,17 +109,46 @@ export function ChatThread({
     }
   }, [unreadIncoming, convId, dispatch]);
 
+  /** Cada tecla avisa "escribiendo…"; se apaga sola al dejar de teclear. */
+  const handleChangeText = useCallback(
+    (text: string) => {
+      setDraft(text);
+      setChatPresence(convId, text.trim().length > 0);
+      if (typingTimer.current) clearTimeout(typingTimer.current);
+      typingTimer.current = setTimeout(() => setChatPresence(convId, false), TYPING_IDLE_MS);
+    },
+    [convId, setChatPresence],
+  );
+
   const handleSend = useCallback(() => {
     const text = draft.trim();
     if (text.length === 0) return;
+    if (typingTimer.current) clearTimeout(typingTimer.current);
+    setChatPresence(convId, false);
     dispatch({ type: "send_message", convId, text });
     setDraft("");
-  }, [draft, convId, dispatch]);
+  }, [draft, convId, dispatch, setChatPresence]);
+
+  /** Palomitas: reloj (en cola), ✓ enviado, ✓✓ recibido, ✓✓ celeste = visto. */
+  const renderTicks = useCallback(
+    (item: Message) => {
+      if (item.pending === true) return <Clock3 size={13} color={onAccent.tick} />;
+      const readByPeer = myRole === "gestante" ? item.readByObstetra : item.readByGestante;
+      if (readByPeer) return <CheckCheck size={15} color={onAccent.read} />;
+      const delivered =
+        presence?.lastSeenISO != null && presence.lastSeenISO >= item.atISO;
+      return delivered ? (
+        <CheckCheck size={15} color={onAccent.tick} />
+      ) : (
+        <Check size={15} color={onAccent.tick} />
+      );
+    },
+    [myRole, presence?.lastSeenISO],
+  );
 
   const renderItem = useCallback(
     ({ item, index }: { item: Message; index: number }) => {
       const own = item.sender === myRole;
-      const readByPeer = myRole === "gestante" ? item.readByObstetra : item.readByGestante;
       const older = messages[index + 1];
       const showDay =
         older === undefined || dayKey(new Date(older.atISO)) !== dayKey(new Date(item.atISO));
@@ -107,14 +161,12 @@ export function ChatThread({
         body = (
           <View style={[styles.note, esEmergencia ? styles.noteRoja : styles.noteAmbar]}>
             <View style={styles.noteHeader}>
-              <View style={styles.noteIconCircle}>
-                {esEmergencia ? (
-                  <Siren size={18} color={tinta} strokeWidth={2.4} />
-                ) : (
-                  <TriangleAlert size={18} color={tinta} strokeWidth={2.4} />
-                )}
-              </View>
-              <Text style={[styles.noteTitle, { color: tinta }]} numberOfLines={1}>
+              <Illustration
+                source={esEmergencia ? ILU.sos : ILU.sintomas}
+                width={46}
+                height={46}
+              />
+              <Text style={[styles.noteTitle, { color: tinta }]} numberOfLines={2}>
                 {esEmergencia ? "Pidió ayuda urgente" : "Avisó sus síntomas"}
               </Text>
             </View>
@@ -144,15 +196,7 @@ export function ChatThread({
               <Text style={[styles.msgTime, own && styles.msgTimeOwn]}>
                 {item.pending === true ? "esperando señal" : horaDeISO(item.atISO)}
               </Text>
-              {own ? (
-                item.pending === true ? (
-                  <Clock3 size={13} color={onAccent.tick} />
-                ) : readByPeer ? (
-                  <CheckCheck size={15} color={onAccent.read} />
-                ) : (
-                  <Check size={15} color={onAccent.tick} />
-                )
-              ) : null}
+              {own ? renderTicks(item) : null}
             </View>
           </View>
         );
@@ -169,7 +213,37 @@ export function ChatThread({
         </View>
       );
     },
-    [myRole, accent, messages],
+    [myRole, accent, messages, renderTicks],
+  );
+
+  /** Burbuja "escribiendo…" en vivo (lista invertida: header = abajo). */
+  const typingBubble =
+    presence?.typing === true ? (
+      <View style={[styles.bubble, styles.bubbleOther, styles.typingBubble]}>
+        <TypingDots color={accent} size={8} />
+      </View>
+    ) : null;
+
+  /** Nota de inicio de conversación (lista invertida: footer = arriba). */
+  const introCard = (
+    <View style={styles.introCard}>
+      <Illustration source={ILU.chatVivo} width={116} height={92} />
+      <Text style={styles.introTitle}>
+        {peerName ? `Chat directo con ${peerName}` : "Chat directo"}
+      </Text>
+      <Text style={styles.introText}>
+        Tu mensaje llega a su teléfono con aviso. Aquí ves cuándo está en línea
+        y cuándo lo leyó.
+      </Text>
+      <View style={styles.legendRow}>
+        <Check size={14} color={gwarm.inkFaint} />
+        <Text style={styles.legendText}>enviado</Text>
+        <CheckCheck size={14} color={gwarm.inkFaint} />
+        <Text style={styles.legendText}>recibido</Text>
+        <CheckCheck size={14} color={accent} />
+        <Text style={[styles.legendText, { color: accent }]}>visto</Text>
+      </View>
+    </View>
   );
 
   return (
@@ -182,6 +256,8 @@ export function ChatThread({
         keyExtractor={(m) => m.id}
         renderItem={renderItem}
         inverted
+        ListHeaderComponent={typingBubble}
+        ListFooterComponent={introCard}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         testID="chat-thread"
@@ -194,7 +270,7 @@ export function ChatThread({
       >
         <TextInput
           value={draft}
-          onChangeText={setDraft}
+          onChangeText={handleChangeText}
           placeholder="Escribe un mensaje…"
           placeholderTextColor={gwarm.inkFaint}
           style={styles.input}
@@ -244,6 +320,44 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     overflow: "hidden" as const,
   },
+  introCard: {
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: gwarm.surfaceSoft,
+    borderWidth: 1,
+    borderColor: gwarm.border,
+    borderRadius: 22,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.sm2,
+  },
+  introTitle: {
+    fontFamily: gfonts.hand,
+    fontSize: 20,
+    lineHeight: 25,
+    color: gwarm.ink,
+    textAlign: "center",
+  },
+  introText: {
+    fontFamily: gfonts.handBody,
+    fontSize: 14,
+    lineHeight: 20,
+    color: gwarm.inkSoft,
+    textAlign: "center",
+  },
+  legendRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 2,
+  },
+  legendText: {
+    fontFamily: gfonts.handBody,
+    fontSize: 12.5,
+    lineHeight: 17,
+    color: gwarm.inkFaint,
+    marginRight: 6,
+  },
   bubble: {
     maxWidth: "84%",
     borderRadius: 22,
@@ -261,6 +375,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: gwarm.border,
     borderBottomLeftRadius: 8,
+  },
+  typingBubble: {
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    marginBottom: spacing.xs,
   },
   msgText: {
     fontFamily: gfonts.handBody,
@@ -303,14 +422,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
-  },
-  noteIconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: gwarm.surface,
-    alignItems: "center",
-    justifyContent: "center",
   },
   noteTitle: {
     fontFamily: gfonts.hand,

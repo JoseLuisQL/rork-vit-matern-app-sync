@@ -42,6 +42,14 @@ export const ILU = {
   carnet: `${R2}/4a7249b9-89a8-487a-89f1-04223a4d83df.png`,
   /** Estetoscopio que forma un corazón (bloque "Su salud"). */
   estetoscopio: `${R2}/22019f07-b430-47b1-85c9-bc1716424966.png`,
+  /** Dos telefonitos conversando con un corazón (chat en vivo). */
+  chatVivo: `${R2}/69e0bf0c-cb86-470b-a1fa-4adc90fea5f4.png`,
+  /** Botón rojo de ayuda con corazón y ondas (SOS / emergencia). */
+  sos: `${R2}/0ee88932-8daa-4af9-9c7a-8b19fa4d673c.png`,
+  /** Mano con globo de aviso ámbar (reporte de síntomas). */
+  sintomas: `${R2}/77f2592e-ae32-43b1-b9ba-d794fcbe99ed.png`,
+  /** Campanita dormida bajo la luna (sin alertas pendientes). */
+  calma: `${R2}/8231e083-e646-4a2b-a512-812396724425.png`,
 } as const;
 
 /** Iconos dibujados a crayola para pestañas, bloques y recordatorios. */

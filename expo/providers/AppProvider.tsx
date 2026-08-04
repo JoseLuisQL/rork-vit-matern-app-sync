@@ -28,6 +28,7 @@ import type {
   ClientAction,
   LoginResponse,
   PatientView,
+  PresenceView,
   Snapshot,
   SyncResponse,
   User,
@@ -86,11 +87,18 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [readArticles, setReadArticles] = useState<string[]>([]);
   const [reminders, setRemindersInternal] = useState<ReminderSettings>(DEFAULT_REMINDERS);
+  /** Conversación abierta en pantalla: acelera el pulso de sincronización. */
+  const [activeConvId, setActiveConvId] = useState<string | null>(null);
 
   const sessionRef = useRef<SessionState | null>(null);
   const outboxRef = useRef<ClientAction[]>([]);
   const cachedRef = useRef<Snapshot | null>(null);
   const syncOkRef = useRef<boolean>(false);
+  /** Presencia que viaja con cada sincronización (chat abierto + teclado). */
+  const chatPresenceRef = useRef<{ convId: string | null; typing: boolean }>({
+    convId: null,
+    typing: false,
+  });
 
   // ---------- Hidratación inicial ----------
   useEffect(() => {
@@ -204,7 +212,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
   useQuery({
     queryKey: ["sync", session?.token ?? "none"],
     enabled: hydrated && session !== null,
-    refetchInterval: 4000,
+    // Con un chat abierto el pulso baja a 2 s: presencia y "escribiendo" en vivo.
+    refetchInterval: activeConvId !== null ? 2000 : 4000,
     retry: false,
     gcTime: 60_000,
     queryFn: async (): Promise<Snapshot> => {
@@ -216,7 +225,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       try {
         const res = await api<SyncResponse>("/api/sync", {
           token: s.token,
-          body: { actions: pending },
+          body: { actions: pending, presence: chatPresenceRef.current },
         });
         const acked = new Set(res.results.map((r) => r.id));
         const rejected = res.results.filter((r) => !r.ok);
@@ -235,8 +244,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
           showToast("Volvió la señal: tus cambios guardados ya se enviaron", "success");
         }
         if (Platform.OS !== "web") {
-          notifySnapshotDelta(prevSnapshot, res.snapshot).catch((err) =>
-            console.log("[VitMaterna] aviso nativo:", err),
+          notifySnapshotDelta(prevSnapshot, res.snapshot, chatPresenceRef.current.convId).catch(
+            (err) => console.log("[VitMaterna] aviso nativo:", err),
           );
         }
         return res.snapshot;
@@ -251,6 +260,25 @@ export const [AppProvider, useApp] = createContextHook(() => {
       }
     },
   });
+
+  /**
+   * El chat abierto informa su presencia: qué conversación se está viendo y
+   * si se está escribiendo. Al empezar a escribir se sincroniza al instante
+   * para que el otro lado vea "Escribiendo…" sin esperar el siguiente pulso.
+   */
+  const setChatPresence = useCallback(
+    (convId: string | null, typing: boolean) => {
+      const prev = chatPresenceRef.current;
+      const next = { convId, typing: typing && convId !== null };
+      if (prev.convId === next.convId && prev.typing === next.typing) return;
+      chatPresenceRef.current = next;
+      setActiveConvId(next.convId);
+      if (next.typing && !prev.typing) {
+        void queryClient.invalidateQueries({ queryKey: ["sync"] });
+      }
+    },
+    [queryClient],
+  );
 
   /** Encola una acción, la aplica optimistamente y dispara el envío. */
   const dispatch = useCallback(
@@ -381,6 +409,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       adminSetActive,
       adminReset,
       setAvatar,
+      setChatPresence,
       readArticles,
       markArticleRead,
       reminders,
@@ -405,6 +434,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       adminSetActive,
       adminReset,
       setAvatar,
+      setChatPresence,
       readArticles,
       markArticleRead,
       reminders,
@@ -430,6 +460,15 @@ export function usePatient(patientId: string | undefined): PatientView | null {
 export function useMyPatient(): PatientView | null {
   const { user } = useApp();
   return usePatient(user?.patientId);
+}
+
+/**
+ * Presencia del interlocutor de una conversación: la gestante usa la clave
+ * "obstetra" y la obstetra el id de la paciente. Null mientras no haya datos.
+ */
+export function usePresence(key: string | undefined): PresenceView | null {
+  const { view } = useApp();
+  return useMemo(() => (key ? view?.presence?.[key] ?? null : null), [view?.presence, key]);
 }
 
 /** Mensajes sin leer para el rol actual (opcionalmente de una conversación). */

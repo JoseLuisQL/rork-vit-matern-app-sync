@@ -32,6 +32,7 @@ import type {
   Message,
   Patient,
   PatientView,
+  PresenceView,
   PublicUser,
   ReportBlock,
   RiskLevel,
@@ -44,6 +45,28 @@ import type {
 
 const STATE_KEY = "state";
 const ACTIVE_APPT_STATES = ["programada", "confirmada", "solicitud_reprogramacion"] as const;
+
+/**
+ * Presencia de chat (efímera, solo en memoria del objeto): si el objeto se
+ * recicla, todos aparecen "sin conexión" unos segundos y se recupera solo
+ * con la siguiente sincronización de cada teléfono.
+ */
+interface PresenceRecord {
+  lastSeenISO: string;
+  typingConvId: string | null;
+  typingAtISO: string | null;
+}
+
+/** En línea si sincronizó hace menos de 15 s (el cliente lo hace cada 2–4 s). */
+const ONLINE_WINDOW_MS = 15_000;
+/** "Escribiendo…" válido por 8 s desde el último aviso del teclado. */
+const TYPING_WINDOW_MS = 8_000;
+
+/** Aviso de presencia que el cliente adjunta a cada sincronización. */
+interface PresenceInput {
+  convId?: string | null;
+  typing?: boolean;
+}
 
 /** Las fotos de perfil se guardan en claves separadas (límite por valor del storage). */
 const AVATAR_PREFIX = "avatar:";
@@ -101,6 +124,8 @@ function sanitizeSupplementFields(
 
 export class VitmaternaStore extends DurableObject {
   private db: DBState | null = null;
+  /** Última conexión y "escribiendo" por DNI (no se persiste a propósito). */
+  private presence = new Map<string, PresenceRecord>();
 
   private async load(): Promise<DBState> {
     if (this.db) return this.db;
@@ -141,6 +166,7 @@ export class VitmaternaStore extends DurableObject {
       if (!user) {
         return json({ error: "Sesión inválida o cuenta desactivada" }, 401);
       }
+      this.touchPresence(user);
 
       switch (path) {
         case "/api/sync":
@@ -189,6 +215,7 @@ export class VitmaternaStore extends DurableObject {
     }
     const token = crypto.randomUUID();
     db.sessions[token] = { dni: user.dni, atISO: new Date().toISOString() };
+    this.touchPresence(user);
     const tokens = Object.keys(db.sessions);
     if (tokens.length > 120) {
       tokens
@@ -204,7 +231,11 @@ export class VitmaternaStore extends DurableObject {
   // ---------- Sincronización (cola offline) ----------
 
   private async handleSync(request: Request, db: DBState, user: StoredUser): Promise<Response> {
-    const body = (await request.json()) as { actions?: ClientAction[] };
+    const body = (await request.json()) as {
+      actions?: ClientAction[];
+      presence?: PresenceInput;
+    };
+    this.touchPresence(user, body.presence ?? {});
     const actions = Array.isArray(body.actions) ? body.actions : [];
     const results: ActionResult[] = [];
     let mutated = false;
@@ -453,6 +484,75 @@ export class VitmaternaStore extends DurableObject {
       default:
         return "Acción desconocida";
     }
+  }
+
+  // ---------- Presencia de chat (en línea / última vez / escribiendo) ----------
+
+  /**
+   * Marca al usuario como visto ahora. Si llega aviso de teclado, registra en
+   * qué conversación escribe (la gestante solo puede escribir en la suya).
+   */
+  private touchPresence(user: StoredUser, typing?: PresenceInput): void {
+    const nowISO = new Date().toISOString();
+    const rec = this.presence.get(user.dni) ?? {
+      lastSeenISO: nowISO,
+      typingConvId: null,
+      typingAtISO: null,
+    };
+    rec.lastSeenISO = nowISO;
+    if (typing !== undefined) {
+      const convId = typeof typing.convId === "string" ? typing.convId : null;
+      const allowed =
+        user.role === "gestante" ? convId !== null && convId === (user.patientId ?? null) : true;
+      if (typing.typing === true && convId !== null && allowed) {
+        rec.typingConvId = convId;
+        rec.typingAtISO = nowISO;
+      } else {
+        rec.typingConvId = null;
+        rec.typingAtISO = null;
+      }
+    }
+    this.presence.set(user.dni, rec);
+  }
+
+  /** Estado combinado de uno o varios DNI respecto a una conversación. */
+  private presenceViewOf(dnis: string[], convId: string, nowMs: number): PresenceView {
+    let lastSeenISO: string | null = null;
+    let online = false;
+    let typing = false;
+    for (const dni of dnis) {
+      const rec = this.presence.get(dni);
+      if (!rec) continue;
+      if (lastSeenISO === null || rec.lastSeenISO > lastSeenISO) lastSeenISO = rec.lastSeenISO;
+      if (nowMs - Date.parse(rec.lastSeenISO) <= ONLINE_WINDOW_MS) online = true;
+      if (
+        rec.typingConvId === convId &&
+        rec.typingAtISO !== null &&
+        nowMs - Date.parse(rec.typingAtISO) <= TYPING_WINDOW_MS
+      ) {
+        typing = true;
+      }
+    }
+    return { online, lastSeenISO, typing };
+  }
+
+  /**
+   * Presencia visible por rol: la gestante ve al equipo obstétrico bajo la
+   * clave "obstetra"; la obstetra (y admin) ve a cada gestante por el id de
+   * su ficha, que es también el id de la conversación.
+   */
+  private presenceFor(user: StoredUser, db: DBState): Record<string, PresenceView> {
+    const nowMs = Date.now();
+    const result: Record<string, PresenceView> = {};
+    if (user.role === "gestante") {
+      const obstetras = db.users.filter((u) => u.role === "obstetra" && u.active).map((u) => u.dni);
+      result.obstetra = this.presenceViewOf(obstetras, user.patientId ?? "", nowMs);
+    } else {
+      db.patients.forEach((p) => {
+        result[p.id] = this.presenceViewOf([p.dni], p.id, nowMs);
+      });
+    }
+    return result;
   }
 
   private pushMessage(db: DBState, msg: Message): void {
@@ -943,6 +1043,7 @@ export class VitmaternaStore extends DurableObject {
       messages: isGestante ? db.messages.filter((m) => m.convId === pid) : db.messages,
       alerts: scopeById(db.alerts),
       visits: scopeById(db.visits),
+      presence: this.presenceFor(user, db),
     };
 
     if (user.role === "admin") {
