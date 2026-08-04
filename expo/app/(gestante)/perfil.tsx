@@ -7,9 +7,10 @@ import { LogOut } from "lucide-react-native";
 import React, { useCallback } from "react";
 import { ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { gfonts, gwarm, semantic, spacing } from "@/constants/theme";
-import { GICON, ILU } from "@/constants/illustrations";
+import { GICON, ILU, TOASTILU } from "@/constants/illustrations";
 import { confirmAction, showNotice } from "@/lib/confirm";
 import { fechaCompleta } from "@/lib/format";
+import { playAppSound } from "@/lib/sounds";
 import {
   REMINDER_HOURS,
   REMINDERS_SUPPORTED,
@@ -17,6 +18,7 @@ import {
 } from "@/lib/notifications";
 import { useApp, useMyPatient } from "@/providers/AppProvider";
 import { AppButton } from "@/components/AppButton";
+import { useToast } from "@/components/Toast";
 import { PressableScale } from "@/components/PressableScale";
 import { ProfilePhoto } from "@/components/ProfilePhoto";
 import { GHeader } from "@/components/gestante/GHeader";
@@ -34,8 +36,24 @@ function InfoRow({ label, value }: { label: string; value: string }): React.Reac
 
 export default function PerfilGestante(): React.ReactElement {
   const router = useRouter();
-  const { user, view, logout, pendingCount, reminders, setReminders } = useApp();
+  const { user, view, logout, pendingCount, reminders, setReminders, soundsEnabled, setSoundsEnabled } =
+    useApp();
+  const { show: showToast } = useToast();
   const patient = useMyPatient();
+
+  /** Al encender suena una muestra para que escuche cómo avisan los mensajes. */
+  const toggleSounds = useCallback(
+    (value: boolean) => {
+      setSoundsEnabled(value);
+      if (value) {
+        playAppSound("mensaje");
+        showToast("Sonidos activados: así suenan tus mensajes", "success");
+      } else {
+        showToast("Sonidos apagados. El SOS seguirá vibrando", "info");
+      }
+    },
+    [setSoundsEnabled, showToast],
+  );
 
   const toggleTomas = useCallback(
     async (value: boolean) => {
@@ -203,6 +221,26 @@ export default function PerfilGestante(): React.ReactElement {
           </View>
         </SoftCard>
 
+        <Text style={styles.sectionTitle}>Sonidos</Text>
+        <SoftCard style={styles.card}>
+          <View style={styles.switchRow}>
+            <View style={[styles.switchIcon, styles.soundIcon]}>
+              <Illustration source={TOASTILU.aviso} width={26} height={26} />
+            </View>
+            <View style={styles.flex}>
+              <Text style={styles.switchTitle}>Sonidos de los avisos</Text>
+              <Text style={styles.switchText}>Al llegar mensajes, citas o pastillas nuevas</Text>
+            </View>
+            <Switch
+              value={soundsEnabled}
+              onValueChange={toggleSounds}
+              trackColor={{ true: gwarm.teal, false: gwarm.borderStrong }}
+              thumbColor="#FFFFFF"
+              testID="switch-sonidos"
+            />
+          </View>
+        </SoftCard>
+
         <Text style={styles.sectionTitle}>Cuenta</Text>
         <AppButton
           title="Cerrar sesión"
@@ -292,6 +330,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  soundIcon: { backgroundColor: gwarm.amberSoft },
   switchTitle: {
     fontFamily: gfonts.hand,
     fontSize: 18,

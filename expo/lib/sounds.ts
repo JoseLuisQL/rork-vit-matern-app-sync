@@ -30,6 +30,24 @@ const VOLUMES: Record<AppSound, number> = { mensaje: 0.85, aviso: 0.9, sos: 1 };
 const players: Partial<Record<AppSound, AudioPlayer>> = {};
 let audioModeSet = false;
 
+/**
+ * Preferencia "Sonidos de los avisos" del perfil. El proveedor central la
+ * carga guardada del teléfono al abrir la app y la actualiza al mover el
+ * interruptor. Apagada: la app queda en silencio (los avisos nativos usan
+ * el sonido estándar del sistema) pero el SOS sigue vibrando.
+ */
+let soundsEnabled = true;
+
+/** Actualiza la preferencia de sonidos personalizados. */
+export function setSoundsPreference(enabled: boolean): void {
+  soundsEnabled = enabled;
+}
+
+/** Preferencia actual de sonidos personalizados. */
+export function areSoundsEnabled(): boolean {
+  return soundsEnabled;
+}
+
 /** Sonidos cortos que se mezclan con otra música sin interrumpirla. */
 function ensureAudioMode(): void {
   if (audioModeSet) return;
@@ -48,19 +66,23 @@ function ensureAudioMode(): void {
  */
 export function playAppSound(kind: AppSound): void {
   if (AppState.currentState !== "active") return;
-  try {
-    ensureAudioMode();
-    let player = players[kind];
-    if (!player) {
-      player = createAudioPlayer(SOURCES[kind]);
-      player.volume = VOLUMES[kind];
-      players[kind] = player;
+  if (soundsEnabled) {
+    try {
+      ensureAudioMode();
+      let player = players[kind];
+      if (!player) {
+        player = createAudioPlayer(SOURCES[kind]);
+        player.volume = VOLUMES[kind];
+        players[kind] = player;
+      }
+      player.seekTo(0).catch(() => {});
+      player.play();
+    } catch (e) {
+      console.log("[VitMaterna] sonido:", e);
     }
-    player.seekTo(0).catch(() => {});
-    player.play();
-  } catch (e) {
-    console.log("[VitMaterna] sonido:", e);
   }
+  // La vibración del SOS se mantiene aunque los sonidos estén apagados:
+  // una emergencia nunca debe pasar desapercibida.
   if (kind === "sos" && Platform.OS !== "web") {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
   }

@@ -11,6 +11,7 @@
 import Constants, { ExecutionEnvironment } from "expo-constants";
 import { Platform } from "react-native";
 import { dateFromKey, fechaLarga } from "@/lib/format";
+import { areSoundsEnabled } from "@/lib/sounds";
 import type { Message, Snapshot } from "@/types";
 
 export interface ReminderSettings {
@@ -58,10 +59,13 @@ const SOUND_FILE: Record<NotificationKind, string> = {
 /**
  * Sonido nativo por tipo de aviso. Expo Go no incluye archivos de sonido
  * personalizados (usa el del sistema); en la app instalada suenan los
- * archivos a medida declarados en app.json (assets/sounds).
+ * archivos a medida declarados en app.json (assets/sounds). Si la usuaria
+ * apagó los sonidos personalizados en su perfil, se usa el sonido estándar
+ * del teléfono (en Android instalado, el canal conserva su sonido propio
+ * porque el sistema no permite cambiarlo después de crearlo).
  */
 function nativeSound(kind: NotificationKind): string {
-  return isExpoGo ? "default" : SOUND_FILE[kind];
+  return isExpoGo || !areSoundsEnabled() ? "default" : SOUND_FILE[kind];
 }
 
 type NotificationsModule = typeof import("expo-notifications");

@@ -21,7 +21,7 @@ import {
   requestNotificationPermission,
   syncReminders,
 } from "@/lib/notifications";
-import { playSnapshotSounds } from "@/lib/sounds";
+import { playSnapshotSounds, setSoundsPreference } from "@/lib/sounds";
 import { useToast } from "@/components/Toast";
 import { todayKeyLocal } from "@/lib/format";
 import type {
@@ -38,6 +38,7 @@ import type {
 const SESSION_KEY = "vm_session_v3";
 const ARTICLES_KEY = "vm_articles_v1";
 const REMINDERS_KEY = "vm_reminders_v1";
+const SOUNDS_KEY = "vm_sounds_v1";
 const snapKey = (dni: string) => `vm_snap_v3_${dni}`;
 const outKey = (dni: string) => `vm_outbox_v3_${dni}`;
 
@@ -88,6 +89,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [readArticles, setReadArticles] = useState<string[]>([]);
   const [reminders, setRemindersInternal] = useState<ReminderSettings>(DEFAULT_REMINDERS);
+  /** Sonidos personalizados de los avisos (preferencia local del perfil). */
+  const [soundsEnabled, setSoundsEnabledState] = useState<boolean>(true);
   /** Conversación abierta en pantalla: acelera el pulso de sincronización. */
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
 
@@ -112,14 +115,20 @@ export const [AppProvider, useApp] = createContextHook(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [rawSession, rawArticles, rawReminders] = await Promise.all([
+        const [rawSession, rawArticles, rawReminders, rawSounds] = await Promise.all([
           AsyncStorage.getItem(SESSION_KEY),
           AsyncStorage.getItem(ARTICLES_KEY),
           AsyncStorage.getItem(REMINDERS_KEY),
+          AsyncStorage.getItem(SOUNDS_KEY),
         ]);
         if (rawArticles && !cancelled) setReadArticles(JSON.parse(rawArticles) as string[]);
         if (rawReminders && !cancelled) {
           setRemindersInternal({ ...DEFAULT_REMINDERS, ...(JSON.parse(rawReminders) as ReminderSettings) });
+        }
+        if (rawSounds !== null && !cancelled) {
+          const enabled = JSON.parse(rawSounds) === true;
+          setSoundsEnabledState(enabled);
+          setSoundsPreference(enabled);
         }
         if (rawSession) {
           const s = JSON.parse(rawSession) as SessionState;
@@ -383,6 +392,13 @@ export const [AppProvider, useApp] = createContextHook(() => {
     AsyncStorage.setItem(REMINDERS_KEY, JSON.stringify(next)).catch(() => {});
   }, []);
 
+  /** Activa o apaga los sonidos personalizados y guarda la preferencia. */
+  const setSoundsEnabled = useCallback((value: boolean) => {
+    setSoundsEnabledState(value);
+    setSoundsPreference(value);
+    AsyncStorage.setItem(SOUNDS_KEY, JSON.stringify(value)).catch(() => {});
+  }, []);
+
   const myPatient = useMemo<PatientView | null>(() => {
     if (!view || session?.user.role !== "gestante") return null;
     return view.patients.find((p) => p.id === session.user.patientId) ?? null;
@@ -392,6 +408,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const apptDateKey = myPatient?.nextAppointment?.dateKey ?? null;
   const apptTime = myPatient?.nextAppointment?.time ?? null;
 
+  // `soundsEnabled` reprograma los recordatorios para que usen el sonido
+  // personalizado o el estándar del teléfono según la preferencia.
   useEffect(() => {
     if (!hydrated || Platform.OS === "web") return;
     if (!session || session.user.role !== "gestante") return;
@@ -399,7 +417,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       reminders,
       apptDateKey && apptTime ? { dateKey: apptDateKey, time: apptTime } : null,
     ).catch((e) => console.log("[VitMaterna] recordatorios:", e));
-  }, [hydrated, session, reminders, apptId, apptDateKey, apptTime]);
+  }, [hydrated, session, reminders, apptId, apptDateKey, apptTime, soundsEnabled]);
 
   const clearAuthNotice = useCallback(() => setAuthNotice(null), []);
 
@@ -428,6 +446,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
       markArticleRead,
       reminders,
       setReminders,
+      soundsEnabled,
+      setSoundsEnabled,
     }),
     [
       hydrated,
@@ -453,6 +473,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
       markArticleRead,
       reminders,
       setReminders,
+      soundsEnabled,
+      setSoundsEnabled,
     ],
   );
 });

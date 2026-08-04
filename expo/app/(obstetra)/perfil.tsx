@@ -2,15 +2,19 @@
 import { useRouter } from "expo-router";
 import { LogOut } from "lucide-react-native";
 import React, { useCallback } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { gfonts, gwarm, warmBlue } from "@/constants/theme";
+import { TOASTILU } from "@/constants/illustrations";
 import { confirmAction } from "@/lib/confirm";
+import { playAppSound } from "@/lib/sounds";
 import { useApp, usePatients } from "@/providers/AppProvider";
 import { AppButton } from "@/components/AppButton";
 import { Card } from "@/components/Card";
 import { ProfilePhoto } from "@/components/ProfilePhoto";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SectionHeader } from "@/components/SectionHeader";
+import { useToast } from "@/components/Toast";
+import { Illustration } from "@/components/gestante/Illustration";
 
 function InfoRow({ label, value }: { label: string; value: string }): React.ReactElement {
   return (
@@ -23,8 +27,23 @@ function InfoRow({ label, value }: { label: string; value: string }): React.Reac
 
 export default function PerfilObstetra(): React.ReactElement {
   const router = useRouter();
-  const { user, view, logout, pendingCount } = useApp();
+  const { user, view, logout, pendingCount, soundsEnabled, setSoundsEnabled } = useApp();
+  const { show: showToast } = useToast();
   const patients = usePatients();
+
+  /** Al encender suena una muestra para escuchar cómo avisan los mensajes. */
+  const toggleSounds = useCallback(
+    (value: boolean) => {
+      setSoundsEnabled(value);
+      if (value) {
+        playAppSound("mensaje");
+        showToast("Sonidos activados: así suenan los mensajes", "success");
+      } else {
+        showToast("Sonidos apagados. El SOS seguirá vibrando", "info");
+      }
+    },
+    [setSoundsEnabled, showToast],
+  );
 
   const handleLogout = useCallback(async () => {
     const warning =
@@ -74,6 +93,26 @@ export default function PerfilObstetra(): React.ReactElement {
           <InfoRow label="Centro" value={view.center.name} />
         </Card>
 
+        <SectionHeader title="Sonidos" />
+        <Card style={styles.card}>
+          <View style={styles.switchRow}>
+            <View style={styles.switchIcon}>
+              <Illustration source={TOASTILU.aviso} width={24} height={24} />
+            </View>
+            <View style={styles.flex}>
+              <Text style={styles.switchTitle}>Sonidos de los avisos</Text>
+              <Text style={styles.switchText}>Mensajes de tus gestantes y alertas SOS</Text>
+            </View>
+            <Switch
+              value={soundsEnabled}
+              onValueChange={toggleSounds}
+              trackColor={{ true: warmBlue.main, false: gwarm.borderStrong }}
+              thumbColor="#FFFFFF"
+              testID="switch-sonidos"
+            />
+          </View>
+        </Card>
+
         <SectionHeader title="Cuenta" />
         <AppButton
           title="Cerrar sesión"
@@ -118,6 +157,31 @@ const styles = StyleSheet.create({
     textAlign: "center" as const,
   },
   card: { gap: 10 },
+  switchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  switchIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: gwarm.amberSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  switchTitle: {
+    fontFamily: gfonts.hand,
+    fontSize: 17,
+    lineHeight: 22,
+    color: gwarm.ink,
+  },
+  switchText: {
+    fontFamily: gfonts.handBody,
+    fontSize: 13.5,
+    lineHeight: 18,
+    color: gwarm.inkSoft,
+  },
   infoRow: {
     flexDirection: "row",
     alignItems: "center",
