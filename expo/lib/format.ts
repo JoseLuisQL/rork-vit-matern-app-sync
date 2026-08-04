@@ -105,6 +105,16 @@ export function etiquetaRelativa(targetKey: string, todayKey: string): string {
   return fechaCorta(key);
 }
 
+/** "09:00" → "9:00 de la mañana" (hora en palabras, lectura fácil). */
+export function horaAmigable(time: string): string {
+  const h = parseInt(time.slice(0, 2), 10);
+  if (isNaN(h)) return time;
+  const min = time.slice(3, 5) || "00";
+  const suffix = h < 12 ? "de la mañana" : h < 19 ? "de la tarde" : "de la noche";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${min} ${suffix}`;
+}
+
 /** "09:24" a partir de un ISO completo. */
 export function horaDeISO(iso: string): string {
   const d = new Date(iso);

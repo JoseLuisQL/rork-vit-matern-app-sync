@@ -1,7 +1,7 @@
 /** Sección de la gestante: tabs + pantallas apiladas (alarmas, perfil, artículo). */
 import { Redirect, Stack } from "expo-router";
 import React from "react";
-import { common } from "@/constants/theme";
+import { gwarm } from "@/constants/theme";
 import { useApp } from "@/providers/AppProvider";
 
 export default function GestanteLayout(): React.ReactElement | null {
@@ -14,7 +14,7 @@ export default function GestanteLayout(): React.ReactElement | null {
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: common.background },
+        contentStyle: { backgroundColor: gwarm.bg },
       }}
     >
       <Stack.Screen name="(tabs)" />

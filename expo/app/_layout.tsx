@@ -1,4 +1,5 @@
 /** VITMATERNA — Layout raíz: fuentes Inter, React Query, proveedor central y notificaciones. */
+import "@/lib/warnings";
 import {
   Inter_400Regular,
   Inter_500Medium,

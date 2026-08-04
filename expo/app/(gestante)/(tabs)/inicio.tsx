@@ -1,48 +1,46 @@
 /**
- * Inicio de la gestante — saludo con foto de perfil y 4 bloques grandes
- * en orden: 1) tu semana de embarazo, 2) tu próxima cita con "Sí, iré",
- * 3) tus pastillas de hoy, 4) el botón rojo de ayuda. Los consejos se
- * abren desde el botón del final.
+ * Inicio de la gestante — "cuaderno de cuidado".
+ * Diseñado para usuarias rurales con poca lectura: una idea por tarjeta,
+ * ilustraciones que se entienden sin leer, botones gigantes y entrada
+ * escalonada suave. Orden lógico: mi embarazo → mi cita → mis pastillas →
+ * ayuda → consejos.
  */
 import { useRouter } from "expo-router";
-import { BookOpen, Check, CheckCircle2, ChevronRight, MapPin, Siren } from "lucide-react-native";
+import { Baby, ChevronRight, Pill, Siren } from "lucide-react-native";
 import React, { useCallback, useMemo } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import {
-  common,
-  gestanteTheme,
-  radius,
-  semantic,
-  spacing,
-  type,
-  withAlpha,
-} from "@/constants/theme";
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { fonts, gwarm, spacing } from "@/constants/theme";
+import { ILU } from "@/constants/illustrations";
 import { avatarUri } from "@/lib/api";
 import { confirmAction } from "@/lib/confirm";
-import { capitalize, etiquetaRelativa, fechaCompleta, fechaLarga } from "@/lib/format";
+import { capitalize, fechaCompleta, fechaLarga } from "@/lib/format";
 import { useApp, useMyPatient } from "@/providers/AppProvider";
 import { AppButton } from "@/components/AppButton";
-import { Card } from "@/components/Card";
-import { HomeHeader } from "@/components/HomeHeader";
+import { Avatar } from "@/components/Avatar";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import { PressableScale } from "@/components/PressableScale";
-
-const accent = gestanteTheme;
+import { AnimatedBar } from "@/components/gestante/AnimatedBar";
+import { BigCheckRow } from "@/components/gestante/BigCheckRow";
+import { BlockTitle } from "@/components/gestante/BlockTitle";
+import { Celebration } from "@/components/gestante/Celebration";
+import { CitaProxima } from "@/components/gestante/CitaProxima";
+import { Illustration } from "@/components/gestante/Illustration";
+import { PopIn } from "@/components/gestante/PopIn";
+import { SoftCard } from "@/components/gestante/SoftCard";
 
 export default function InicioGestante(): React.ReactElement {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { view, todayKey, dispatch, user } = useApp();
   const patient = useMyPatient();
 
   const nextAppt = useMemo(() => {
     if (!patient?.nextAppointment || !view) return null;
-    return view.appointments.find((a) => a.id === patient.nextAppointment?.id) ?? patient.nextAppointment;
+    return (
+      view.appointments.find((a) => a.id === patient.nextAppointment?.id) ??
+      patient.nextAppointment
+    );
   }, [patient, view]);
 
   const todayIntakes = useMemo(() => {
@@ -77,265 +75,304 @@ export default function InicioGestante(): React.ReactElement {
   if (!patient || !view || !user) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator color={accent.primary} />
+        <ActivityIndicator color={gwarm.teal} />
         <Text style={styles.loadingText}>Cargando tu información…</Text>
       </View>
     );
   }
 
-  const weeksProgress = Math.min(1, patient.weeks / 40);
+  const weeks = patient.weeks;
+  const remaining = Math.max(0, 40 - weeks);
+  const hour = new Date().getHours();
+  const saludo = hour < 12 ? "Buenos días" : hour < 19 ? "Buenas tardes" : "Buenas noches";
 
   return (
     <View style={styles.container}>
-      <HomeHeader
-        overline={fechaLarga(todayKey)}
-        title={`Hola, ${user.firstName}`}
-        avatarUri={avatarUri(user.dni, user.avatarVersion)}
-        accentColor={accent.primary}
-        accentBackground={accent.primaryLight}
-        onAvatarPress={() => router.push("/(gestante)/perfil")}
-      />
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm2 }]}>
+        <View style={styles.headerInfo}>
+          <Text style={styles.headerDate} numberOfLines={1}>
+            {capitalize(fechaLarga(todayKey))}
+          </Text>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {saludo}, {user.firstName}
+          </Text>
+        </View>
+        <PressableScale
+          onPress={() => router.push("/(gestante)/perfil")}
+          accessibilityLabel="Mi perfil"
+          testID="btn-perfil"
+        >
+          <Avatar
+            uri={avatarUri(user.dni, user.avatarVersion)}
+            color={gwarm.teal}
+            background={gwarm.tealSoft}
+            size={52}
+          />
+        </PressableScale>
+      </View>
+      <OfflineBanner />
+
       <ScrollView
         style={styles.flex}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <Card style={styles.block}>
-          <Text style={styles.kicker}>Mi embarazo</Text>
-          <Text style={styles.weekTitle}>
-            Estás en la semana <Text style={{ color: accent.primary }}>{patient.weeks}</Text>
-          </Text>
-          <View style={styles.track}>
-            <View style={[styles.fill, { width: `${Math.max(weeksProgress * 100, 4)}%` }]} />
-          </View>
-          <Text style={styles.weekMeta}>
-            Tu bebé nacería alrededor del {fechaCompleta(patient.fppKey)}.
-          </Text>
-        </Card>
-
-        <Card style={styles.block}>
-          <Text style={styles.kicker}>Mi próxima cita</Text>
-          {nextAppt ? (
-            <>
-              <Text style={[styles.apptWhen, { color: accent.primary }]}>
-                {etiquetaRelativa(nextAppt.dateKey, todayKey)}
-              </Text>
-              <Text style={styles.apptDate}>
-                {capitalize(fechaLarga(nextAppt.dateKey))} · {nextAppt.time}
-              </Text>
-              <View style={styles.apptPlaceRow}>
-                <MapPin size={15} color={common.textTertiary} />
-                <Text style={styles.apptPlace}>{nextAppt.lugar}</Text>
+        <PopIn delay={0}>
+          <SoftCard style={styles.babyCard}>
+            <View style={styles.babyRow}>
+              <View style={styles.babyInfo}>
+                <Text style={styles.babyKicker}>Mi embarazo</Text>
+                <Text style={styles.weekBig}>
+                  Semana <Text style={styles.weekNum}>{weeks}</Text>
+                </Text>
+                <Text style={styles.babyMeta}>
+                  {remaining > 0
+                    ? `Faltan ${remaining} semanas para conocer a tu bebé`
+                    : "Tu bebé puede llegar en cualquier momento"}
+                </Text>
               </View>
-              {nextAppt.estado === "programada" ? (
-                <>
-                  <AppButton
-                    title="Sí, iré"
-                    onPress={() => void handleConfirm()}
-                    color={accent.primary}
-                    large
-                    icon={Check}
-                    testID="btn-confirmar-cita"
-                  />
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => void handleReschedule()}
-                    hitSlop={8}
-                    style={styles.linkWrap}
-                  >
-                    <Text style={styles.linkText}>No puedo ese día</Text>
-                  </Pressable>
-                </>
-              ) : nextAppt.estado === "confirmada" ? (
-                <View style={styles.confirmedRow}>
-                  <CheckCircle2 size={20} color={semantic.success} />
-                  <Text style={styles.confirmedText}>Confirmada. Te esperamos.</Text>
-                </View>
-              ) : nextAppt.estado === "solicitud_reprogramacion" ? (
-                <Text style={styles.pendingText}>
-                  Pediste otra fecha. Tu obstetra te avisará.
-                </Text>
-              ) : null}
-            </>
+              <Illustration source={ILU.mama} width={106} height={130} />
+            </View>
+            <AnimatedBar progress={weeks / 40} color={gwarm.teal} trackColor={gwarm.tealSoft} />
+            <View style={styles.fppRow}>
+              <Baby size={17} color={gwarm.terracotta} />
+              <Text style={styles.fppText}>Nacería el {fechaCompleta(patient.fppKey)}</Text>
+            </View>
+          </SoftCard>
+        </PopIn>
+
+        <PopIn delay={80}>
+          {nextAppt ? (
+            <CitaProxima
+              appt={nextAppt}
+              todayKey={todayKey}
+              onConfirm={() => void handleConfirm()}
+              onReschedule={() => void handleReschedule()}
+            />
           ) : (
-            <Text style={styles.apptEmpty}>No tienes citas pendientes.</Text>
-          )}
-        </Card>
-
-        <Card style={styles.block}>
-          <Text style={styles.kicker}>Mis pastillas de hoy</Text>
-          {supplements.map((s) => {
-            const taken = todayIntakes.includes(s.id);
-            return (
-              <PressableScale
-                key={s.id}
-                onPress={() =>
-                  dispatch({
-                    type: "toggle_intake",
-                    patientId: patient.id,
-                    supplementId: s.id,
-                    dayKey: todayKey,
-                    taken: !taken,
-                  })
-                }
-                accessibilityLabel={`${taken ? "Desmarcar" : "Marcar"} ${s.name}`}
-                style={styles.suppRow}
-                testID={`toggle-${s.id}`}
-              >
-                <View
-                  style={[
-                    styles.checkCircle,
-                    taken
-                      ? { backgroundColor: accent.primary, borderColor: accent.primary }
-                      : { borderColor: common.borderStrong },
-                  ]}
-                >
-                  {taken ? <Check size={20} color={common.white} /> : null}
-                </View>
-                <Text style={[styles.suppName, taken && styles.suppNameDone]} numberOfLines={2}>
-                  {s.name}
+            <SoftCard style={styles.emptyCitaCard}>
+              <Illustration source={ILU.obstetra} width={74} height={90} />
+              <View style={styles.flex}>
+                <Text style={styles.emptyCitaTitle}>Sin citas pendientes</Text>
+                <Text style={styles.emptyCitaText}>
+                  Tu obstetra te avisará tu próximo control.
                 </Text>
-              </PressableScale>
-            );
-          })}
-          {allTaken ? (
-            <Text style={styles.allDoneText}>¡Muy bien! Ya tomaste todo lo de hoy.</Text>
-          ) : null}
-        </Card>
+              </View>
+            </SoftCard>
+          )}
+        </PopIn>
 
-        <Card style={styles.sosCard}>
-          <Text style={styles.sosTitle}>¿Te sientes mal?</Text>
-          <AppButton
-            title="Pedir ayuda"
-            onPress={() => router.push("/(gestante)/alarmas")}
-            variant="danger"
-            large
-            icon={Siren}
-            testID="btn-sos"
-          />
-        </Card>
+        <PopIn delay={160}>
+          <SoftCard style={styles.pillsCard}>
+            <BlockTitle
+              icon={Pill}
+              title="Mis pastillas de hoy"
+              color={gwarm.terracotta}
+              soft={gwarm.terracottaSoft}
+            />
+            <View style={styles.pillsList}>
+              {supplements.map((s) => {
+                const taken = todayIntakes.includes(s.id);
+                return (
+                  <BigCheckRow
+                    key={s.id}
+                    checked={taken}
+                    label={s.name}
+                    onToggle={() =>
+                      dispatch({
+                        type: "toggle_intake",
+                        patientId: patient.id,
+                        supplementId: s.id,
+                        dayKey: todayKey,
+                        taken: !taken,
+                      })
+                    }
+                    testID={`toggle-${s.id}`}
+                  />
+                );
+              })}
+            </View>
+            {allTaken ? (
+              <Celebration title="¡Muy bien!" text="Ya tomaste todo lo de hoy." />
+            ) : null}
+          </SoftCard>
+        </PopIn>
 
-        <Card onPress={() => router.push("/(gestante)/educacion")} style={styles.learnCard}>
-          <View style={styles.learnIcon}>
-            <BookOpen size={24} color={accent.primary} strokeWidth={2} />
-          </View>
-          <View style={styles.flex}>
-            <Text style={styles.learnTitle}>Consejos para tu embarazo</Text>
-            <Text style={styles.learnMeta}>Se pueden leer sin señal</Text>
-          </View>
-          <ChevronRight size={20} color={common.textTertiary} />
-        </Card>
+        <PopIn delay={240}>
+          <SoftCard style={styles.helpCard}>
+            <View style={styles.helpRow}>
+              <View style={styles.helpInfo}>
+                <Text style={styles.helpTitle}>¿Te sientes mal?</Text>
+                <Text style={styles.helpText}>Avísanos y te ayudamos al instante.</Text>
+              </View>
+              <Illustration source={ILU.manos} width={88} height={88} />
+            </View>
+            <AppButton
+              title="Pedir ayuda"
+              onPress={() => router.push("/(gestante)/alarmas")}
+              variant="danger"
+              large
+              icon={Siren}
+              testID="btn-sos"
+            />
+          </SoftCard>
+        </PopIn>
+
+        <PopIn delay={320}>
+          <SoftCard
+            onPress={() => router.push("/(gestante)/educacion")}
+            style={styles.learnCard}
+            testID="card-educacion"
+          >
+            <Illustration source={ILU.comida} width={66} height={66} />
+            <View style={styles.flex}>
+              <Text style={styles.learnTitle}>Consejos para ti</Text>
+              <Text style={styles.learnMeta}>Se leen aunque no tengas señal</Text>
+            </View>
+            <ChevronRight size={22} color={gwarm.inkFaint} />
+          </SoftCard>
+        </PopIn>
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: common.background },
+  container: { flex: 1, backgroundColor: gwarm.bg },
   flex: { flex: 1 },
   loading: {
     flex: 1,
-    backgroundColor: common.background,
+    backgroundColor: gwarm.bg,
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.sm2,
   },
-  loadingText: { ...type.body, color: common.textSecondary },
+  loadingText: {
+    fontFamily: fonts.regular,
+    fontSize: 15,
+    color: gwarm.inkSoft,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm2,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm2,
+  },
+  headerInfo: { flex: 1, minWidth: 0, gap: 2 },
+  headerDate: {
+    fontFamily: fonts.medium,
+    fontSize: 14,
+    lineHeight: 19,
+    color: gwarm.inkSoft,
+  },
+  headerTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 26,
+    lineHeight: 33,
+    letterSpacing: -0.4,
+    color: gwarm.ink,
+  },
   content: {
     padding: spacing.md,
     paddingBottom: spacing.xl,
     gap: spacing.md,
   },
-  block: {
-    gap: spacing.sm2,
-    padding: spacing.md2,
-  },
-  kicker: {
-    ...type.overline,
-    fontSize: 11.5,
-    color: common.textTertiary,
-    textTransform: "uppercase" as const,
-  },
-  weekTitle: { ...type.h1, color: common.text },
-  track: {
-    height: 10,
-    borderRadius: radius.pill,
-    backgroundColor: gestanteTheme.primaryLight,
-    overflow: "hidden" as const,
-  },
-  fill: {
-    height: "100%",
-    borderRadius: radius.pill,
-    backgroundColor: gestanteTheme.primary,
-  },
-  weekMeta: { ...type.bodyXl, color: common.textSecondary },
-  apptWhen: { ...type.h1 },
-  apptDate: { ...type.bodyXlMd, color: common.text },
-  apptPlaceRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  apptPlace: { ...type.body, color: common.textSecondary },
-  linkWrap: {
-    alignSelf: "center",
-    paddingVertical: spacing.xs,
-    minHeight: 44,
-    justifyContent: "center",
-  },
-  linkText: {
-    ...type.bodyMd,
-    fontSize: 16,
-    color: common.textSecondary,
-    textDecorationLine: "underline" as const,
-  },
-  confirmedRow: {
+  babyCard: { gap: spacing.sm2 },
+  babyRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
-    backgroundColor: semantic.successLight,
-    borderRadius: radius.md,
-    padding: spacing.sm2,
+    gap: spacing.sm2,
   },
-  confirmedText: { ...type.bodyXlMd, color: semantic.success },
-  pendingText: { ...type.bodyXl, color: semantic.warning },
-  apptEmpty: { ...type.bodyXl, color: common.textSecondary },
-  suppRow: {
+  babyInfo: { flex: 1, minWidth: 0, gap: 4 },
+  babyKicker: {
+    fontFamily: fonts.semibold,
+    fontSize: 14,
+    lineHeight: 19,
+    color: gwarm.terracotta,
+  },
+  weekBig: {
+    fontFamily: fonts.bold,
+    fontSize: 28,
+    lineHeight: 36,
+    letterSpacing: -0.4,
+    color: gwarm.ink,
+  },
+  weekNum: { color: gwarm.teal, fontSize: 32 },
+  babyMeta: {
+    fontFamily: fonts.regular,
+    fontSize: 15.5,
+    lineHeight: 21,
+    color: gwarm.inkSoft,
+  },
+  fppRow: { flexDirection: "row", alignItems: "center", gap: 7 },
+  fppText: {
+    fontFamily: fonts.medium,
+    fontSize: 15,
+    lineHeight: 20,
+    color: gwarm.ink,
+    flex: 1,
+  },
+  emptyCitaCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
-    minHeight: 56,
   },
-  checkCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.pill,
-    borderWidth: 2.5,
-    alignItems: "center",
-    justifyContent: "center",
+  emptyCitaTitle: {
+    fontFamily: fonts.semibold,
+    fontSize: 18,
+    lineHeight: 24,
+    color: gwarm.ink,
   },
-  suppName: { ...type.bodyXlMd, color: common.text, flex: 1 },
-  suppNameDone: { color: common.textTertiary, textDecorationLine: "line-through" as const },
-  allDoneText: { ...type.bodyMd, fontSize: 16, color: semantic.success },
-  sosCard: {
+  emptyCitaText: {
+    fontFamily: fonts.regular,
+    fontSize: 15,
+    lineHeight: 21,
+    color: gwarm.inkSoft,
+    marginTop: 2,
+  },
+  pillsCard: { gap: spacing.sm2 },
+  pillsList: { gap: spacing.sm },
+  helpCard: {
     gap: spacing.sm2,
-    padding: spacing.md2,
-    borderColor: semantic.dangerMid,
-    backgroundColor: semantic.dangerLight,
+    backgroundColor: gwarm.redSoft,
+    borderColor: gwarm.redMid,
   },
-  sosTitle: { ...type.h2, color: common.text },
+  helpRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm2,
+  },
+  helpInfo: { flex: 1, minWidth: 0, gap: 4 },
+  helpTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 21,
+    lineHeight: 27,
+    color: gwarm.ink,
+  },
+  helpText: {
+    fontFamily: fonts.regular,
+    fontSize: 15,
+    lineHeight: 20,
+    color: gwarm.inkSoft,
+  },
   learnCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm2,
     padding: spacing.md,
   },
-  learnIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: withAlpha(gestanteTheme.primary, 0.18),
-    backgroundColor: withAlpha(gestanteTheme.primary, 0.1),
-    alignItems: "center",
-    justifyContent: "center",
+  learnTitle: {
+    fontFamily: fonts.semibold,
+    fontSize: 18,
+    lineHeight: 24,
+    color: gwarm.ink,
   },
-  learnTitle: { ...type.bodyXlMd, color: common.text },
-  learnMeta: { ...type.body, color: common.textSecondary, marginTop: 2 },
+  learnMeta: {
+    fontFamily: fonts.regular,
+    fontSize: 14.5,
+    lineHeight: 19,
+    color: gwarm.inkSoft,
+    marginTop: 2,
+  },
 });

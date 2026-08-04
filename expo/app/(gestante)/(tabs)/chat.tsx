@@ -1,10 +1,10 @@
 /** Mensajes de la gestante con su obstetra (tiempo casi real, historial offline). */
 import React from "react";
 import { StyleSheet, View } from "react-native";
-import { common, gestanteTheme } from "@/constants/theme";
+import { gwarm } from "@/constants/theme";
 import { useApp, useMyPatient } from "@/providers/AppProvider";
 import { ChatThread } from "@/components/ChatThread";
-import { ScreenHeader } from "@/components/ScreenHeader";
+import { GHeader } from "@/components/gestante/GHeader";
 
 export default function ChatGestante(): React.ReactElement {
   const { view } = useApp();
@@ -12,17 +12,15 @@ export default function ChatGestante(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader
+      <GHeader
         title="Mensajes"
         subtitle={`Con tu obstetra de ${view?.center.name ?? "tu centro de salud"}`}
       />
-      {patient ? (
-        <ChatThread convId={patient.id} accent={gestanteTheme.primary} />
-      ) : null}
+      {patient ? <ChatThread convId={patient.id} accent={gwarm.teal} /> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: common.background },
+  container: { flex: 1, backgroundColor: gwarm.bg },
 });

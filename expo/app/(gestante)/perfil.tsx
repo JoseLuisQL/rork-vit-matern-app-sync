@@ -1,12 +1,12 @@
 /**
- * Perfil de la gestante: datos personales, embarazo, recordatorios
- * configurables y cierre de sesión.
+ * Perfil de la gestante: foto, datos personales, embarazo, recordatorios
+ * configurables y cierre de sesión — en el mismo tono cálido de la sección.
  */
 import { useRouter } from "expo-router";
-import { Bell, LogOut } from "lucide-react-native";
+import { Bell, CalendarHeart, LogOut } from "lucide-react-native";
 import React, { useCallback } from "react";
 import { ScrollView, StyleSheet, Switch, Text, View } from "react-native";
-import { common, gestanteTheme, radius, semantic, spacing, type } from "@/constants/theme";
+import { fonts, gwarm, semantic, spacing } from "@/constants/theme";
 import { confirmAction, showNotice } from "@/lib/confirm";
 import { fechaCompleta } from "@/lib/format";
 import {
@@ -15,14 +15,11 @@ import {
   requestNotificationPermission,
 } from "@/lib/notifications";
 import { useApp, useMyPatient } from "@/providers/AppProvider";
-import { Card } from "@/components/Card";
+import { AppButton } from "@/components/AppButton";
 import { PressableScale } from "@/components/PressableScale";
 import { ProfilePhoto } from "@/components/ProfilePhoto";
-import { ScreenHeader } from "@/components/ScreenHeader";
-import { SectionHeader } from "@/components/SectionHeader";
-import { AppButton } from "@/components/AppButton";
-
-const accent = gestanteTheme;
+import { GHeader } from "@/components/gestante/GHeader";
+import { SoftCard } from "@/components/gestante/SoftCard";
 
 function InfoRow({ label, value }: { label: string; value: string }): React.ReactElement {
   return (
@@ -109,41 +106,41 @@ export default function PerfilGestante(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Mi perfil" showBack />
+      <GHeader title="Mi perfil" back />
       <ScrollView
         style={styles.flex}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <Card style={styles.photoCard}>
-          <ProfilePhoto accentColor={accent.primary} accentBackground={accent.primaryLight} />
+        <SoftCard style={styles.photoCard}>
+          <ProfilePhoto accentColor={gwarm.teal} accentBackground={gwarm.tealSoft} />
           <Text style={styles.photoName}>
             {patient.firstName} {patient.lastName}
           </Text>
           <Text style={styles.photoMeta}>
             Semana {patient.weeks} · {patient.community}
           </Text>
-        </Card>
+        </SoftCard>
 
-        <SectionHeader title="Mis datos" />
-        <Card style={styles.card}>
+        <Text style={styles.sectionTitle}>Mis datos</Text>
+        <SoftCard style={styles.card}>
           <InfoRow label="DNI" value={patient.dni} />
           <InfoRow label="Edad" value={`${patient.age} años`} />
           <InfoRow label="Comunidad" value={patient.community} />
           <InfoRow label="Teléfono" value={patient.phone || "—"} />
-        </Card>
+        </SoftCard>
 
-        <SectionHeader title="Mi embarazo" />
-        <Card style={styles.card}>
+        <Text style={styles.sectionTitle}>Mi embarazo</Text>
+        <SoftCard style={styles.card}>
           <InfoRow label="Semanas" value={`${patient.weeks}`} />
           <InfoRow label="Fecha probable de parto" value={fechaCompleta(patient.fppKey)} />
-        </Card>
+        </SoftCard>
 
-        <SectionHeader title="Recordatorios" />
-        <Card style={styles.card}>
+        <Text style={styles.sectionTitle}>Recordatorios</Text>
+        <SoftCard style={styles.card}>
           <View style={styles.switchRow}>
-            <View style={[styles.switchIcon, { backgroundColor: accent.primaryLight }]}>
-              <Bell size={17} color={accent.primary} />
+            <View style={styles.switchIcon}>
+              <Bell size={19} color={gwarm.teal} strokeWidth={2.2} />
             </View>
             <View style={styles.flex}>
               <Text style={styles.switchTitle}>Aviso para tus pastillas</Text>
@@ -152,8 +149,8 @@ export default function PerfilGestante(): React.ReactElement {
             <Switch
               value={reminders.tomas}
               onValueChange={(v) => void toggleTomas(v)}
-              trackColor={{ true: accent.primary, false: common.borderStrong }}
-              thumbColor={common.white}
+              trackColor={{ true: gwarm.teal, false: gwarm.borderStrong }}
+              thumbColor="#FFFFFF"
               testID="switch-tomas"
             />
           </View>
@@ -170,11 +167,13 @@ export default function PerfilGestante(): React.ReactElement {
                     style={[
                       styles.hourChip,
                       active
-                        ? { backgroundColor: accent.primary, borderColor: accent.primary }
-                        : { borderColor: common.border },
+                        ? { backgroundColor: gwarm.teal, borderColor: gwarm.teal }
+                        : { borderColor: gwarm.border },
                     ]}
                   >
-                    <Text style={[styles.hourText, { color: active ? common.white : common.textSecondary }]}>
+                    <Text
+                      style={[styles.hourText, { color: active ? "#FFFFFF" : gwarm.inkSoft }]}
+                    >
                       {`${h}`.padStart(2, "0")}:00
                     </Text>
                   </PressableScale>
@@ -184,8 +183,8 @@ export default function PerfilGestante(): React.ReactElement {
           ) : null}
 
           <View style={[styles.switchRow, styles.switchRowBorder]}>
-            <View style={[styles.switchIcon, { backgroundColor: accent.primaryLight }]}>
-              <Bell size={17} color={accent.primary} />
+            <View style={styles.switchIcon}>
+              <CalendarHeart size={19} color={gwarm.teal} strokeWidth={2.2} />
             </View>
             <View style={styles.flex}>
               <Text style={styles.switchTitle}>Aviso de cita</Text>
@@ -194,14 +193,14 @@ export default function PerfilGestante(): React.ReactElement {
             <Switch
               value={reminders.citas}
               onValueChange={(v) => void toggleCitas(v)}
-              trackColor={{ true: accent.primary, false: common.borderStrong }}
-              thumbColor={common.white}
+              trackColor={{ true: gwarm.teal, false: gwarm.borderStrong }}
+              thumbColor="#FFFFFF"
               testID="switch-citas"
             />
           </View>
-        </Card>
+        </SoftCard>
 
-        <SectionHeader title="Cuenta" />
+        <Text style={styles.sectionTitle}>Cuenta</Text>
         <AppButton
           title="Cerrar sesión"
           onPress={() => void handleLogout()}
@@ -217,7 +216,7 @@ export default function PerfilGestante(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: common.background },
+  container: { flex: 1, backgroundColor: gwarm.bg },
   flex: { flex: 1 },
   content: {
     padding: spacing.md,
@@ -228,24 +227,48 @@ const styles = StyleSheet.create({
   photoCard: {
     alignItems: "center",
     gap: spacing.xs,
-    padding: spacing.md2,
   },
   photoName: {
-    ...type.h2,
-    color: common.text,
-    textAlign: "center" as const,
+    fontFamily: fonts.bold,
+    fontSize: 22,
+    lineHeight: 28,
+    color: gwarm.ink,
+    textAlign: "center",
     marginTop: spacing.xs,
   },
-  photoMeta: { ...type.body, color: common.textSecondary },
+  photoMeta: {
+    fontFamily: fonts.regular,
+    fontSize: 15,
+    lineHeight: 20,
+    color: gwarm.inkSoft,
+  },
+  sectionTitle: {
+    fontFamily: fonts.semibold,
+    fontSize: 15,
+    lineHeight: 20,
+    color: gwarm.inkSoft,
+    marginTop: spacing.xs,
+    marginLeft: spacing.xs,
+  },
   infoRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: spacing.md,
-    minHeight: 34,
+    minHeight: 36,
   },
-  infoLabel: { ...type.body, color: common.textSecondary },
-  infoValue: { ...type.bodyXlMd, color: common.text, flexShrink: 1, textAlign: "right" },
+  infoLabel: {
+    fontFamily: fonts.regular,
+    fontSize: 15,
+    color: gwarm.inkSoft,
+  },
+  infoValue: {
+    fontFamily: fonts.semibold,
+    fontSize: 16.5,
+    color: gwarm.ink,
+    flexShrink: 1,
+    textAlign: "right",
+  },
   switchRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -254,18 +277,29 @@ const styles = StyleSheet.create({
   },
   switchRowBorder: {
     borderTopWidth: 1,
-    borderTopColor: common.border,
+    borderTopColor: gwarm.border,
     paddingTop: spacing.sm2,
   },
   switchIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.md,
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: gwarm.tealSoft,
     alignItems: "center",
     justifyContent: "center",
   },
-  switchTitle: { ...type.bodyXlMd, color: common.text },
-  switchText: { ...type.body, color: common.textSecondary },
+  switchTitle: {
+    fontFamily: fonts.semibold,
+    fontSize: 16.5,
+    lineHeight: 22,
+    color: gwarm.ink,
+  },
+  switchText: {
+    fontFamily: fonts.regular,
+    fontSize: 14.5,
+    lineHeight: 19,
+    color: gwarm.inkSoft,
+  },
   hoursRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -274,17 +308,21 @@ const styles = StyleSheet.create({
   },
   hourChip: {
     paddingHorizontal: spacing.sm2,
-    height: 38,
-    borderRadius: radius.pill,
+    height: 42,
+    borderRadius: 21,
     borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: common.surface,
+    backgroundColor: gwarm.surface,
   },
-  hourText: { ...type.buttonSm },
+  hourText: {
+    fontFamily: fonts.semibold,
+    fontSize: 14.5,
+  },
   about: {
-    ...type.caption,
-    color: common.textTertiary,
+    fontFamily: fonts.regular,
+    fontSize: 12.5,
+    color: gwarm.inkFaint,
     textAlign: "center",
     marginTop: spacing.md,
     lineHeight: 18,

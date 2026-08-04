@@ -1,23 +1,24 @@
 /**
- * Citas de la gestante: la próxima cita primero y en grande (con "Sí, iré"),
- * y debajo la lista simple de controles — número, fecha y estado en una palabra.
- * Confirmar o pedir otra fecha funciona también sin señal.
+ * Citas de la gestante: la próxima cita en grande con "Sí, iré" y debajo el
+ * camino de controles — círculos unidos por una línea, como un sendero que
+ * se va completando. Confirmar o pedir otra fecha funciona también sin señal.
  */
-import { Check, HousePlus, MapPin } from "lucide-react-native";
+import { CalendarDays, Check, ClipboardCheck, HousePlus } from "lucide-react-native";
 import React, { useCallback, useMemo } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { cardBorder, common, gestanteTheme, radius, semantic, spacing, type } from "@/constants/theme";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { fonts, gwarm, spacing } from "@/constants/theme";
+import { ILU } from "@/constants/illustrations";
 import { confirmAction } from "@/lib/confirm";
-import { capitalize, etiquetaRelativa, fechaLarga } from "@/lib/format";
+import { capitalize, fechaLarga, horaAmigable } from "@/lib/format";
 import { useApp, useMyPatient } from "@/providers/AppProvider";
 import type { Appointment } from "@/types";
-import { AppButton } from "@/components/AppButton";
-import { Card } from "@/components/Card";
-import { ScreenHeader } from "@/components/ScreenHeader";
-import { SectionHeader } from "@/components/SectionHeader";
 import { StatusWord } from "@/components/Badges";
-
-const accent = gestanteTheme;
+import { BlockTitle } from "@/components/gestante/BlockTitle";
+import { CitaProxima } from "@/components/gestante/CitaProxima";
+import { GHeader } from "@/components/gestante/GHeader";
+import { Illustration } from "@/components/gestante/Illustration";
+import { PopIn } from "@/components/gestante/PopIn";
+import { SoftCard } from "@/components/gestante/SoftCard";
 
 export default function CitasGestante(): React.ReactElement {
   const { view, todayKey, dispatch } = useApp();
@@ -25,7 +26,10 @@ export default function CitasGestante(): React.ReactElement {
 
   const nextAppt = useMemo(() => {
     if (!patient?.nextAppointment || !view) return null;
-    return view.appointments.find((a) => a.id === patient.nextAppointment?.id) ?? patient.nextAppointment;
+    return (
+      view.appointments.find((a) => a.id === patient.nextAppointment?.id) ??
+      patient.nextAppointment
+    );
   }, [patient, view]);
 
   const controls = useMemo(() => {
@@ -71,119 +75,127 @@ export default function CitasGestante(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Mis citas" />
+      <GHeader title="Mis citas" />
       <ScrollView
         style={styles.flex}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {nextAppt ? (
-          <Card style={styles.nextCard}>
-            <Text style={styles.blockLabel}>Mi próxima cita</Text>
-            <Text style={[styles.nextWhen, { color: accent.primary }]}>
-              {etiquetaRelativa(nextAppt.dateKey, todayKey)}
-            </Text>
-            <Text style={styles.nextDate}>
-              {capitalize(fechaLarga(nextAppt.dateKey))} · {nextAppt.time}
-            </Text>
-            <View style={styles.placeRow}>
-              <MapPin size={15} color={common.textTertiary} />
-              <Text style={styles.placeText}>{nextAppt.lugar}</Text>
-            </View>
-            {nextAppt.estado === "programada" ? (
-              <>
-                <AppButton
-                  title="Sí, iré"
-                  onPress={() => void handleConfirm(nextAppt)}
-                  color={accent.primary}
-                  large
-                  icon={Check}
-                  testID="btn-confirmar-cita"
-                />
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => void handleReschedule(nextAppt)}
-                  hitSlop={8}
-                  style={styles.linkWrap}
-                >
-                  <Text style={styles.linkText}>No puedo ese día</Text>
-                </Pressable>
-              </>
-            ) : nextAppt.estado === "confirmada" ? (
-              <Text style={styles.confirmedText}>Confirmada. Te esperamos.</Text>
-            ) : nextAppt.estado === "solicitud_reprogramacion" ? (
-              <Text style={styles.pendingText}>Pediste otra fecha. Tu obstetra te avisará.</Text>
-            ) : null}
-          </Card>
-        ) : (
-          <Card style={styles.nextCard}>
-            <Text style={styles.blockLabel}>Mi próxima cita</Text>
-            <Text style={styles.emptyText}>No tienes citas pendientes.</Text>
-          </Card>
-        )}
+        <PopIn delay={0}>
+          {nextAppt ? (
+            <CitaProxima
+              appt={nextAppt}
+              todayKey={todayKey}
+              onConfirm={() => void handleConfirm(nextAppt)}
+              onReschedule={() => void handleReschedule(nextAppt)}
+            />
+          ) : (
+            <SoftCard style={styles.emptyCard}>
+              <Illustration source={ILU.obstetra} width={74} height={90} />
+              <View style={styles.flex}>
+                <Text style={styles.emptyTitle}>Sin citas pendientes</Text>
+                <Text style={styles.emptyText}>Tu obstetra te avisará tu próximo control.</Text>
+              </View>
+            </SoftCard>
+          )}
+        </PopIn>
 
         {nextVisit ? (
-          <Card style={styles.visitCard}>
-            <View style={styles.visitRow}>
-              <HousePlus size={20} color={accent.primary} />
+          <PopIn delay={70}>
+            <SoftCard style={styles.visitCard}>
+              <View style={styles.visitIcon}>
+                <HousePlus size={23} color={gwarm.teal} strokeWidth={2.2} />
+              </View>
               <View style={styles.flex}>
                 <Text style={styles.visitTitle}>Te visitarán en casa</Text>
                 <Text style={styles.visitText}>
-                  {capitalize(fechaLarga(nextVisit.dateKey))} · {nextVisit.time}
+                  {capitalize(fechaLarga(nextVisit.dateKey))} · {horaAmigable(nextVisit.time)}
                 </Text>
               </View>
-            </View>
-          </Card>
+            </SoftCard>
+          </PopIn>
         ) : null}
 
-        <SectionHeader title="Mis controles" />
-        <View style={styles.listCard}>
-          {controls.map((appt, index) => (
-            <View key={appt.id} style={[styles.row, index > 0 && styles.rowBorder]}>
-              <View
-                style={[
-                  styles.numCircle,
-                  appt.estado === "asistida"
-                    ? { backgroundColor: accent.primary, borderColor: accent.primary }
-                    : { borderColor: common.borderStrong },
-                ]}
-              >
-                {appt.estado === "asistida" ? (
-                  <Check size={17} color={common.white} />
-                ) : (
-                  <Text style={styles.numText}>{appt.control}</Text>
-                )}
-              </View>
-              <View style={styles.rowInfo}>
-                <Text style={styles.rowTitle}>Control {appt.control}</Text>
-                <Text style={styles.rowMeta}>
-                  {capitalize(fechaLarga(appt.dateKey))} · {appt.time}
-                </Text>
-              </View>
-              <StatusWord estado={appt.estado} />
+        <PopIn delay={140}>
+          <SoftCard style={styles.pathCard}>
+            <BlockTitle
+              icon={ClipboardCheck}
+              title="Mis controles"
+              color={gwarm.teal}
+              soft={gwarm.tealSoft}
+            />
+            <View>
+              {controls.map((appt, index) => {
+                const done = appt.estado === "asistida";
+                const isNext = nextAppt?.id === appt.id;
+                return (
+                  <View key={appt.id} style={styles.pathRow}>
+                    <View style={styles.rail}>
+                      <View style={[styles.railLine, index === 0 && styles.railHidden]} />
+                      <View
+                        style={[
+                          styles.node,
+                          done && styles.nodeDone,
+                          !done && isNext && styles.nodeNext,
+                        ]}
+                      >
+                        {done ? (
+                          <Check size={19} color="#FFFFFF" strokeWidth={3} />
+                        ) : (
+                          <Text style={[styles.nodeNum, isNext && { color: gwarm.teal }]}>
+                            {appt.control}
+                          </Text>
+                        )}
+                      </View>
+                      <View
+                        style={[
+                          styles.railLine,
+                          index === controls.length - 1 && styles.railHidden,
+                        ]}
+                      />
+                    </View>
+                    <View style={styles.pathInfo}>
+                      <Text style={styles.pathTitle}>Control {appt.control}</Text>
+                      <Text style={styles.pathMeta}>
+                        {capitalize(fechaLarga(appt.dateKey))} · {appt.time}
+                      </Text>
+                    </View>
+                    <View style={styles.pathStatus}>
+                      <StatusWord estado={appt.estado} />
+                    </View>
+                  </View>
+                );
+              })}
             </View>
-          ))}
-        </View>
+          </SoftCard>
+        </PopIn>
 
         {extras.length > 0 ? (
-          <>
-            <SectionHeader title="Otras citas" />
-            <View style={styles.listCard}>
-              {extras.map((appt, index) => (
-                <View key={appt.id} style={[styles.row, index > 0 && styles.rowBorder]}>
-                  <View style={styles.rowInfo}>
-                    <Text style={styles.rowTitle} numberOfLines={1}>
-                      {appt.motivo}
-                    </Text>
-                    <Text style={styles.rowMeta}>
-                      {capitalize(fechaLarga(appt.dateKey))} · {appt.time}
-                    </Text>
+          <PopIn delay={210}>
+            <SoftCard style={styles.pathCard}>
+              <BlockTitle
+                icon={CalendarDays}
+                title="Otras citas"
+                color={gwarm.amber}
+                soft={gwarm.amberSoft}
+              />
+              <View style={styles.extraList}>
+                {extras.map((appt, index) => (
+                  <View key={appt.id} style={[styles.extraRow, index > 0 && styles.extraBorder]}>
+                    <View style={styles.flex}>
+                      <Text style={styles.pathTitle} numberOfLines={1}>
+                        {appt.motivo}
+                      </Text>
+                      <Text style={styles.pathMeta}>
+                        {capitalize(fechaLarga(appt.dateKey))} · {appt.time}
+                      </Text>
+                    </View>
+                    <StatusWord estado={appt.estado} />
                   </View>
-                  <StatusWord estado={appt.estado} />
-                </View>
-              ))}
-            </View>
-          </>
+                ))}
+              </View>
+            </SoftCard>
+          </PopIn>
         ) : null}
       </ScrollView>
     </View>
@@ -191,66 +203,112 @@ export default function CitasGestante(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: common.background },
+  container: { flex: 1, backgroundColor: gwarm.bg },
   flex: { flex: 1 },
   content: {
     padding: spacing.md,
     paddingBottom: spacing.xl,
-    gap: spacing.sm2,
+    gap: spacing.md,
   },
-  blockLabel: { ...type.label, fontSize: 14, color: common.textSecondary },
-  nextCard: { gap: spacing.sm2, padding: spacing.md2 },
-  nextWhen: { ...type.h1 },
-  nextDate: { ...type.bodyXlMd, color: common.text },
-  placeRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  placeText: { ...type.body, color: common.textSecondary },
-  linkWrap: {
-    alignSelf: "center",
-    paddingVertical: spacing.xs,
-    minHeight: 44,
+  emptyCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.md,
+  },
+  emptyTitle: {
+    fontFamily: fonts.semibold,
+    fontSize: 18,
+    lineHeight: 24,
+    color: gwarm.ink,
+  },
+  emptyText: {
+    fontFamily: fonts.regular,
+    fontSize: 15,
+    lineHeight: 21,
+    color: gwarm.inkSoft,
+    marginTop: 2,
+  },
+  visitCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm2,
+    backgroundColor: gwarm.tealSoft,
+    borderColor: gwarm.tealMid,
+  },
+  visitIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: gwarm.surface,
+    alignItems: "center",
     justifyContent: "center",
   },
-  linkText: {
-    ...type.bodyMd,
-    fontSize: 16,
-    color: common.textSecondary,
-    textDecorationLine: "underline" as const,
+  visitTitle: {
+    fontFamily: fonts.semibold,
+    fontSize: 17,
+    lineHeight: 23,
+    color: gwarm.ink,
   },
-  confirmedText: { ...type.bodyXlMd, color: semantic.success },
-  pendingText: { ...type.bodyXl, color: semantic.warning },
-  emptyText: { ...type.bodyXl, color: common.textSecondary },
-  visitCard: {
-    padding: spacing.md2,
-    borderColor: gestanteTheme.primaryMid,
-    backgroundColor: gestanteTheme.primaryLight,
+  visitText: {
+    fontFamily: fonts.regular,
+    fontSize: 15,
+    lineHeight: 20,
+    color: gwarm.inkSoft,
+    marginTop: 2,
   },
-  visitRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm2 },
-  visitTitle: { ...type.bodyXlMd, color: common.text },
-  visitText: { ...type.body, color: common.textSecondary, marginTop: 2 },
-  listCard: {
-    backgroundColor: common.surface,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.md,
-    ...cardBorder,
+  pathCard: { gap: spacing.sm },
+  pathRow: {
+    flexDirection: "row",
+    gap: spacing.sm2,
+    minHeight: 76,
   },
-  row: {
+  rail: { width: 40, alignItems: "center" },
+  railLine: {
+    width: 2.5,
+    flex: 1,
+    minHeight: 8,
+    borderRadius: 2,
+    backgroundColor: gwarm.border,
+  },
+  railHidden: { opacity: 0 },
+  node: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2.5,
+    borderColor: gwarm.borderStrong,
+    backgroundColor: gwarm.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  nodeDone: { backgroundColor: gwarm.teal, borderColor: gwarm.teal },
+  nodeNext: { borderColor: gwarm.teal },
+  nodeNum: {
+    fontFamily: fonts.bold,
+    fontSize: 17,
+    color: gwarm.inkFaint,
+  },
+  pathInfo: { flex: 1, minWidth: 0, justifyContent: "center", gap: 2 },
+  pathTitle: {
+    fontFamily: fonts.semibold,
+    fontSize: 17,
+    lineHeight: 23,
+    color: gwarm.ink,
+  },
+  pathMeta: {
+    fontFamily: fonts.regular,
+    fontSize: 14.5,
+    lineHeight: 19,
+    color: gwarm.inkSoft,
+  },
+  pathStatus: { justifyContent: "center" },
+  extraList: {},
+  extraRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm2,
     paddingVertical: spacing.sm2,
-    minHeight: 64,
+    minHeight: 60,
   },
-  rowBorder: { borderTopWidth: 1, borderTopColor: common.border },
-  numCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: radius.pill,
-    borderWidth: 2,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  numText: { ...type.numericSm, fontSize: 16, color: common.textSecondary },
-  rowInfo: { flex: 1, minWidth: 0, gap: 2 },
-  rowTitle: { ...type.bodyXlMd, color: common.text },
-  rowMeta: { ...type.body, color: common.textSecondary },
+  extraBorder: { borderTopWidth: 1, borderTopColor: gwarm.border },
 });

@@ -42,7 +42,7 @@ export function PressableScale({
     (value: number) => {
       Animated.spring(scale, {
         toValue: value,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== "web",
         speed: 40,
         bounciness: 5,
       }).start();

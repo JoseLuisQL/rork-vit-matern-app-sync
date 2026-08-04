@@ -62,6 +62,46 @@ export function roleAccent(role: Role | undefined): RoleAccent {
   return gestanteTheme;
 }
 
+/**
+ * Paleta cálida exclusiva de la sección gestante — "cuaderno de cuidado".
+ * Papel crema, tinta cálida y acentos teal/terracota/ocre. Diseñada para
+ * usuarias rurales: alto contraste, superficies suaves, cero look clínico.
+ */
+export const gwarm = {
+  bg: "#FAF4EA",
+  surface: "#FFFFFF",
+  surfaceSoft: "#FFFDF7",
+  border: "#F0E6D4",
+  borderStrong: "#DFD1B8",
+  ink: "#33302A",
+  inkSoft: "#6E6557",
+  inkFaint: "#9C9078",
+  teal: "#0C8174",
+  tealDeep: "#0A6B60",
+  tealSoft: "#E3F1EE",
+  tealMid: "#BFE0DA",
+  terracotta: "#C05F33",
+  terracottaSoft: "#FAEDE4",
+  amber: "#A97613",
+  amberSoft: "#FBF1DC",
+  rose: "#C25B6A",
+  roseSoft: "#FAECEA",
+  redSoft: "#FCEDE8",
+  redMid: "#F2CDBF",
+} as const;
+
+/** Sombra suave y cálida para las tarjetas de la gestante. */
+export const gShadow: ViewStyle = Platform.select<ViewStyle>({
+  web: { boxShadow: "0 10px 26px rgba(148,124,90,0.10)" } as ViewStyle,
+  default: {
+    shadowColor: "#947C5A",
+    shadowOpacity: 0.13,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
+}) as ViewStyle;
+
 /** Marca (logo): ciruela + rosa. */
 export const brand = {
   plum: "#5B2A5E",

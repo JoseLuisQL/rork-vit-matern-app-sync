@@ -1,16 +1,14 @@
-/** Lector de artículo educativo (disponible sin señal). */
+/** Lector de artículo educativo: letra grande y cómoda, disponible sin señal. */
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { BookOpenCheck, ChevronRight, Clock3 } from "lucide-react-native";
 import React, { useEffect, useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { ARTICLES } from "@/constants/content";
-import { common, gestanteTheme, radius, spacing, type } from "@/constants/theme";
+import { fonts, gwarm, spacing } from "@/constants/theme";
 import { useApp } from "@/providers/AppProvider";
-import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
-import { ScreenHeader } from "@/components/ScreenHeader";
-
-const accent = gestanteTheme;
+import { GHeader } from "@/components/gestante/GHeader";
+import { SoftCard } from "@/components/gestante/SoftCard";
 
 export default function ArticuloScreen(): React.ReactElement {
   const router = useRouter();
@@ -37,7 +35,7 @@ export default function ArticuloScreen(): React.ReactElement {
   if (!article) {
     return (
       <View style={styles.container}>
-        <ScreenHeader title="Artículo" showBack />
+        <GHeader title="Artículo" back />
         <EmptyState icon={BookOpenCheck} title="Artículo no encontrado" />
       </View>
     );
@@ -45,7 +43,7 @@ export default function ArticuloScreen(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title={article.category} showBack />
+      <GHeader title={article.category} back />
       <ScrollView
         style={styles.flex}
         contentContainerStyle={styles.content}
@@ -53,7 +51,7 @@ export default function ArticuloScreen(): React.ReactElement {
       >
         <Text style={styles.title}>{article.title}</Text>
         <View style={styles.metaRow}>
-          <Clock3 size={13} color={common.textTertiary} />
+          <Clock3 size={14} color={gwarm.inkFaint} />
           <Text style={styles.meta}>{article.minutes} min de lectura</Text>
         </View>
 
@@ -66,27 +64,25 @@ export default function ArticuloScreen(): React.ReactElement {
         </View>
 
         <View style={styles.readRow}>
-          <BookOpenCheck size={15} color={accent.primary} />
-          <Text style={[styles.readText, { color: accent.primary }]}>
-            Guardado como leído en tu teléfono
-          </Text>
+          <BookOpenCheck size={16} color={gwarm.teal} />
+          <Text style={styles.readText}>Guardado como leído en tu teléfono</Text>
         </View>
 
         {next ? (
-          <Card
+          <SoftCard
             onPress={() =>
               router.replace({ pathname: "/(gestante)/educacion/[id]", params: { id: next.id } })
             }
             style={styles.nextCard}
           >
             <View style={styles.flex}>
-              <Text style={[styles.nextLabel, { color: accent.primary }]}>SIGUIENTE LECTURA</Text>
+              <Text style={styles.nextLabel}>Siguiente lectura</Text>
               <Text style={styles.nextTitle} numberOfLines={2}>
                 {next.title}
               </Text>
             </View>
-            <ChevronRight size={18} color={common.textTertiary} />
-          </Card>
+            <ChevronRight size={22} color={gwarm.inkFaint} />
+          </SoftCard>
         ) : null}
       </ScrollView>
     </View>
@@ -94,42 +90,75 @@ export default function ArticuloScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: common.background },
+  container: { flex: 1, backgroundColor: gwarm.bg },
   flex: { flex: 1 },
   content: {
     padding: spacing.md,
     paddingBottom: spacing.xxl,
   },
-  title: { ...type.h1, color: common.text },
+  title: {
+    fontFamily: fonts.bold,
+    fontSize: 26,
+    lineHeight: 33,
+    letterSpacing: -0.4,
+    color: gwarm.ink,
+  },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 5,
     marginTop: spacing.sm,
   },
-  meta: { ...type.caption, color: common.textTertiary },
+  meta: {
+    fontFamily: fonts.medium,
+    fontSize: 13.5,
+    color: gwarm.inkFaint,
+  },
   body: {
     marginTop: spacing.md2,
     gap: spacing.md,
   },
-  paragraph: { ...type.bodyLg, color: common.text },
+  paragraph: {
+    fontFamily: fonts.regular,
+    fontSize: 17,
+    lineHeight: 28,
+    color: gwarm.ink,
+  },
   readRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: 7,
     marginTop: spacing.lg,
-    backgroundColor: accent.primaryLight,
-    borderRadius: radius.md,
+    backgroundColor: gwarm.tealSoft,
+    borderRadius: 16,
     paddingVertical: spacing.sm2,
+    paddingHorizontal: spacing.md,
   },
-  readText: { ...type.label },
+  readText: {
+    fontFamily: fonts.semibold,
+    fontSize: 14,
+    color: gwarm.teal,
+  },
   nextCard: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm2,
     marginTop: spacing.md,
+    padding: spacing.md,
   },
-  nextLabel: { ...type.overline },
-  nextTitle: { ...type.h4, color: common.text, marginTop: 2 },
+  nextLabel: {
+    fontFamily: fonts.semibold,
+    fontSize: 13,
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+    color: gwarm.terracotta,
+  },
+  nextTitle: {
+    fontFamily: fonts.semibold,
+    fontSize: 16.5,
+    lineHeight: 22,
+    color: gwarm.ink,
+    marginTop: 3,
+  },
 });
