@@ -41,6 +41,17 @@
         {
           "photosPermission": "VitMaterna usa tu galería solo para elegir tu foto de perfil."
         }
+      ],
+      "expo-audio",
+      [
+        "expo-notifications",
+        {
+          "sounds": [
+            "./assets/sounds/mensaje.wav",
+            "./assets/sounds/aviso.wav",
+            "./assets/sounds/sos.wav"
+          ]
+        }
       ]
     ],
     "experiments": {

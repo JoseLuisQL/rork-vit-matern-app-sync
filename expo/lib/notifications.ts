@@ -35,6 +35,35 @@ const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreCl
 export const REMINDERS_SUPPORTED: boolean =
   Platform.OS !== "web" && !(Platform.OS === "android" && isExpoGo);
 
+/**
+ * Tipos de aviso con sonido y canal propios:
+ * - "mensaje": mensajes del chat (pop cálido).
+ * - "aviso":   avisos del sistema — citas, medicamentos, recordatorios (campanita).
+ * - "sos":     emergencias y signos de alarma (tono urgente).
+ */
+export type NotificationKind = "mensaje" | "aviso" | "sos";
+
+const ANDROID_CHANNEL: Record<NotificationKind, string> = {
+  mensaje: "mensajes",
+  aviso: "avisos",
+  sos: "emergencias",
+};
+
+const SOUND_FILE: Record<NotificationKind, string> = {
+  mensaje: "mensaje.wav",
+  aviso: "aviso.wav",
+  sos: "sos.wav",
+};
+
+/**
+ * Sonido nativo por tipo de aviso. Expo Go no incluye archivos de sonido
+ * personalizados (usa el del sistema); en la app instalada suenan los
+ * archivos a medida declarados en app.json (assets/sounds).
+ */
+function nativeSound(kind: NotificationKind): string {
+  return isExpoGo ? "default" : SOUND_FILE[kind];
+}
+
 type NotificationsModule = typeof import("expo-notifications");
 
 let notificationsModule: NotificationsModule | null | undefined;
@@ -58,26 +87,50 @@ export function initNotifications(): void {
   const notifications = getNotifications();
   if (!notifications) return;
   notifications.setNotificationHandler({
-    handleNotification: async () => ({
+    handleNotification: async (notification) => ({
       shouldShowBanner: true,
       shouldShowList: true,
-      shouldPlaySound: false,
+      // Con la app abierta, los avisos en vivo suenan dentro de la app con su
+      // sonido diferenciado (lib/sounds.ts); los recordatorios programados
+      // sí usan su sonido nativo porque no pasan por la sincronización.
+      shouldPlaySound: notification.request.content.data?.reminder === true,
       shouldSetBadge: false,
     }),
   });
   if (Platform.OS === "android") {
+    const channelSound = (kind: NotificationKind): string | undefined =>
+      isExpoGo ? undefined : SOUND_FILE[kind];
+    notifications
+      .setNotificationChannelAsync("mensajes", {
+        name: "Mensajes del chat",
+        importance: notifications.AndroidImportance.MAX,
+        sound: channelSound("mensaje"),
+        vibrationPattern: [0, 200, 120, 200],
+      })
+      .catch((e) => console.log("[VitMaterna] canal mensajes:", e));
+    notifications
+      .setNotificationChannelAsync("avisos", {
+        name: "Avisos de citas y medicamentos",
+        importance: notifications.AndroidImportance.MAX,
+        sound: channelSound("aviso"),
+      })
+      .catch((e) => console.log("[VitMaterna] canal avisos:", e));
+    notifications
+      .setNotificationChannelAsync("emergencias", {
+        name: "Emergencias (SOS)",
+        importance: notifications.AndroidImportance.MAX,
+        sound: channelSound("sos"),
+        vibrationPattern: [0, 400, 150, 400, 150, 600],
+        bypassDnd: true,
+      })
+      .catch((e) => console.log("[VitMaterna] canal emergencias:", e));
     notifications
       .setNotificationChannelAsync("recordatorios", {
         name: "Recordatorios",
         importance: notifications.AndroidImportance.DEFAULT,
+        sound: channelSound("aviso"),
       })
-      .catch((e) => console.log("[VitMaterna] canal de notificaciones:", e));
-    notifications
-      .setNotificationChannelAsync("avisos", {
-        name: "Avisos y mensajes",
-        importance: notifications.AndroidImportance.MAX,
-      })
-      .catch((e) => console.log("[VitMaterna] canal de avisos:", e));
+      .catch((e) => console.log("[VitMaterna] canal recordatorios:", e));
   }
 }
 
@@ -96,15 +149,19 @@ export async function cancelAllReminders(): Promise<void> {
   await notifications.cancelAllScheduledNotificationsAsync();
 }
 
-/** Presenta una notificación inmediata en la bandeja del teléfono. */
+/**
+ * Presenta una notificación inmediata en la bandeja del teléfono con el
+ * sonido y canal que corresponden a su tipo.
+ */
 async function presentNow(
   notifications: NotificationsModule,
+  kind: NotificationKind,
   title: string,
   body: string,
 ): Promise<void> {
   await notifications.scheduleNotificationAsync({
-    content: { title, body, sound: "default" },
-    trigger: Platform.OS === "android" ? { channelId: "avisos" } : null,
+    content: { title, body, sound: nativeSound(kind) },
+    trigger: Platform.OS === "android" ? { channelId: ANDROID_CHANNEL[kind] } : null,
   });
 }
 
@@ -146,12 +203,14 @@ export async function notifySnapshotDelta(
     const m = freshMessages[0];
     await presentNow(
       notifications,
+      "mensaje",
       role === "gestante" ? "Mensaje de tu obstetra" : `Mensaje de ${nameOf(m.convId)}`,
       m.text.slice(0, 140),
     );
   } else if (freshMessages.length > 1) {
     await presentNow(
       notifications,
+      "mensaje",
       "Mensajes nuevos",
       `Tienes ${freshMessages.length} mensajes nuevos en VitMaterna.`,
     );
@@ -168,6 +227,7 @@ export async function notifySnapshotDelta(
     for (const alert of urgentNew.slice(0, 3)) {
       await presentNow(
         notifications,
+        "sos",
         alert.type === "emergencia"
           ? `🚨 Emergencia · ${nameOf(alert.patientId)}`
           : `Signos de alarma · ${nameOf(alert.patientId)}`,
@@ -183,6 +243,7 @@ export async function notifySnapshotDelta(
       const times = Math.max(1, Math.min(6, Math.round(supp.timesPerDay ?? 1)));
       await presentNow(
         notifications,
+        "aviso",
         "Tienes un medicamento nuevo",
         `Tu obstetra te asignó ${supp.name}: ${
           times === 1 ? "1 vez al día" : `${times} veces al día`
@@ -196,12 +257,14 @@ export async function notifySnapshotDelta(
       if (before && (before.dateKey !== appt.dateKey || before.time !== appt.time)) {
         await presentNow(
           notifications,
+          "aviso",
           "Tu cita cambió de fecha",
           `Ahora es el ${fechaLarga(appt.dateKey)} a las ${appt.time}.`,
         );
       } else if (!before && (appt.estado === "programada" || appt.estado === "confirmada")) {
         await presentNow(
           notifications,
+          "aviso",
           "Tienes una cita nueva",
           `${fechaLarga(appt.dateKey)} a las ${appt.time} · ${appt.motivo}`,
         );
@@ -233,6 +296,8 @@ export async function syncReminders(
       content: {
         title: "Tus pastillas de hoy",
         body: "¿Ya marcaste todas tus tomas de hoy? Ábrelo en VitMaterna.",
+        sound: nativeSound("aviso"),
+        data: { reminder: true },
       },
       trigger: {
         type: notifications.SchedulableTriggerInputTypes.DAILY,
@@ -252,6 +317,8 @@ export async function syncReminders(
         content: {
           title: "Tu control prenatal es mañana",
           body: `Te esperamos mañana a las ${nextAppointment.time}. No faltes, tu salud y la de tu bebé son primero.`,
+          sound: nativeSound("aviso"),
+          data: { reminder: true },
         },
         trigger: {
           type: notifications.SchedulableTriggerInputTypes.DATE,

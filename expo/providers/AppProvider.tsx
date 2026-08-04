@@ -21,6 +21,7 @@ import {
   requestNotificationPermission,
   syncReminders,
 } from "@/lib/notifications";
+import { playSnapshotSounds } from "@/lib/sounds";
 import { useToast } from "@/components/Toast";
 import { todayKeyLocal } from "@/lib/format";
 import type {
@@ -99,6 +100,12 @@ export const [AppProvider, useApp] = createContextHook(() => {
     convId: null,
     typing: false,
   });
+  /**
+   * Evita la ráfaga de sonidos al abrir la app: la primera sincronización
+   * de la sesión (que trae todo lo acumulado) es silenciosa; a partir de
+   * ahí, lo nuevo suena con su sonido diferenciado.
+   */
+  const firstSyncDoneRef = useRef<boolean>(false);
 
   // ---------- Hidratación inicial ----------
   useEffect(() => {
@@ -177,6 +184,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     outboxRef.current = [];
     cachedRef.current = null;
     syncOkRef.current = false;
+    firstSyncDoneRef.current = false;
     setSession(null);
     setCached(null);
     setOutboxState([]);
@@ -194,6 +202,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
     outboxRef.current = [];
     cachedRef.current = res.snapshot;
     syncOkRef.current = true;
+    firstSyncDoneRef.current = true;
     setSession(s);
     setCached(res.snapshot);
     setOutboxState([]);
@@ -248,6 +257,11 @@ export const [AppProvider, useApp] = createContextHook(() => {
             (err) => console.log("[VitMaterna] aviso nativo:", err),
           );
         }
+        // Sonido dentro de la app según lo que llegó: mensaje, aviso o SOS.
+        if (firstSyncDoneRef.current) {
+          playSnapshotSounds(prevSnapshot, res.snapshot);
+        }
+        firstSyncDoneRef.current = true;
         return res.snapshot;
       } catch (e) {
         if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
