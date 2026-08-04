@@ -103,6 +103,9 @@ export interface Message {
   atISO: string;
   readByGestante: boolean;
   readByObstetra: boolean;
+  /** Ubicación GPS adjunta (solo avisos de emergencia/alarma). */
+  lat?: number | null;
+  lng?: number | null;
 }
 
 export type AlertType =

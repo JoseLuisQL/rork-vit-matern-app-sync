@@ -96,6 +96,9 @@ export interface Message {
   atISO: string;
   readByGestante: boolean;
   readByObstetra: boolean;
+  /** Ubicación GPS adjunta (solo avisos de emergencia/alarma). */
+  lat?: number | null;
+  lng?: number | null;
   /** Solo cliente: aún no confirmado por el servidor. */
   pending?: boolean;
 }

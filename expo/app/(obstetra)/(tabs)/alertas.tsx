@@ -5,9 +5,9 @@
  * con un toast.
  */
 import { useRouter } from "expo-router";
-import { BellOff, CheckCircle2, MapPin, MessageCircle } from "lucide-react-native";
+import { BellOff, CheckCircle2, MessageCircle } from "lucide-react-native";
 import React, { useCallback, useMemo, useState } from "react";
-import { Linking, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { gfonts, gwarm, warmBlue } from "@/constants/theme";
 import { ILU } from "@/constants/illustrations";
 import { avatarUri } from "@/lib/api";
@@ -20,6 +20,7 @@ import { Avatar } from "@/components/Avatar";
 import { Card } from "@/components/Card";
 import { EmptyState } from "@/components/EmptyState";
 import { Field } from "@/components/Field";
+import { LocationChip } from "@/components/LocationChip";
 import { Illustration } from "@/components/gestante/Illustration";
 import { PressableScale } from "@/components/PressableScale";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -68,10 +69,6 @@ export default function AlertasScreen(): React.ReactElement {
       online ? "Alerta atendida y cerrada ✓" : "Alerta cerrada · se enviará con señal",
       online ? "success" : "info",
     );
-  };
-
-  const openMap = (lat: number, lng: number) => {
-    Linking.openURL(`https://maps.google.com/?q=${lat},${lng}`).catch(() => {});
   };
 
   return (
@@ -164,14 +161,18 @@ export default function AlertasScreen(): React.ReactElement {
                 )}
 
                 {alert.lat != null && alert.lng != null ? (
-                  <PressableScale
-                    onPress={() => openMap(alert.lat as number, alert.lng as number)}
-                    accessibilityLabel="Ver ubicación en el mapa"
-                    style={styles.mapLink}
-                  >
-                    <MapPin size={15} color={accent.main} />
-                    <Text style={styles.mapText}>Ver ubicación</Text>
-                  </PressableScale>
+                  <LocationChip
+                    lat={alert.lat}
+                    lng={alert.lng}
+                    label={
+                      p
+                        ? `${alert.type === "emergencia" ? "SOS" : "Aviso"} de ${p.firstName} ${p.lastName.split(" ")[0]} · VitMaterna`
+                        : "Ubicación del aviso · VitMaterna"
+                    }
+                    title="Ver ubicación GPS"
+                    color={isUrgent ? gwarm.rose : accent.main}
+                    testID={`gps-alerta-${alert.id}`}
+                  />
                 ) : null}
 
                 {alert.status === "atendida" ? (
@@ -309,18 +310,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     color: gwarm.ink,
-  },
-  mapLink: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    minHeight: 28,
-  },
-  mapText: {
-    fontFamily: gfonts.hand,
-    fontSize: 15,
-    lineHeight: 19,
-    color: accent.main,
   },
   attendedBox: {
     backgroundColor: gwarm.tealSoft,

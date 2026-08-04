@@ -406,6 +406,8 @@ export class VitmaternaStore extends DurableObject {
           atISO: action.atISO,
           readByGestante: true,
           readByObstetra: false,
+          lat: action.lat ?? null,
+          lng: action.lng ?? null,
         });
         return null;
       }
@@ -434,6 +436,8 @@ export class VitmaternaStore extends DurableObject {
           atISO: action.atISO,
           readByGestante: true,
           readByObstetra: false,
+          lat: action.lat,
+          lng: action.lng,
         });
         return null;
       }

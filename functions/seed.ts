@@ -407,6 +407,8 @@ function buildMessages(): Message[] {
       atISO: nowISO(120),
       readByGestante: true,
       readByObstetra: true,
+      lat: -13.6547,
+      lng: -73.4288,
     },
     {
       id: "m-lucia-2",

@@ -151,6 +151,8 @@ export function applyOutbox(snapshot: Snapshot, actions: ClientAction[], user: U
           atISO: action.atISO,
           readByGestante: true,
           readByObstetra: false,
+          lat: action.lat ?? null,
+          lng: action.lng ?? null,
           pending: true,
         });
         break;
@@ -181,6 +183,8 @@ export function applyOutbox(snapshot: Snapshot, actions: ClientAction[], user: U
           atISO: action.atISO,
           readByGestante: true,
           readByObstetra: false,
+          lat: action.lat,
+          lng: action.lng,
           pending: true,
         });
         break;

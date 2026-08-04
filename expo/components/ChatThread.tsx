@@ -29,8 +29,10 @@ import {
   horaDeISO,
   todayKeyLocal,
 } from "@/lib/format";
+import { messageLocation } from "@/lib/maps";
 import { useApp, usePresence } from "@/providers/AppProvider";
 import type { Message } from "@/types";
+import { LocationChip, LocationMissing } from "@/components/LocationChip";
 import { PressableScale } from "@/components/PressableScale";
 import { TypingDots } from "@/components/TypingDots";
 import { Illustration } from "@/components/gestante/Illustration";
@@ -93,6 +95,9 @@ export function ChatThread({
     const list = (view?.messages ?? []).filter((m) => m.convId === convId);
     return [...list].sort((a, b) => new Date(b.atISO).getTime() - new Date(a.atISO).getTime());
   }, [view?.messages, convId]);
+
+  /** Alertas visibles: dan la ubicación a avisos antiguos sin coordenadas. */
+  const alerts = view?.alerts;
 
   const unreadIncoming = useMemo(
     () =>
@@ -158,6 +163,8 @@ export function ChatThread({
       if (item.kind === "emergencia" || item.kind === "alarma") {
         const esEmergencia = item.kind === "emergencia";
         const tinta = esEmergencia ? gwarm.rose : gwarm.amber;
+        const loc = messageLocation(item, alerts);
+        const esPropio = own;
         body = (
           <View style={[styles.note, esEmergencia ? styles.noteRoja : styles.noteAmbar]}>
             <View style={styles.noteHeader}>
@@ -167,10 +174,32 @@ export function ChatThread({
                 height={46}
               />
               <Text style={[styles.noteTitle, { color: tinta }]} numberOfLines={2}>
-                {esEmergencia ? "Pidió ayuda urgente" : "Avisó sus síntomas"}
+                {esPropio
+                  ? esEmergencia
+                    ? "Pediste ayuda urgente"
+                    : "Avisaste tus síntomas"
+                  : esEmergencia
+                    ? "Pidió ayuda urgente"
+                    : "Avisó sus síntomas"}
               </Text>
             </View>
             <Text style={styles.noteText}>{item.text}</Text>
+            {loc ? (
+              <LocationChip
+                lat={loc.lat}
+                lng={loc.lng}
+                label={
+                  peerName
+                    ? `${esEmergencia ? "SOS" : "Aviso"} de ${peerName} · VitMaterna`
+                    : "Ubicación del aviso · VitMaterna"
+                }
+                title="Ver ubicación GPS"
+                color={tinta}
+                testID={`gps-${item.id}`}
+              />
+            ) : esEmergencia ? (
+              <LocationMissing />
+            ) : null}
             <View style={styles.metaRow}>
               {item.pending === true ? (
                 <>
@@ -213,7 +242,7 @@ export function ChatThread({
         </View>
       );
     },
-    [myRole, accent, messages, renderTicks],
+    [myRole, accent, messages, renderTicks, alerts, peerName],
   );
 
   /** Burbuja "escribiendo…" en vivo (lista invertida: header = abajo). */
