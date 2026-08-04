@@ -1,7 +1,7 @@
 /**
- * Agenda de la obstetra: días con altura fija, tarjetas que no se deforman
- * (hora a la izquierda, nombre grande, estado en una palabra) y solicitudes
- * de cambio agrupadas en un aviso compacto arriba.
+ * Agenda de la obstetra ("cuaderno"): días con altura fija, tarjetas cálidas
+ * que no se deforman (hora a la izquierda, nombre grande, estado en una
+ * palabra) y solicitudes de cambio agrupadas en una nota ámbar arriba.
  */
 import { useRouter } from "expo-router";
 import {
@@ -15,7 +15,8 @@ import {
 } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { common, obstetraTheme, radius, semantic, spacing, type } from "@/constants/theme";
+import { gfonts, gShadow, gwarm, warmBlue } from "@/constants/theme";
+import { ILU } from "@/constants/illustrations";
 import { addDaysToKey, capitalize, fechaCorta, fechaLarga } from "@/lib/format";
 import { useApp, usePatients } from "@/providers/AppProvider";
 import { AppButton } from "@/components/AppButton";
@@ -28,7 +29,7 @@ import { SectionHeader } from "@/components/SectionHeader";
 import { StatusWord } from "@/components/Badges";
 import { PressableScale } from "@/components/PressableScale";
 
-const accent = obstetraTheme;
+const accent = warmBlue;
 
 export default function AgendaScreen(): React.ReactElement {
   const router = useRouter();
@@ -83,7 +84,7 @@ export default function AgendaScreen(): React.ReactElement {
             onPress={() =>
               router.push({ pathname: "/(obstetra)/programar", params: { mode: "cita", date: day } })
             }
-            color={accent.primary}
+            color={accent.main}
             icon={CalendarPlus}
             small
           />
@@ -94,8 +95,8 @@ export default function AgendaScreen(): React.ReactElement {
         selected={day}
         onSelect={setSelectedDay}
         todayKey={todayKey}
-        accent={accent.primary}
-        accentLight={accent.primaryLight}
+        accent={accent.main}
+        accentLight={accent.soft}
       />
       <ScrollView
         style={styles.flex}
@@ -110,16 +111,18 @@ export default function AgendaScreen(): React.ReactElement {
               accessibilityLabel="Solicitudes de cambio de fecha"
               style={styles.requestHeader}
             >
-              <CalendarClock size={18} color={semantic.warning} />
+              <View style={styles.requestIconCircle}>
+                <CalendarClock size={17} color={gwarm.amber} strokeWidth={2.4} />
+              </View>
               <Text style={styles.requestTitle}>
                 {rescheduleRequests.length === 1
                   ? "1 paciente pidió cambio de fecha"
                   : `${rescheduleRequests.length} pacientes pidieron cambio de fecha`}
               </Text>
               {showRequests ? (
-                <ChevronUp size={18} color={semantic.warning} />
+                <ChevronUp size={18} color={gwarm.amber} />
               ) : (
-                <ChevronDown size={18} color={semantic.warning} />
+                <ChevronDown size={18} color={gwarm.amber} />
               )}
             </PressableScale>
             {showRequests
@@ -141,7 +144,7 @@ export default function AgendaScreen(): React.ReactElement {
                           params: { mode: "reprogramar", appointmentId: appt.id },
                         })
                       }
-                      color={semantic.warning}
+                      color={gwarm.amber}
                       variant="soft"
                       small
                     />
@@ -155,6 +158,7 @@ export default function AgendaScreen(): React.ReactElement {
         {dayAppointments.length === 0 && dayVisits.length === 0 ? (
           <EmptyState
             icon={CalendarPlus}
+            illu={ILU.libreta}
             title="Día libre"
             text="No hay citas ni visitas para este día."
           />
@@ -169,7 +173,8 @@ export default function AgendaScreen(): React.ReactElement {
           return (
             <Card key={appt.id} style={styles.apptCard}>
               <View style={styles.apptRow}>
-                <Text style={[styles.timeText, { color: accent.primaryDark }]}>{appt.time}</Text>
+                <Text style={styles.timeText}>{appt.time}</Text>
+                <View style={styles.timeDivider} />
                 <PressableScale
                   onPress={() =>
                     router.push({
@@ -200,7 +205,7 @@ export default function AgendaScreen(): React.ReactElement {
                         estado: "asistida",
                       })
                     }
-                    color={semantic.success}
+                    color={gwarm.teal}
                     variant="soft"
                     icon={CheckCircle2}
                     small
@@ -215,7 +220,7 @@ export default function AgendaScreen(): React.ReactElement {
                         estado: "no_asistida",
                       })
                     }
-                    color={semantic.danger}
+                    color={gwarm.rose}
                     variant="soft"
                     icon={XCircle}
                     small
@@ -232,7 +237,7 @@ export default function AgendaScreen(): React.ReactElement {
                       params: { mode: "reprogramar", appointmentId: appt.id },
                     })
                   }
-                  color={accent.primary}
+                  color={accent.main}
                   variant="outline"
                   small
                 />
@@ -248,11 +253,10 @@ export default function AgendaScreen(): React.ReactElement {
               <Card key={visit.id} style={styles.apptCard}>
                 <View style={styles.apptRow}>
                   <View style={styles.visitTime}>
-                    <HousePlus size={16} color={semantic.success} />
-                    <Text style={[styles.timeTextSm, { color: semantic.success }]}>
-                      {visit.time}
-                    </Text>
+                    <HousePlus size={17} color={gwarm.teal} strokeWidth={2.2} />
+                    <Text style={styles.visitTimeText}>{visit.time}</Text>
                   </View>
+                  <View style={styles.timeDivider} />
                   <View style={styles.rowInfo}>
                     <Text style={styles.rowName} numberOfLines={1}>
                       {patientName(visit.patientId)}
@@ -264,7 +268,7 @@ export default function AgendaScreen(): React.ReactElement {
                   <Text
                     style={[
                       styles.visitState,
-                      { color: visit.estado === "realizada" ? semantic.success : semantic.info },
+                      { color: visit.estado === "realizada" ? gwarm.teal : accent.main },
                     ]}
                   >
                     {visit.estado === "realizada" ? "Realizada" : "Pendiente"}
@@ -280,14 +284,14 @@ export default function AgendaScreen(): React.ReactElement {
                       onChangeText={setVisitResult}
                       placeholder="Cómo encontraste a la gestante, acuerdos…"
                       multiline
-                      accent={accent.primary}
+                      accent={accent.main}
                       maxLength={400}
                     />
                     <View style={styles.actionsRow}>
                       <AppButton
                         title="Guardar"
                         onPress={() => saveVisitResult(visit.id)}
-                        color={accent.primary}
+                        color={accent.main}
                         small
                         disabled={visitResult.trim().length === 0}
                         style={styles.flex}
@@ -298,7 +302,7 @@ export default function AgendaScreen(): React.ReactElement {
                           setCompletingVisitId(null);
                           setVisitResult("");
                         }}
-                        color={common.textSecondary}
+                        color={gwarm.inkSoft}
                         variant="outline"
                         small
                         style={styles.flex}
@@ -312,7 +316,7 @@ export default function AgendaScreen(): React.ReactElement {
                       setCompletingVisitId(visit.id);
                       setVisitResult("");
                     }}
-                    color={accent.primary}
+                    color={accent.main}
                     variant="outline"
                     small
                   />
@@ -327,7 +331,7 @@ export default function AgendaScreen(): React.ReactElement {
           onPress={() =>
             router.push({ pathname: "/(obstetra)/programar", params: { mode: "visita", date: day } })
           }
-          color={accent.primary}
+          color={accent.main}
           variant="soft"
           icon={HousePlus}
           style={styles.bottomAction}
@@ -338,70 +342,115 @@ export default function AgendaScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: common.background },
+  container: { flex: 1, backgroundColor: gwarm.bg },
   flex: { flex: 1 },
   content: {
-    padding: spacing.md,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.xl,
-    gap: spacing.sm2,
+    padding: 16,
+    paddingTop: 4,
+    paddingBottom: 32,
+    gap: 12,
   },
   requestBlock: {
-    backgroundColor: common.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: common.border,
-    borderLeftWidth: 3,
-    borderLeftColor: semantic.warning,
-    padding: spacing.sm2,
-    gap: spacing.sm,
+    backgroundColor: gwarm.amberSoft,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: gwarm.amberMid,
+    padding: 12,
+    gap: 8,
+    ...gShadow,
   },
   requestHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
-    minHeight: 32,
+    gap: 10,
+    minHeight: 36,
   },
-  requestTitle: { ...type.bodyMd, fontSize: 14, color: common.text, flex: 1 },
+  requestIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: gwarm.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  requestTitle: {
+    fontFamily: gfonts.handBody,
+    fontSize: 14.5,
+    lineHeight: 20,
+    color: gwarm.ink,
+    flex: 1,
+  },
   requestRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm2,
-    backgroundColor: common.surfaceAlt,
-    borderRadius: radius.md,
-    padding: spacing.sm2,
+    gap: 12,
+    backgroundColor: gwarm.surface,
+    borderRadius: 16,
+    padding: 12,
   },
-  apptCard: { gap: spacing.sm2 },
+  apptCard: { gap: 12 },
   apptRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm2,
+    gap: 12,
   },
   timeText: {
-    ...type.numericSm,
-    fontSize: 16,
+    fontFamily: gfonts.hand,
+    fontSize: 18,
+    lineHeight: 23,
+    color: accent.deep,
     width: 50,
     flexShrink: 0,
   },
-  timeTextSm: { ...type.label, fontSize: 13 },
+  timeDivider: {
+    width: 1,
+    alignSelf: "stretch",
+    marginVertical: 2,
+    backgroundColor: gwarm.border,
+  },
   visitTime: {
-    width: 54,
+    width: 50,
     flexShrink: 0,
     alignItems: "center",
     gap: 2,
   },
-  rowInfo: { flex: 1, minWidth: 0, gap: 1 },
-  rowName: { ...type.bodyMd, fontSize: 15, color: common.text },
-  rowMeta: { ...type.bodySm, color: common.textSecondary },
-  actionsRow: { flexDirection: "row", gap: spacing.sm },
-  visitState: { ...type.label, fontSize: 13, flexShrink: 0 },
-  visitResult: {
-    ...type.bodySm,
-    color: common.textSecondary,
-    backgroundColor: common.surfaceAlt,
-    borderRadius: radius.sm,
-    padding: spacing.sm2,
+  visitTimeText: {
+    fontFamily: gfonts.hand,
+    fontSize: 14.5,
+    lineHeight: 18,
+    color: gwarm.teal,
   },
-  resultForm: { gap: spacing.sm },
-  bottomAction: { marginTop: spacing.xs },
+  rowInfo: { flex: 1, minWidth: 0, gap: 1 },
+  rowName: {
+    fontFamily: gfonts.handBody,
+    fontSize: 15.5,
+    lineHeight: 21,
+    color: gwarm.ink,
+  },
+  rowMeta: {
+    fontFamily: gfonts.handBody,
+    fontSize: 13,
+    lineHeight: 17,
+    color: gwarm.inkSoft,
+  },
+  actionsRow: { flexDirection: "row", gap: 8 },
+  visitState: {
+    fontFamily: gfonts.hand,
+    fontSize: 15,
+    lineHeight: 19,
+    flexShrink: 0,
+  },
+  visitResult: {
+    fontFamily: gfonts.handBody,
+    fontSize: 14,
+    lineHeight: 20,
+    color: gwarm.inkSoft,
+    backgroundColor: gwarm.surfaceSoft,
+    borderWidth: 1,
+    borderColor: gwarm.border,
+    borderRadius: 14,
+    padding: 12,
+  },
+  resultForm: { gap: 8 },
+  bottomAction: { marginTop: 4 },
 });

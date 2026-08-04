@@ -1,9 +1,8 @@
 /**
  * Ilustraciones e iconos personalizados de VitMaterna, dibujados a medida
- * para la sección de la gestante (crayola y gouache con textura granulada,
- * paleta teal/terracota/ocre). Se descargan una vez y quedan guardados en el
- * teléfono (caché de disco), así que también se ven sin señal después de la
- * primera carga.
+ * (crayola y gouache con textura granulada, paleta teal/terracota/ocre/azul/
+ * ciruela). Se descargan una vez y quedan guardados en el teléfono (caché de
+ * disco), así que también se ven sin señal después de la primera carga.
  */
 const BASE = "https://rork.app/pa/ztb4shx7jxkj17tpuz62u";
 const R2 = "https://r2-pub.rork.com/projects/ztb4shx7jxkj17tpuz62u/assets";
@@ -33,22 +32,36 @@ export const ILU = {
   chat: `${R2}/9a22c423-9ac4-4c12-8d63-9ee951fe8289.png`,
   /** Ramita de cantutas, más ancha que alta (adorno). */
   flores: `${R2}/ca195496-ae36-4650-8e5e-f9f463e281cf.png`,
+  /** Obstetra recibiendo a una mamá frente al centro de salud (login). */
+  bienvenida: `${R2}/d5793c89-45b7-4a97-9b56-fe6f7f0d0ed5.png`,
+  /** Centro de salud andino con cruz y cantutas (administración). */
+  centroSalud: `${R2}/b00f5587-b43d-4d84-b571-1aeb94b48bfe.png`,
+  /** Libreta de citas abierta con lápiz y cantutas (agenda de la obstetra). */
+  libreta: `${R2}/7763fb6e-3f8d-4081-b837-2dc13cd4314a.png`,
 } as const;
 
 /** Iconos dibujados a crayola para pestañas, bloques y recordatorios. */
 export const GICON = {
   /** Casita andina con corazón (Inicio). */
   casa: `${R2}/2f99a164-c583-487f-8c92-2cd47c67628a.png`,
-  /** Hoja de calendario con corazón (Citas). */
+  /** Hoja de calendario con corazón (Citas / Agenda). */
   citas: `${R2}/551ad9c4-847a-44d6-b7c0-14c9be6c121d.png`,
   /** Frasco con pastillas (Pastillas). */
   pastillas: `${R2}/d66d21a2-f05b-4082-a05c-20da14a41b56.png`,
-  /** Globo de diálogo con corazón (Mensajes). */
+  /** Globo de diálogo con corazón (Mensajes / Chat). */
   mensajes: `${R2}/d2c9f2e5-9377-44a4-804a-49e437cb4931.png`,
   /** Libro abierto con brote y sol (Consejos). */
   libro: `${R2}/0692ece2-7c1c-4407-8646-599f8d86aa69.png`,
-  /** Campanita amable (recordatorios). */
+  /** Campanita amable (recordatorios / alertas). */
   campana: `${R2}/162ad0a5-c906-477c-8dcc-6b8d38c416f9.png`,
+  /** Mamá gestante con corazoncito (pestaña Gestantes de la obstetra). */
+  gestantes: `${R2}/a50d683c-fe6d-4cdd-a604-41af3349027b.png`,
+  /** Barras que crecen con un brote (Reportes de administración). */
+  reportes: `${R2}/62435b96-fe68-4a65-8162-1ca34378adde.png`,
+  /** Dos personas de la comunidad con corazón (Usuarios). */
+  usuarios: `${R2}/fb46aa66-331d-4a5c-93f8-d254030027c0.png`,
+  /** Persona sonriente en círculo con solcito (Perfil). */
+  perfil: `${R2}/0c2937d8-712b-4c8e-bd0c-caef5fdb39b6.png`,
 } as const;
 
 /** Dibujo de cada categoría de consejos (educación). */

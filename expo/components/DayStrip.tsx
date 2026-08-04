@@ -1,11 +1,11 @@
 /**
- * Selector horizontal de días con altura FIJA. Diseño mínimo: los días
+ * Selector horizontal de días con altura FIJA y letra a mano: los días
  * flotan sin recuadro; el seleccionado se rellena con el acento y "hoy"
- * se distingue por color y un punto.
+ * se distingue por su ficha de color suave.
  */
 import React from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { common, radius, spacing, type } from "@/constants/theme";
+import { gfonts, spacing, gwarm } from "@/constants/theme";
 import { dateFromKey } from "@/lib/format";
 import { PressableScale } from "@/components/PressableScale";
 
@@ -58,7 +58,7 @@ export function DayStrip({
                 <Text
                   style={[
                     styles.dow,
-                    { color: active ? common.white : isToday ? accent : common.textTertiary },
+                    { color: active ? "#FFFFFF" : isToday ? accent : gwarm.inkFaint },
                   ]}
                 >
                   {isToday ? "Hoy" : DOW[d.getDay()]}
@@ -66,7 +66,7 @@ export function DayStrip({
                 <Text
                   style={[
                     styles.num,
-                    { color: active ? common.white : isToday ? accent : common.text },
+                    { color: active ? "#FFFFFF" : isToday ? accent : gwarm.ink },
                   ]}
                 >
                   {d.getDate()}
@@ -91,21 +91,21 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   chip: {
-    width: 54,
-    height: 60,
-    borderRadius: radius.md,
+    width: 56,
+    height: 64,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    gap: 2,
+    gap: 1,
   },
   dow: {
-    ...type.label,
-    fontSize: 11.5,
-    lineHeight: 15,
+    fontFamily: gfonts.handBody,
+    fontSize: 12,
+    lineHeight: 16,
   },
   num: {
-    ...type.numericSm,
-    fontSize: 18,
-    lineHeight: 23,
+    fontFamily: gfonts.hand,
+    fontSize: 20,
+    lineHeight: 25,
   },
 });

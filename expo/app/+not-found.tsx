@@ -1,8 +1,8 @@
-/** Pantalla 404 con el estilo Clinical Calm. */
+/** Pantalla 404 con el estilo cálido del cuaderno. */
 import { Link, Stack } from "expo-router";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { common, gestanteTheme, radius, spacing, type } from "@/constants/theme";
+import { gfonts, gwarm } from "@/constants/theme";
 
 export default function NotFoundScreen(): React.ReactElement {
   return (
@@ -23,22 +23,26 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    padding: spacing.md2,
-    backgroundColor: common.background,
+    padding: 20,
+    backgroundColor: gwarm.bg,
   },
   title: {
-    ...type.h2,
-    color: common.text,
+    fontFamily: gfonts.hand,
+    fontSize: 24,
+    lineHeight: 30,
+    color: gwarm.ink,
   },
   link: {
-    marginTop: spacing.md,
-    paddingVertical: spacing.sm2,
-    paddingHorizontal: spacing.lg,
-    backgroundColor: gestanteTheme.primaryLight,
-    borderRadius: radius.pill,
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    backgroundColor: gwarm.tealSoft,
+    borderRadius: 999,
   },
   linkText: {
-    ...type.button,
-    color: gestanteTheme.primary,
+    fontFamily: gfonts.hand,
+    fontSize: 17,
+    lineHeight: 22,
+    color: gwarm.tealDeep,
   },
 });

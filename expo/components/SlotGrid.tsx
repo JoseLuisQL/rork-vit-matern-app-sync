@@ -1,11 +1,11 @@
 /**
  * Cuadrícula de horarios en filas parejas de 4: todas las casillas del mismo
  * tamaño (la última fila se completa con espacios vacíos, sin estirarse).
- * Libres: blancas con borde fino. Ocupados: apagados y tachados.
+ * Libres: cálidas con borde crema. Ocupados: apagados y tachados.
  */
 import React, { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { common, radius, spacing, type } from "@/constants/theme";
+import { gfonts, gwarm, spacing } from "@/constants/theme";
 import { AGENDA_SLOTS } from "@/constants/labels";
 import { PressableScale } from "@/components/PressableScale";
 
@@ -53,15 +53,14 @@ export function SlotGrid({ taken, selected, onSelect, accent }: SlotGridProps): 
                     styles.slot,
                     active
                       ? { backgroundColor: accent, borderColor: accent }
-                      : { backgroundColor: common.surface, borderColor: common.border },
+                      : { backgroundColor: gwarm.surface, borderColor: gwarm.border },
                     isTaken && styles.slotTaken,
                   ]}
                 >
                   <Text
                     style={[
                       styles.slotText,
-                      { color: active ? common.white : isTaken ? common.disabled : common.text },
-                      active && styles.slotTextActive,
+                      { color: active ? "#FFFFFF" : isTaken ? gwarm.inkFaint : gwarm.ink },
                       isTaken && styles.slotTextTaken,
                     ]}
                   >
@@ -89,22 +88,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   slot: {
-    height: 44,
-    borderRadius: radius.sm,
-    borderWidth: 1,
+    height: 46,
+    borderRadius: 14,
+    borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
   },
   slotTaken: {
-    backgroundColor: common.surfaceAlt,
-    borderColor: common.surfaceAlt,
+    backgroundColor: "#F3ECDD",
+    borderColor: "#F3ECDD",
   },
   slotText: {
-    ...type.bodyMd,
-    fontSize: 14,
-  },
-  slotTextActive: {
-    fontFamily: type.button.fontFamily,
+    fontFamily: gfonts.hand,
+    fontSize: 15.5,
+    lineHeight: 20,
   },
   slotTextTaken: {
     textDecorationLine: "line-through" as const,

@@ -1,7 +1,7 @@
 /**
- * Ficha clínica de la gestante (vista obstetra): riesgo con factores,
- * salud con hemoglobina corregida, tratamiento, controles y visitas.
- * La corrección por altitud aparece como nota pequeña al pie.
+ * Ficha clínica de la gestante (vista obstetra, estilo "cuaderno"): riesgo
+ * con factores, salud con hemoglobina corregida, tratamiento, controles y
+ * visitas. La corrección por altitud aparece como nota pequeña al pie.
  */
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
@@ -13,7 +13,7 @@ import {
 } from "lucide-react-native";
 import React, { useMemo } from "react";
 import { Linking, ScrollView, StyleSheet, Text, View } from "react-native";
-import { common, obstetraTheme, radius, risk, semantic, spacing, type } from "@/constants/theme";
+import { gfonts, gwarm, risk, warmBlue } from "@/constants/theme";
 import { ANEMIA_LABEL } from "@/constants/labels";
 import { avatarUri } from "@/lib/api";
 import { fechaCompleta, fechaCorta, fechaLarga } from "@/lib/format";
@@ -28,13 +28,13 @@ import { RiskBadge, StatusWord } from "@/components/Badges";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SectionHeader } from "@/components/SectionHeader";
 
-const accent = obstetraTheme;
+const accent = warmBlue;
 
 function DataItem({ label, value, alert }: { label: string; value: string; alert?: boolean }) {
   return (
     <View style={styles.dataItem}>
       <Text style={styles.dataLabel}>{label}</Text>
-      <Text style={[styles.dataValue, alert === true && { color: semantic.danger }]}>{value}</Text>
+      <Text style={[styles.dataValue, alert === true && { color: gwarm.rose }]}>{value}</Text>
     </View>
   );
 }
@@ -98,7 +98,7 @@ export default function FichaGestante(): React.ReactElement {
             uri={avatarUri(patient.dni, patient.avatarVersion)}
             color={riskPalette.solid}
             background={riskPalette.light}
-            size={40}
+            size={42}
           />
         }
       />
@@ -111,7 +111,7 @@ export default function FichaGestante(): React.ReactElement {
           <AppButton
             title="Chat"
             onPress={() => router.push({ pathname: "/(obstetra)/chat/[id]", params: { id: patient.id } })}
-            color={accent.primary}
+            color={accent.main}
             icon={MessageCircle}
             small
             style={styles.flex}
@@ -124,7 +124,7 @@ export default function FichaGestante(): React.ReactElement {
                 params: { mode: "cita", patientId: patient.id },
               })
             }
-            color={accent.primary}
+            color={accent.main}
             variant="soft"
             icon={CalendarPlus}
             small
@@ -138,7 +138,7 @@ export default function FichaGestante(): React.ReactElement {
                 params: { mode: "visita", patientId: patient.id },
               })
             }
-            color={accent.primary}
+            color={accent.main}
             variant="soft"
             icon={HousePlus}
             small
@@ -146,7 +146,7 @@ export default function FichaGestante(): React.ReactElement {
           />
         </View>
 
-        <SectionHeader title="Riesgo" />
+        <SectionHeader title="Su riesgo" />
         <Card style={[styles.riskCard, { borderLeftColor: riskPalette.solid }]}>
           <RiskBadge level={patient.riskLevel} />
           {patient.riskFactors.length === 0 ? (
@@ -161,17 +161,17 @@ export default function FichaGestante(): React.ReactElement {
           )}
         </Card>
 
-        <SectionHeader title="Salud" />
+        <SectionHeader title="Su salud" />
         <Card style={styles.dataCard}>
           <View style={styles.hbBlock}>
             <Text style={styles.hbLabel}>Hemoglobina</Text>
-            <Text style={[styles.hbValue, anemiaAlert && { color: semantic.danger }]}>
+            <Text style={[styles.hbValue, { color: anemiaAlert ? gwarm.rose : gwarm.teal }]}>
               {patient.hbCorrected} g/dL
             </Text>
             <Text
               style={[
                 styles.hbStatus,
-                { color: anemiaAlert ? semantic.danger : semantic.success },
+                { color: anemiaAlert ? gwarm.rose : gwarm.tealDeep },
               ]}
             >
               {ANEMIA_LABEL[patient.anemia]}
@@ -197,10 +197,8 @@ export default function FichaGestante(): React.ReactElement {
             accessibilityLabel={`Llamar a ${patient.firstName}`}
             style={styles.phoneRow}
           >
-            <Phone size={15} color={accent.primary} />
-            <Text style={[styles.phoneText, { color: accent.primary }]}>
-              {patient.phone || "Sin teléfono"}
-            </Text>
+            <Phone size={16} color={accent.main} />
+            <Text style={styles.phoneText}>{patient.phone || "Sin teléfono"}</Text>
           </PressableScale>
           <Text style={styles.footNote}>
             Hb medida {patient.hbObserved} g/dL, ajustada por la altitud del centro (
@@ -208,20 +206,20 @@ export default function FichaGestante(): React.ReactElement {
           </Text>
         </Card>
 
-        <SectionHeader title="Tratamiento" />
+        <SectionHeader title="Sus pastillas" />
         <Card style={styles.treatCard}>
           <View style={styles.treatTop}>
             <ProgressRing
               progress={patient.adherence30 / 100}
               color={
                 patient.adherence30 >= 75
-                  ? semantic.success
+                  ? gwarm.teal
                   : patient.adherence30 >= 50
-                    ? semantic.warning
-                    : semantic.danger
+                    ? gwarm.amber
+                    : gwarm.rose
               }
-              size={76}
-              strokeWidth={7}
+              size={78}
+              strokeWidth={8}
             >
               <Text style={styles.treatPct}>{patient.adherence30}%</Text>
             </ProgressRing>
@@ -241,8 +239,8 @@ export default function FichaGestante(): React.ReactElement {
                   styles.suppDot,
                   {
                     backgroundColor: todayIntakes.includes(s.id)
-                      ? semantic.success
-                      : common.borderStrong,
+                      ? gwarm.teal
+                      : gwarm.borderStrong,
                   },
                 ]}
               />
@@ -303,14 +301,14 @@ export default function FichaGestante(): React.ReactElement {
                   <View style={styles.visitTitleRow}>
                     <HousePlus
                       size={16}
-                      color={visit.estado === "realizada" ? semantic.success : semantic.info}
+                      color={visit.estado === "realizada" ? gwarm.teal : accent.main}
                     />
                     <Text style={styles.apptTitle}>{fechaCompleta(visit.dateKey)}</Text>
                   </View>
                   <Text
                     style={[
                       styles.visitState,
-                      { color: visit.estado === "realizada" ? semantic.success : semantic.info },
+                      { color: visit.estado === "realizada" ? gwarm.teal : accent.main },
                     ]}
                   >
                     {visit.estado === "realizada" ? "Realizada" : "Pendiente"}
@@ -328,107 +326,192 @@ export default function FichaGestante(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: common.background },
+  container: { flex: 1, backgroundColor: gwarm.bg },
   flex: { flex: 1 },
   content: {
-    padding: spacing.md,
-    paddingBottom: spacing.xxl,
-    gap: spacing.sm2,
+    padding: 16,
+    paddingBottom: 48,
+    gap: 12,
   },
-  actionsRow: { flexDirection: "row", gap: spacing.sm },
-  riskCard: { gap: spacing.sm, borderLeftWidth: 3 },
-  riskNone: { ...type.body, color: common.textSecondary },
-  factorRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  factorDot: { width: 7, height: 7, borderRadius: radius.pill },
-  factorText: { ...type.body, color: common.text, flex: 1 },
-  dataCard: { gap: spacing.sm2 },
-  hbBlock: { gap: 2 },
+  actionsRow: { flexDirection: "row", gap: 8 },
+  riskCard: { gap: 8, borderLeftWidth: 4 },
+  riskNone: {
+    fontFamily: gfonts.handBody,
+    fontSize: 15,
+    lineHeight: 22,
+    color: gwarm.inkSoft,
+  },
+  factorRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  factorDot: { width: 7, height: 7, borderRadius: 999 },
+  factorText: {
+    fontFamily: gfonts.handBody,
+    fontSize: 15,
+    lineHeight: 22,
+    color: gwarm.ink,
+    flex: 1,
+  },
+  dataCard: { gap: 12 },
+  hbBlock: { gap: 1 },
   hbLabel: {
-    ...type.overline,
-    fontSize: 10.5,
-    lineHeight: 14,
-    letterSpacing: 0.6,
-    color: common.textTertiary,
-    textTransform: "uppercase" as const,
+    fontFamily: gfonts.handBody,
+    fontSize: 13,
+    lineHeight: 17,
+    color: gwarm.inkFaint,
   },
-  hbValue: { ...type.numericMd, color: semantic.success },
-  hbStatus: { ...type.bodyMd, fontSize: 14 },
+  hbValue: {
+    fontFamily: gfonts.hand,
+    fontSize: 30,
+    lineHeight: 37,
+  },
+  hbStatus: {
+    fontFamily: gfonts.handBody,
+    fontSize: 14.5,
+    lineHeight: 20,
+  },
   dataGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    rowGap: spacing.sm2,
+    rowGap: 12,
     borderTopWidth: 1,
-    borderTopColor: common.border,
-    paddingTop: spacing.sm2,
+    borderTopColor: gwarm.border,
+    paddingTop: 12,
   },
   dataItem: {
     flexBasis: "33.33%",
-    gap: 2,
-    paddingRight: spacing.sm,
+    gap: 1,
+    paddingRight: 8,
   },
   dataLabel: {
-    ...type.overline,
-    fontSize: 10.5,
-    lineHeight: 14,
-    letterSpacing: 0.6,
-    color: common.textTertiary,
-    textTransform: "uppercase" as const,
+    fontFamily: gfonts.handBody,
+    fontSize: 12,
+    lineHeight: 16,
+    color: gwarm.inkFaint,
   },
-  dataValue: { ...type.bodyMd, fontSize: 15, color: common.text },
+  dataValue: {
+    fontFamily: gfonts.handBody,
+    fontSize: 15.5,
+    lineHeight: 21,
+    color: gwarm.ink,
+  },
   phoneRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     minHeight: 32,
   },
-  phoneText: { ...type.bodyMd, fontSize: 15 },
-  footNote: { ...type.caption, color: common.textTertiary },
-  treatCard: { gap: spacing.sm },
+  phoneText: {
+    fontFamily: gfonts.hand,
+    fontSize: 16.5,
+    lineHeight: 21,
+    color: accent.main,
+  },
+  footNote: {
+    fontFamily: gfonts.handBody,
+    fontSize: 12,
+    lineHeight: 16,
+    color: gwarm.inkFaint,
+  },
+  treatCard: { gap: 8 },
   treatTop: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.md,
-    marginBottom: spacing.xs,
+    gap: 16,
+    marginBottom: 4,
   },
-  treatPct: { ...type.numericSm, fontSize: 16, color: common.text },
-  treatTitle: { ...type.bodyMd, fontSize: 16, color: common.text },
-  treatMeta: { ...type.bodySm, color: common.textSecondary, marginTop: 2 },
+  treatPct: {
+    fontFamily: gfonts.hand,
+    fontSize: 17,
+    lineHeight: 22,
+    color: gwarm.ink,
+  },
+  treatTitle: {
+    fontFamily: gfonts.handBody,
+    fontSize: 15.5,
+    lineHeight: 22,
+    color: gwarm.ink,
+  },
+  treatMeta: {
+    fontFamily: gfonts.handBody,
+    fontSize: 13.5,
+    lineHeight: 19,
+    color: gwarm.inkSoft,
+    marginTop: 2,
+  },
   suppRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
+    gap: 8,
     minHeight: 28,
   },
-  suppDot: { width: 9, height: 9, borderRadius: radius.pill },
-  suppName: { ...type.body, color: common.text, flex: 1 },
-  listCard: { paddingVertical: spacing.xs },
+  suppDot: { width: 9, height: 9, borderRadius: 999 },
+  suppName: {
+    fontFamily: gfonts.handBody,
+    fontSize: 15,
+    lineHeight: 22,
+    color: gwarm.ink,
+    flex: 1,
+  },
+  listCard: { paddingVertical: 6 },
   apptRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm2,
-    paddingVertical: spacing.sm2,
+    gap: 12,
+    paddingVertical: 11,
     minHeight: 52,
   },
-  rowBorder: { borderTopWidth: 1, borderTopColor: common.border },
+  rowBorder: { borderTopWidth: 1, borderTopColor: gwarm.border },
   rowInfo: { flex: 1, minWidth: 0, gap: 1 },
-  apptTitle: { ...type.bodyMd, fontSize: 16, color: common.text },
-  apptMeta: { ...type.bodySm, color: common.textSecondary },
-  historyDate: { ...type.label, fontSize: 13, color: common.textSecondary, width: 52, flexShrink: 0 },
-  historyMotivo: { ...type.body, color: common.text, flex: 1, minWidth: 0 },
+  apptTitle: {
+    fontFamily: gfonts.handBody,
+    fontSize: 15.5,
+    lineHeight: 21,
+    color: gwarm.ink,
+  },
+  apptMeta: {
+    fontFamily: gfonts.handBody,
+    fontSize: 13,
+    lineHeight: 17,
+    color: gwarm.inkSoft,
+  },
+  historyDate: {
+    fontFamily: gfonts.hand,
+    fontSize: 14.5,
+    lineHeight: 18,
+    color: gwarm.inkSoft,
+    width: 54,
+    flexShrink: 0,
+  },
+  historyMotivo: {
+    fontFamily: gfonts.handBody,
+    fontSize: 14.5,
+    lineHeight: 20,
+    color: gwarm.ink,
+    flex: 1,
+    minWidth: 0,
+  },
   visitCard: { gap: 6 },
   visitTop: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: spacing.sm,
+    gap: 8,
   },
   visitTitleRow: { flexDirection: "row", alignItems: "center", gap: 6, flex: 1, minWidth: 0 },
-  visitState: { ...type.label, fontSize: 13, flexShrink: 0 },
+  visitState: {
+    fontFamily: gfonts.hand,
+    fontSize: 15,
+    lineHeight: 19,
+    flexShrink: 0,
+  },
   visitResult: {
-    ...type.body,
-    color: common.textSecondary,
-    backgroundColor: common.surfaceAlt,
-    borderRadius: radius.sm,
-    padding: spacing.sm2,
+    fontFamily: gfonts.handBody,
+    fontSize: 14,
+    lineHeight: 20,
+    color: gwarm.inkSoft,
+    backgroundColor: gwarm.surfaceSoft,
+    borderWidth: 1,
+    borderColor: gwarm.border,
+    borderRadius: 14,
+    padding: 12,
   },
 });

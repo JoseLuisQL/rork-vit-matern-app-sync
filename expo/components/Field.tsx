@@ -1,6 +1,6 @@
 /**
- * Campo de formulario profesional: etiqueta pequeña, entrada rellena que se
- * aviva al enfocar (borde de acento sobre fondo blanco) y error visible.
+ * Campo de formulario del cuaderno: etiqueta a mano, entrada cálida que se
+ * aviva al enfocar (borde de acento) y error visible en nota rosada.
  */
 import React, { useState } from "react";
 import {
@@ -12,7 +12,7 @@ import {
   View,
   ViewStyle,
 } from "react-native";
-import { common, gfonts, gwarm, radius, semantic, spacing, type } from "@/constants/theme";
+import { gfonts, gwarm } from "@/constants/theme";
 
 interface FieldProps {
   label: string;
@@ -27,7 +27,7 @@ interface FieldProps {
   multiline?: boolean;
   accent?: string;
   hint?: string;
-  /** Letra manuscrita (sección gestante). */
+  /** Compatibilidad: toda la app ya usa letra manuscrita. */
   hand?: boolean;
   style?: StyleProp<ViewStyle>;
   testID?: string;
@@ -44,9 +44,8 @@ export function Field({
   maxLength,
   autoCapitalize = "sentences",
   multiline = false,
-  accent = "#0C8174",
+  accent = gwarm.teal,
   hint,
-  hand = false,
   style,
   testID,
 }: FieldProps): React.ReactElement {
@@ -55,12 +54,12 @@ export function Field({
 
   return (
     <View style={[styles.container, style]}>
-      <Text style={[styles.label, hand && styles.labelHand]}>{label}</Text>
+      <Text style={styles.label}>{label}</Text>
       <TextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={common.textTertiary}
+        placeholderTextColor={gwarm.inkFaint}
         keyboardType={keyboardType}
         secureTextEntry={secureTextEntry}
         maxLength={maxLength}
@@ -70,10 +69,9 @@ export function Field({
         onBlur={() => setFocused(false)}
         style={[
           styles.input,
-          hand && styles.inputHand,
           multiline && styles.multiline,
-          focused && { borderColor: accent, backgroundColor: common.surface },
-          hasError && { borderColor: semantic.danger, backgroundColor: common.surface },
+          focused && { borderColor: accent, backgroundColor: gwarm.surface },
+          hasError && { borderColor: gwarm.rose, backgroundColor: gwarm.surface },
         ]}
         testID={testID}
       />
@@ -91,44 +89,37 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   label: {
-    ...type.label,
-    color: common.textSecondary,
-  },
-  labelHand: {
     fontFamily: gfonts.handBody,
     fontSize: 14,
     lineHeight: 19,
-    letterSpacing: 0,
     color: gwarm.inkSoft,
   },
   input: {
-    ...type.body,
-    color: common.text,
-    backgroundColor: common.surfaceAlt,
-    borderWidth: 1,
-    borderColor: common.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.sm2,
-    paddingVertical: 11,
-    minHeight: 46,
-  },
-  inputHand: {
     fontFamily: gfonts.handBody,
     fontSize: 16,
-    backgroundColor: gwarm.surfaceSoft,
-    borderColor: gwarm.border,
     color: gwarm.ink,
+    backgroundColor: gwarm.surfaceSoft,
+    borderWidth: 1.5,
+    borderColor: gwarm.border,
+    borderRadius: 15,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    minHeight: 48,
   },
   multiline: {
     minHeight: 92,
     textAlignVertical: "top" as const,
   },
   error: {
-    ...type.bodySm,
-    color: semantic.danger,
+    fontFamily: gfonts.handBody,
+    fontSize: 13.5,
+    lineHeight: 18,
+    color: gwarm.rose,
   },
   hint: {
-    ...type.caption,
-    color: common.textTertiary,
+    fontFamily: gfonts.handBody,
+    fontSize: 12.5,
+    lineHeight: 17,
+    color: gwarm.inkFaint,
   },
 });

@@ -1,13 +1,14 @@
 /**
- * Alertas tempranas: filtro segmentado y tarjetas blancas ligeras — quién,
- * hace cuánto y qué pasa. Las urgencias se marcan con una barra roja fina,
- * un botón compacto "Atender" y el chat como icono.
+ * Alertas tempranas ("cuaderno"): filtro segmentado y tarjetas cálidas —
+ * quién, hace cuánto y qué pasa. Las urgencias van como notas rosadas con
+ * un botón "Atender" y el chat como icono.
  */
 import { useRouter } from "expo-router";
 import { BellOff, CheckCircle2, MapPin, MessageCircle } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
 import { Linking, ScrollView, StyleSheet, Text, View } from "react-native";
-import { common, obstetraTheme, radius, semantic, spacing, type } from "@/constants/theme";
+import { gfonts, gwarm, warmBlue } from "@/constants/theme";
+import { GICON } from "@/constants/illustrations";
 import { avatarUri } from "@/lib/api";
 import { tiempoRelativo } from "@/lib/format";
 import { useApp, usePatients } from "@/providers/AppProvider";
@@ -22,7 +23,7 @@ import { PressableScale } from "@/components/PressableScale";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Segmented } from "@/components/Segmented";
 
-const accent = obstetraTheme;
+const accent = warmBlue;
 type Filter = "abiertas" | "atendidas" | "todas";
 
 export default function AlertasScreen(): React.ReactElement {
@@ -86,6 +87,7 @@ export default function AlertasScreen(): React.ReactElement {
         {alerts.length === 0 ? (
           <EmptyState
             icon={BellOff}
+            illu={GICON.campana}
             title={filter === "abiertas" ? "Sin alertas por atender" : "Nada por aquí"}
             text={
               filter === "abiertas"
@@ -97,13 +99,11 @@ export default function AlertasScreen(): React.ReactElement {
           alerts.map((alert) => {
             const p = patientOf(alert.patientId);
             const isUrgent = alert.type === "emergencia" || alert.type === "alarma";
+            const urgentOpen = isUrgent && alert.status === "abierta";
             return (
               <Card
                 key={alert.id}
-                style={[
-                  styles.alertCard,
-                  isUrgent && alert.status === "abierta" && styles.alertUrgent,
-                ]}
+                style={[styles.alertCard, urgentOpen && styles.alertUrgent]}
               >
                 <View style={styles.alertTop}>
                   <PressableScale
@@ -117,9 +117,9 @@ export default function AlertasScreen(): React.ReactElement {
                     {p ? (
                       <Avatar
                         uri={avatarUri(p.dni, p.avatarVersion)}
-                        color={isUrgent ? semantic.danger : accent.primary}
-                        background={isUrgent ? semantic.dangerLight : accent.primaryLight}
-                        size={36}
+                        color={isUrgent ? gwarm.rose : accent.main}
+                        background={isUrgent ? gwarm.redSoft : accent.soft}
+                        size={38}
                       />
                     ) : null}
                     <View style={styles.rowInfo}>
@@ -140,15 +140,15 @@ export default function AlertasScreen(): React.ReactElement {
                     accessibilityLabel="Ver ubicación en el mapa"
                     style={styles.mapLink}
                   >
-                    <MapPin size={14} color={accent.primary} />
-                    <Text style={[styles.mapText, { color: accent.primary }]}>Ver ubicación</Text>
+                    <MapPin size={15} color={accent.main} />
+                    <Text style={styles.mapText}>Ver ubicación</Text>
                   </PressableScale>
                 ) : null}
 
                 {alert.status === "atendida" ? (
                   <View style={styles.attendedBox}>
                     <View style={styles.attendedRow}>
-                      <CheckCircle2 size={14} color={semantic.success} />
+                      <CheckCircle2 size={15} color={gwarm.tealDeep} />
                       <Text style={styles.attendedLabel}>
                         Atendida {alert.attendedAtISO ? tiempoRelativo(alert.attendedAtISO) : ""}
                       </Text>
@@ -163,14 +163,14 @@ export default function AlertasScreen(): React.ReactElement {
                       onChangeText={setNote}
                       placeholder="Escribe una nota corta…"
                       multiline
-                      accent={accent.primary}
+                      accent={accent.main}
                       maxLength={300}
                     />
                     <View style={styles.formActions}>
                       <AppButton
                         title="Cerrar alerta"
                         onPress={() => attend(alert.id)}
-                        color={semantic.success}
+                        color={gwarm.teal}
                         small
                         disabled={note.trim().length === 0}
                         style={styles.flex}
@@ -181,7 +181,7 @@ export default function AlertasScreen(): React.ReactElement {
                           setAttendingId(null);
                           setNote("");
                         }}
-                        color={common.textSecondary}
+                        color={gwarm.inkSoft}
                         variant="outline"
                         small
                         style={styles.flex}
@@ -196,8 +196,7 @@ export default function AlertasScreen(): React.ReactElement {
                         setAttendingId(alert.id);
                         setNote("");
                       }}
-                      color={isUrgent ? semantic.danger : accent.primary}
-                      variant={isUrgent ? "danger" : "solid"}
+                      color={isUrgent ? gwarm.rose : accent.main}
                       small
                       testID={`atender-${alert.id}`}
                     />
@@ -211,7 +210,7 @@ export default function AlertasScreen(): React.ReactElement {
                       accessibilityLabel="Abrir chat"
                       style={styles.chatIconButton}
                     >
-                      <MessageCircle size={18} color={accent.primary} />
+                      <MessageCircle size={19} color={accent.main} />
                     </PressableScale>
                   </View>
                 )}
@@ -225,68 +224,99 @@ export default function AlertasScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: common.background },
+  container: { flex: 1, backgroundColor: gwarm.bg },
   flex: { flex: 1 },
   content: {
-    padding: spacing.md,
-    paddingBottom: spacing.xl,
-    gap: spacing.sm2,
+    padding: 16,
+    paddingBottom: 32,
+    gap: 12,
   },
-  segmented: { marginTop: spacing.sm },
-  alertCard: { gap: spacing.sm },
+  segmented: { marginTop: 8 },
+  alertCard: { gap: 10 },
   alertUrgent: {
-    borderLeftWidth: 3,
-    borderLeftColor: semantic.danger,
+    backgroundColor: gwarm.redSoft,
+    borderColor: gwarm.redMid,
+    borderWidth: 1.5,
   },
   alertTop: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: spacing.sm,
+    gap: 8,
   },
   alertPatient: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
+    gap: 10,
     flex: 1,
     minWidth: 0,
   },
   rowInfo: { flex: 1, minWidth: 0 },
-  alertName: { ...type.bodyMd, fontSize: 15, color: common.text },
-  alertTime: { ...type.caption, color: common.textTertiary },
-  alertDetail: { ...type.body, fontSize: 14, lineHeight: 21, color: common.textSecondary },
+  alertName: {
+    fontFamily: gfonts.handBody,
+    fontSize: 15.5,
+    lineHeight: 21,
+    color: gwarm.ink,
+  },
+  alertTime: {
+    fontFamily: gfonts.handBody,
+    fontSize: 12,
+    lineHeight: 16,
+    color: gwarm.inkFaint,
+  },
+  alertDetail: {
+    fontFamily: gfonts.handBody,
+    fontSize: 15,
+    lineHeight: 22,
+    color: gwarm.ink,
+  },
   mapLink: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
     minHeight: 28,
   },
-  mapText: { ...type.label, fontSize: 13 },
+  mapText: {
+    fontFamily: gfonts.hand,
+    fontSize: 15,
+    lineHeight: 19,
+    color: accent.main,
+  },
   attendedBox: {
-    backgroundColor: common.surfaceAlt,
-    borderRadius: radius.sm,
-    padding: spacing.sm2,
+    backgroundColor: gwarm.tealSoft,
+    borderRadius: 16,
+    padding: 12,
     gap: 4,
   },
-  attendedRow: { flexDirection: "row", alignItems: "center", gap: 5 },
-  attendedLabel: { ...type.label, fontSize: 12.5, color: semantic.success },
-  attendedNote: { ...type.bodySm, color: common.textSecondary },
-  attendForm: { gap: spacing.sm },
-  formActions: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  attendedRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  attendedLabel: {
+    fontFamily: gfonts.hand,
+    fontSize: 15,
+    lineHeight: 19,
+    color: gwarm.tealDeep,
+  },
+  attendedNote: {
+    fontFamily: gfonts.handBody,
+    fontSize: 14,
+    lineHeight: 20,
+    color: gwarm.inkSoft,
+  },
+  attendForm: { gap: 8 },
+  formActions: { flexDirection: "row", alignItems: "center", gap: 8 },
   actionsRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: spacing.sm,
+    gap: 8,
     marginTop: 2,
   },
   chatIconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: common.border,
-    backgroundColor: common.surface,
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: gwarm.border,
+    backgroundColor: gwarm.surface,
     alignItems: "center",
     justifyContent: "center",
   },

@@ -1,21 +1,14 @@
 /**
- * Gestión de usuarios (administración): búsqueda, filtro por rol,
- * activar/desactivar cuentas y creación de nuevos usuarios.
+ * Gestión de usuarios (administración, estilo "cuaderno"): búsqueda cálida,
+ * filtro por rol, activar/desactivar cuentas y creación de nuevos usuarios.
  */
 import { useRouter } from "expo-router";
 import { Search, UserPlus, Users } from "lucide-react-native";
 import React, { useCallback, useMemo, useState } from "react";
 import { Alert, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
-import {
-  adminTheme,
-  cardBorder,
-  common,
-  radius,
-  roleAccent,
-  spacing,
-  type,
-} from "@/constants/theme";
+import { gfonts, gShadow, gwarm, warmAccent, warmPlum } from "@/constants/theme";
 import { ROLE_LABEL } from "@/constants/labels";
+import { GICON } from "@/constants/illustrations";
 import { ApiError, avatarUri } from "@/lib/api";
 import { confirmAction } from "@/lib/confirm";
 import { useApp } from "@/providers/AppProvider";
@@ -26,7 +19,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { PressableScale } from "@/components/PressableScale";
 import { ScreenHeader } from "@/components/ScreenHeader";
 
-const accent = adminTheme;
+const accent = warmPlum;
 const FILTERS: ("todos" | Role)[] = ["todos", "gestante", "obstetra", "admin"];
 
 export default function UsuariosScreen(): React.ReactElement {
@@ -90,19 +83,19 @@ export default function UsuariosScreen(): React.ReactElement {
           <AppButton
             title="Nuevo"
             onPress={() => router.push("/(admin)/nuevo-usuario")}
-            color={accent.primary}
+            color={accent.main}
             icon={UserPlus}
             small
           />
         }
       >
         <View style={styles.searchBox}>
-          <Search size={17} color={common.textTertiary} />
+          <Search size={17} color={gwarm.inkFaint} />
           <TextInput
             value={query}
             onChangeText={setQuery}
             placeholder="Buscar por nombre o DNI"
-            placeholderTextColor={common.textTertiary}
+            placeholderTextColor={gwarm.inkFaint}
             style={styles.searchInput}
             testID="buscar-usuario"
           />
@@ -118,12 +111,12 @@ export default function UsuariosScreen(): React.ReactElement {
                 style={[
                   styles.filterChip,
                   active
-                    ? { backgroundColor: accent.primary, borderColor: accent.primary }
-                    : { borderColor: common.border, backgroundColor: common.surface },
+                    ? { backgroundColor: accent.main, borderColor: accent.main }
+                    : { borderColor: gwarm.border, backgroundColor: gwarm.surface },
                 ]}
               >
                 <Text
-                  style={[styles.filterText, { color: active ? common.white : common.textSecondary }]}
+                  style={[styles.filterText, { color: active ? "#FFFFFF" : gwarm.inkSoft }]}
                 >
                   {f === "todos" ? "Todos" : ROLE_LABEL[f]}
                 </Text>
@@ -140,26 +133,31 @@ export default function UsuariosScreen(): React.ReactElement {
         keyboardShouldPersistTaps="handled"
       >
         {users.length === 0 ? (
-          <EmptyState icon={Users} title="Sin resultados" text="Prueba con otro nombre o filtro." />
+          <EmptyState
+            icon={Users}
+            illu={GICON.usuarios}
+            title="Sin resultados"
+            text="Prueba con otro nombre o filtro."
+          />
         ) : (
           <View style={styles.listCard}>
             {users.map((u, index) => {
-              const roleColors = roleAccent(u.role);
+              const roleColors = warmAccent(u.role);
               const isMe = u.dni === me?.dni;
               return (
                 <View key={u.dni} style={[styles.row, index > 0 && styles.rowBorder]}>
                   <Avatar
                     uri={avatarUri(u.dni, u.avatarVersion)}
-                    color={roleColors.primary}
-                    background={roleColors.primaryLight}
-                    size={42}
+                    color={roleColors.main}
+                    background={roleColors.soft}
+                    size={44}
                   />
                   <View style={styles.info}>
                     <Text style={[styles.name, !u.active && styles.nameInactive]} numberOfLines={1}>
                       {u.firstName} {u.lastName}
                       {isMe ? " (tú)" : ""}
                     </Text>
-                    <Text style={[styles.roleText, { color: roleColors.primary }]}>
+                    <Text style={[styles.roleText, { color: roleColors.main }]}>
                       {ROLE_LABEL[u.role]}
                     </Text>
                   </View>
@@ -167,8 +165,8 @@ export default function UsuariosScreen(): React.ReactElement {
                     value={u.active}
                     disabled={isMe || busyDni === u.dni}
                     onValueChange={(v) => void toggleActive(u, v)}
-                    trackColor={{ true: accent.primary, false: common.borderStrong }}
-                    thumbColor={common.white}
+                    trackColor={{ true: accent.main, false: gwarm.borderStrong }}
+                    thumbColor="#FFFFFF"
                     testID={`switch-${u.dni}`}
                   />
                 </View>
@@ -183,52 +181,76 @@ export default function UsuariosScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: common.background },
+  container: { flex: 1, backgroundColor: gwarm.bg },
   flex: { flex: 1 },
-  content: { padding: spacing.md, paddingBottom: spacing.xl },
+  content: { padding: 16, paddingBottom: 32 },
   searchBox: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
-    backgroundColor: common.surfaceAlt,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.sm2,
-    height: 44,
-    marginTop: spacing.sm,
+    gap: 8,
+    backgroundColor: gwarm.surface,
+    borderWidth: 1.5,
+    borderColor: gwarm.border,
+    borderRadius: 17,
+    paddingHorizontal: 13,
+    height: 46,
+    marginTop: 8,
   },
-  searchInput: { flex: 1, ...type.body, color: common.text },
-  filterRow: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm, flexWrap: "wrap" },
+  searchInput: {
+    flex: 1,
+    fontFamily: gfonts.handBody,
+    fontSize: 15.5,
+    color: gwarm.ink,
+  },
+  filterRow: { flexDirection: "row", gap: 8, marginTop: 8, flexWrap: "wrap" },
   filterChip: {
-    paddingHorizontal: spacing.sm2,
-    height: 36,
-    borderRadius: radius.pill,
-    borderWidth: 1,
+    paddingHorizontal: 14,
+    height: 38,
+    borderRadius: 999,
+    borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
   },
-  filterText: { ...type.buttonSm, fontSize: 12 },
+  filterText: {
+    fontFamily: gfonts.hand,
+    fontSize: 14.5,
+    lineHeight: 19,
+  },
   listCard: {
-    backgroundColor: common.surface,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.md,
-    ...cardBorder,
+    backgroundColor: gwarm.surface,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: gwarm.border,
+    paddingHorizontal: 15,
+    ...gShadow,
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm2,
-    paddingVertical: spacing.sm2,
-    minHeight: 64,
+    gap: 12,
+    paddingVertical: 11,
+    minHeight: 66,
   },
-  rowBorder: { borderTopWidth: 1, borderTopColor: common.border },
-  info: { flex: 1, minWidth: 0, gap: 2 },
-  name: { ...type.bodyMd, fontSize: 16, color: common.text },
-  nameInactive: { color: common.textTertiary },
-  roleText: { ...type.label, fontSize: 13 },
+  rowBorder: { borderTopWidth: 1, borderTopColor: gwarm.border },
+  info: { flex: 1, minWidth: 0, gap: 1 },
+  name: {
+    fontFamily: gfonts.handBody,
+    fontSize: 16,
+    lineHeight: 22,
+    color: gwarm.ink,
+  },
+  nameInactive: { color: gwarm.inkFaint },
+  roleText: {
+    fontFamily: gfonts.hand,
+    fontSize: 14.5,
+    lineHeight: 18,
+  },
   footerNote: {
-    ...type.caption,
-    color: common.textTertiary,
+    fontFamily: gfonts.handBody,
+    fontSize: 12.5,
+    lineHeight: 17,
+    color: gwarm.inkFaint,
     textAlign: "center",
-    marginTop: spacing.sm2,
+    marginTop: 12,
   },
 });

@@ -1,17 +1,21 @@
 /**
- * Accesos a módulos: fila de tarjetas blancas independientes con icono
- * en contenedor tintado y etiqueta corta. Sobrio, moderno y ordenado.
+ * Accesos a módulos del cuaderno: tarjetas cálidas con dibujo a crayola
+ * (o icono de respaldo) en ficha de color suave y etiqueta a mano.
  */
 import type { LucideIcon } from "lucide-react-native";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { cardBorder, common, radius, semantic, spacing, type, withAlpha } from "@/constants/theme";
+import { gfonts, gShadow, gwarm, spacing, withAlpha } from "@/constants/theme";
 import { PressableScale } from "@/components/PressableScale";
+import { Illustration } from "@/components/gestante/Illustration";
 
 export interface ModuleItem {
   key: string;
   label: string;
+  /** Icono de respaldo cuando no hay dibujo. */
   icon: LucideIcon;
+  /** Dibujo a crayola (URL); tiene prioridad sobre el icono. */
+  illu?: string;
   color: string;
   onPress: () => void;
   badge?: number;
@@ -33,7 +37,11 @@ export function ModuleGrid({ items }: { items: ModuleItem[] }): React.ReactEleme
           >
             <View>
               <View style={[styles.iconBox, { backgroundColor: withAlpha(item.color, 0.1) }]}>
-                <Icon size={21} color={item.color} strokeWidth={2} />
+                {item.illu ? (
+                  <Illustration source={item.illu} width={34} height={34} />
+                ) : (
+                  <Icon size={22} color={item.color} strokeWidth={2.2} />
+                )}
               </View>
               {item.badge != null && item.badge > 0 ? (
                 <View style={styles.badge}>
@@ -58,45 +66,47 @@ const styles = StyleSheet.create({
   },
   tile: {
     flex: 1,
-    backgroundColor: common.surface,
-    borderRadius: radius.lg,
+    backgroundColor: gwarm.surface,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: gwarm.border,
     paddingVertical: spacing.sm2,
     alignItems: "center",
     gap: spacing.sm,
-    ...cardBorder,
+    ...gShadow,
   },
   iconBox: {
-    width: 42,
-    height: 42,
-    borderRadius: radius.md,
+    width: 48,
+    height: 48,
+    borderRadius: 17,
     alignItems: "center",
     justifyContent: "center",
   },
   badge: {
     position: "absolute",
-    top: -5,
-    right: -7,
-    minWidth: 18,
-    height: 18,
-    borderRadius: radius.pill,
-    backgroundColor: semantic.danger,
+    top: -6,
+    right: -8,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 999,
+    backgroundColor: gwarm.terracotta,
     borderWidth: 2,
-    borderColor: common.surface,
+    borderColor: gwarm.surface,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 4,
   },
   badgeText: {
-    ...type.label,
-    fontSize: 10,
-    lineHeight: 12,
-    color: common.white,
+    fontFamily: gfonts.hand,
+    fontSize: 11.5,
+    lineHeight: 14,
+    color: "#FFFFFF",
   },
   label: {
-    ...type.label,
-    fontSize: 12,
-    lineHeight: 15,
-    color: common.textSecondary,
+    fontFamily: gfonts.handBody,
+    fontSize: 12.5,
+    lineHeight: 16,
+    color: gwarm.inkSoft,
     textAlign: "center",
   },
 });

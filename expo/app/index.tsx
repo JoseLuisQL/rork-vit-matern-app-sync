@@ -1,9 +1,9 @@
-/** Pantalla inicial: splash de marca + redirección según el rol de la sesión. */
+/** Pantalla inicial: splash cálido de marca + redirección según el rol de la sesión. */
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef } from "react";
 import { ActivityIndicator, Animated, StyleSheet, Text, View } from "react-native";
-import { brand, common, spacing, type } from "@/constants/theme";
+import { brand, gfonts, gwarm } from "@/constants/theme";
 import { useApp } from "@/providers/AppProvider";
 
 export default function IndexScreen(): React.ReactElement {
@@ -46,7 +46,7 @@ export default function IndexScreen(): React.ReactElement {
         <Text style={styles.tagline}>Tu salud prenatal, siempre contigo</Text>
       </Animated.View>
       <View style={styles.footer}>
-        <ActivityIndicator color={brand.plum} />
+        <ActivityIndicator color={gwarm.teal} />
         <Text style={styles.footerText}>C.S. Talavera · Andahuaylas</Text>
       </View>
     </View>
@@ -56,7 +56,7 @@ export default function IndexScreen(): React.ReactElement {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: common.background,
+    backgroundColor: gwarm.bg,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -68,28 +68,34 @@ const styles = StyleSheet.create({
     height: 140,
   },
   title: {
-    ...type.display,
-    marginTop: spacing.md,
+    fontFamily: gfonts.hand,
+    fontSize: 40,
+    lineHeight: 49,
+    marginTop: 12,
   },
   titleBrand: {
     color: brand.plum,
   },
   titleRest: {
-    color: common.text,
+    color: gwarm.ink,
   },
   tagline: {
-    ...type.body,
-    color: common.textSecondary,
-    marginTop: spacing.xs,
+    fontFamily: gfonts.handBody,
+    fontSize: 15.5,
+    lineHeight: 22,
+    color: gwarm.inkSoft,
+    marginTop: 4,
   },
   footer: {
     position: "absolute",
     bottom: 64,
     alignItems: "center",
-    gap: spacing.sm2,
+    gap: 10,
   },
   footerText: {
-    ...type.caption,
-    color: common.textTertiary,
+    fontFamily: gfonts.handBody,
+    fontSize: 13,
+    lineHeight: 18,
+    color: gwarm.inkFaint,
   },
 });

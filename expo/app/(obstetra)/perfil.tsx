@@ -1,9 +1,9 @@
-/** Perfil de la obstetra: datos y cierre de sesión. */
+/** Perfil de la obstetra ("cuaderno"): foto, datos y cierre de sesión. */
 import { useRouter } from "expo-router";
 import { LogOut } from "lucide-react-native";
 import React, { useCallback } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { common, obstetraTheme, semantic, spacing, type } from "@/constants/theme";
+import { gfonts, gwarm, warmBlue } from "@/constants/theme";
 import { confirmAction } from "@/lib/confirm";
 import { useApp, usePatients } from "@/providers/AppProvider";
 import { AppButton } from "@/components/AppButton";
@@ -55,18 +55,18 @@ export default function PerfilObstetra(): React.ReactElement {
       >
         <Card style={styles.headerCard}>
           <ProfilePhoto
-            accentColor={obstetraTheme.primary}
-            accentBackground={obstetraTheme.primaryLight}
+            accentColor={warmBlue.main}
+            accentBackground={warmBlue.soft}
           />
           <Text style={styles.name}>
             Obst. {user.firstName} {user.lastName}
           </Text>
           <Text style={styles.meta}>
-            {view.center.name} · {patients.length} gestantes en seguimiento
+            {view.center.name} · {patients.length} gestantes a tu cuidado
           </Text>
         </Card>
 
-        <SectionHeader title="Datos" />
+        <SectionHeader title="Tus datos" />
         <Card style={styles.card}>
           <InfoRow label="DNI" value={user.dni} />
           <InfoRow label="Rol" value="Obstetra" />
@@ -79,7 +79,7 @@ export default function PerfilObstetra(): React.ReactElement {
           title="Cerrar sesión"
           onPress={() => void handleLogout()}
           variant="outline"
-          color={semantic.danger}
+          color={gwarm.rose}
           icon={LogOut}
         />
 
@@ -90,38 +90,61 @@ export default function PerfilObstetra(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: common.background },
+  container: { flex: 1, backgroundColor: gwarm.bg },
   flex: { flex: 1 },
   content: {
-    padding: spacing.md,
-    paddingBottom: spacing.xxl,
-    gap: spacing.sm2,
+    padding: 16,
+    paddingBottom: 48,
+    gap: 12,
   },
   headerCard: {
     alignItems: "center",
-    gap: spacing.xs,
-    padding: spacing.md2,
+    gap: 4,
+    padding: 20,
   },
-  name: { ...type.h3, color: common.text, textAlign: "center" as const, marginTop: spacing.xs },
+  name: {
+    fontFamily: gfonts.hand,
+    fontSize: 24,
+    lineHeight: 30,
+    color: gwarm.ink,
+    textAlign: "center" as const,
+    marginTop: 6,
+  },
   meta: {
-    ...type.bodySm,
-    color: common.textSecondary,
+    fontFamily: gfonts.handBody,
+    fontSize: 13.5,
+    lineHeight: 19,
+    color: gwarm.inkSoft,
     textAlign: "center" as const,
   },
-  card: { gap: spacing.sm },
+  card: { gap: 10 },
   infoRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: spacing.md,
+    gap: 16,
     minHeight: 28,
   },
-  infoLabel: { ...type.bodySm, color: common.textSecondary },
-  infoValue: { ...type.bodyMd, color: common.text, flexShrink: 1, textAlign: "right" },
+  infoLabel: {
+    fontFamily: gfonts.handBody,
+    fontSize: 14,
+    lineHeight: 19,
+    color: gwarm.inkSoft,
+  },
+  infoValue: {
+    fontFamily: gfonts.handBody,
+    fontSize: 15.5,
+    lineHeight: 21,
+    color: gwarm.ink,
+    flexShrink: 1,
+    textAlign: "right",
+  },
   about: {
-    ...type.caption,
-    color: common.textTertiary,
+    fontFamily: gfonts.handBody,
+    fontSize: 12.5,
+    lineHeight: 17,
+    color: gwarm.inkFaint,
     textAlign: "center",
-    marginTop: spacing.md,
+    marginTop: 16,
   },
 });

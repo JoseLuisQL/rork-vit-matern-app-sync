@@ -1,50 +1,75 @@
-/** Tabs de administración: Inicio, Usuarios, Reportes y Perfil. */
+/** Pestañas de administración: iconos dibujados a crayola y letra a mano. */
+import { Image } from "expo-image";
 import { Tabs } from "expo-router";
-import { ChartBar, Home, UserRound, Users } from "lucide-react-native";
 import React from "react";
-import { adminTheme, common, fonts } from "@/constants/theme";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { GICON } from "@/constants/illustrations";
+import { gfonts, gwarm, warmPlum } from "@/constants/theme";
+
+/** Icono ilustrado de pestaña: a color cuando está activa, difuminado si no. */
+function TabIcon({ uri, focused }: { uri: string; focused: boolean }): React.ReactElement {
+  return (
+    <Image
+      source={{ uri }}
+      style={{
+        width: 31,
+        height: 31,
+        opacity: focused ? 1 : 0.4,
+        transform: [{ scale: focused ? 1 : 0.9 }],
+      }}
+      contentFit="contain"
+      cachePolicy="memory-disk"
+      transition={150}
+    />
+  );
+}
 
 export default function AdminTabsLayout(): React.ReactElement {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: adminTheme.primary,
-        tabBarInactiveTintColor: common.textTertiary,
+        tabBarActiveTintColor: warmPlum.main,
+        tabBarInactiveTintColor: gwarm.inkFaint,
         tabBarStyle: {
-          backgroundColor: common.surface,
-          borderTopColor: common.border,
+          backgroundColor: gwarm.surfaceSoft,
+          borderTopColor: gwarm.border,
           borderTopWidth: 1,
+          height: 66 + Math.max(insets.bottom, 6),
+          paddingTop: 8,
+          paddingBottom: Math.max(insets.bottom, 8),
         },
-        tabBarLabelStyle: { fontFamily: fonts.medium, fontSize: 11 },
+        tabBarLabelStyle: { fontFamily: gfonts.hand, fontSize: 13 },
       }}
     >
       <Tabs.Screen
         name="inicio"
         options={{
           title: "Inicio",
-          tabBarIcon: ({ color }) => <Home size={22} color={color} />,
+          tabBarIcon: ({ focused }) => <TabIcon uri={GICON.casa} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="usuarios"
         options={{
           title: "Usuarios",
-          tabBarIcon: ({ color }) => <Users size={22} color={color} />,
+          tabBarIcon: ({ focused }) => <TabIcon uri={GICON.usuarios} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="reportes"
         options={{
           title: "Reportes",
-          tabBarIcon: ({ color }) => <ChartBar size={22} color={color} />,
+          tabBarIcon: ({ focused }) => <TabIcon uri={GICON.reportes} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="perfil"
         options={{
           title: "Perfil",
-          tabBarIcon: ({ color }) => <UserRound size={22} color={color} />,
+          tabBarIcon: ({ focused }) => <TabIcon uri={GICON.perfil} focused={focused} />,
         }}
       />
     </Tabs>

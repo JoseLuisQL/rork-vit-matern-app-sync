@@ -1,9 +1,9 @@
-/** Perfil de administración: datos, restaurar demo y cierre de sesión. */
+/** Perfil de administración ("cuaderno"): foto, datos, restaurar demo y cierre de sesión. */
 import { useRouter } from "expo-router";
 import { LogOut, RotateCcw } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import { Alert, ScrollView, StyleSheet, Text, View } from "react-native";
-import { adminTheme, common, semantic, spacing, type } from "@/constants/theme";
+import { gfonts, gwarm, warmPlum } from "@/constants/theme";
 import { ApiError } from "@/lib/api";
 import { confirmAction } from "@/lib/confirm";
 import { useApp } from "@/providers/AppProvider";
@@ -83,8 +83,8 @@ export default function PerfilAdmin(): React.ReactElement {
       >
         <Card style={styles.headerCard}>
           <ProfilePhoto
-            accentColor={adminTheme.primary}
-            accentBackground={adminTheme.primaryLight}
+            accentColor={warmPlum.main}
+            accentBackground={warmPlum.soft}
           />
           <Text style={styles.name}>
             {user.firstName} {user.lastName}
@@ -92,7 +92,7 @@ export default function PerfilAdmin(): React.ReactElement {
           <Text style={styles.meta}>Administración · {view.center.name}</Text>
         </Card>
 
-        <SectionHeader title="Datos" />
+        <SectionHeader title="Tus datos" />
         <Card style={styles.card}>
           <InfoRow label="DNI" value={user.dni} />
           <InfoRow label="Rol" value="Administración" />
@@ -108,7 +108,7 @@ export default function PerfilAdmin(): React.ReactElement {
           <AppButton
             title="Restaurar datos de demostración"
             onPress={() => void handleReset()}
-            color={adminTheme.primary}
+            color={warmPlum.main}
             variant="soft"
             icon={RotateCcw}
             loading={resetting}
@@ -121,7 +121,7 @@ export default function PerfilAdmin(): React.ReactElement {
           title="Cerrar sesión"
           onPress={() => void handleLogout()}
           variant="outline"
-          color={semantic.danger}
+          color={gwarm.rose}
           icon={LogOut}
         />
 
@@ -134,40 +134,67 @@ export default function PerfilAdmin(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: common.background },
+  container: { flex: 1, backgroundColor: gwarm.bg },
   flex: { flex: 1 },
   content: {
-    padding: spacing.md,
-    paddingBottom: spacing.xxl,
-    gap: spacing.sm2,
+    padding: 16,
+    paddingBottom: 48,
+    gap: 12,
   },
   headerCard: {
     alignItems: "center",
-    gap: spacing.xs,
-    padding: spacing.md2,
+    gap: 4,
+    padding: 20,
   },
-  name: { ...type.h3, color: common.text, textAlign: "center" as const, marginTop: spacing.xs },
+  name: {
+    fontFamily: gfonts.hand,
+    fontSize: 24,
+    lineHeight: 30,
+    color: gwarm.ink,
+    textAlign: "center" as const,
+    marginTop: 6,
+  },
   meta: {
-    ...type.bodySm,
-    color: common.textSecondary,
+    fontFamily: gfonts.handBody,
+    fontSize: 13.5,
+    lineHeight: 19,
+    color: gwarm.inkSoft,
     textAlign: "center" as const,
   },
-  card: { gap: spacing.sm2 },
+  card: { gap: 12 },
   infoRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: spacing.md,
+    gap: 16,
     minHeight: 28,
   },
-  infoLabel: { ...type.bodySm, color: common.textSecondary },
-  infoValue: { ...type.bodyMd, color: common.text, flexShrink: 1, textAlign: "right" },
-  resetText: { ...type.bodySm, color: common.textSecondary },
+  infoLabel: {
+    fontFamily: gfonts.handBody,
+    fontSize: 14,
+    lineHeight: 19,
+    color: gwarm.inkSoft,
+  },
+  infoValue: {
+    fontFamily: gfonts.handBody,
+    fontSize: 15.5,
+    lineHeight: 21,
+    color: gwarm.ink,
+    flexShrink: 1,
+    textAlign: "right",
+  },
+  resetText: {
+    fontFamily: gfonts.handBody,
+    fontSize: 14,
+    lineHeight: 20,
+    color: gwarm.inkSoft,
+  },
   about: {
-    ...type.caption,
-    color: common.textTertiary,
-    textAlign: "center",
-    marginTop: spacing.md,
+    fontFamily: gfonts.handBody,
+    fontSize: 12.5,
     lineHeight: 18,
+    color: gwarm.inkFaint,
+    textAlign: "center",
+    marginTop: 16,
   },
 });

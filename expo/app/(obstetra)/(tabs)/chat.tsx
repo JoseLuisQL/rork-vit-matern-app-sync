@@ -1,9 +1,10 @@
-/** Conversaciones de la obstetra: no-leídos, último mensaje y emergencias destacadas. */
+/** Conversaciones de la obstetra ("cuaderno"): no-leídos, último mensaje y emergencias destacadas. */
 import { useRouter } from "expo-router";
 import { ChevronRight, MessageCircle, Siren } from "lucide-react-native";
 import React, { useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { cardBorder, common, obstetraTheme, radius, risk, semantic, spacing, type } from "@/constants/theme";
+import { gfonts, gShadow, gwarm, risk, warmBlue } from "@/constants/theme";
+import { ILU } from "@/constants/illustrations";
 import { avatarUri } from "@/lib/api";
 import { tiempoRelativo } from "@/lib/format";
 import { useApp, usePatients } from "@/providers/AppProvider";
@@ -12,7 +13,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { PressableScale } from "@/components/PressableScale";
 import { ScreenHeader } from "@/components/ScreenHeader";
 
-const accent = obstetraTheme;
+const accent = warmBlue;
 
 export default function ChatListScreen(): React.ReactElement {
   const router = useRouter();
@@ -44,7 +45,7 @@ export default function ChatListScreen(): React.ReactElement {
         showsVerticalScrollIndicator={false}
       >
         {conversations.length === 0 ? (
-          <EmptyState icon={MessageCircle} title="Sin conversaciones" />
+          <EmptyState icon={MessageCircle} illu={ILU.chat} title="Sin conversaciones" />
         ) : (
           <View style={styles.listCard}>
             {conversations.map(({ patient, last, unread }, index) => (
@@ -61,7 +62,7 @@ export default function ChatListScreen(): React.ReactElement {
                   uri={avatarUri(patient.dni, patient.avatarVersion)}
                   color={risk[patient.riskLevel].solid}
                   background={risk[patient.riskLevel].light}
-                  size={42}
+                  size={44}
                 />
                 <View style={styles.info}>
                   <View style={styles.nameRow}>
@@ -72,13 +73,13 @@ export default function ChatListScreen(): React.ReactElement {
                   </View>
                   <View style={styles.previewRow}>
                     {last?.kind === "emergencia" || last?.kind === "alarma" ? (
-                      <Siren size={13} color={semantic.danger} />
+                      <Siren size={13} color={gwarm.rose} />
                     ) : null}
                     <Text
                       style={[
                         styles.preview,
                         (last?.kind === "emergencia" || last?.kind === "alarma") && {
-                          color: semantic.danger,
+                          color: gwarm.rose,
                         },
                         unread > 0 && styles.previewUnread,
                       ]}
@@ -91,11 +92,11 @@ export default function ChatListScreen(): React.ReactElement {
                   </View>
                 </View>
                 {unread > 0 ? (
-                  <View style={[styles.unreadBadge, { backgroundColor: accent.primary }]}>
+                  <View style={styles.unreadBadge}>
                     <Text style={styles.unreadText}>{unread}</Text>
                   </View>
                 ) : (
-                  <ChevronRight size={16} color={common.textTertiary} />
+                  <ChevronRight size={16} color={gwarm.inkFaint} />
                 )}
               </PressableScale>
             ))}
@@ -107,42 +108,67 @@ export default function ChatListScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: common.background },
+  container: { flex: 1, backgroundColor: gwarm.bg },
   flex: { flex: 1 },
-  content: { padding: spacing.md, paddingBottom: spacing.xl },
+  content: { padding: 16, paddingBottom: 32 },
   listCard: {
-    backgroundColor: common.surface,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.md,
-    ...cardBorder,
+    backgroundColor: gwarm.surface,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: gwarm.border,
+    paddingHorizontal: 15,
+    ...gShadow,
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm2,
-    paddingVertical: spacing.sm2,
-    minHeight: 64,
+    gap: 12,
+    paddingVertical: 11,
+    minHeight: 66,
   },
-  rowBorder: { borderTopWidth: 1, borderTopColor: common.border },
-  info: { flex: 1, minWidth: 0, gap: 2 },
+  rowBorder: { borderTopWidth: 1, borderTopColor: gwarm.border },
+  info: { flex: 1, minWidth: 0, gap: 1 },
   nameRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: spacing.sm,
+    gap: 8,
   },
-  name: { ...type.bodyMd, fontSize: 15, color: common.text, flex: 1 },
-  time: { ...type.caption, fontSize: 11, color: common.textTertiary },
+  name: {
+    fontFamily: gfonts.handBody,
+    fontSize: 16,
+    lineHeight: 22,
+    color: gwarm.ink,
+    flex: 1,
+  },
+  time: {
+    fontFamily: gfonts.handBody,
+    fontSize: 11.5,
+    lineHeight: 15,
+    color: gwarm.inkFaint,
+  },
   previewRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  preview: { ...type.bodySm, color: common.textSecondary, flex: 1 },
-  previewUnread: { color: common.text, fontFamily: type.bodyMd.fontFamily },
+  preview: {
+    fontFamily: gfonts.handBody,
+    fontSize: 13.5,
+    lineHeight: 18,
+    color: gwarm.inkSoft,
+    flex: 1,
+  },
+  previewUnread: { color: gwarm.ink },
   unreadBadge: {
-    minWidth: 20,
-    height: 20,
-    borderRadius: radius.pill,
+    minWidth: 22,
+    height: 22,
+    borderRadius: 999,
+    backgroundColor: accent.main,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 6,
   },
-  unreadText: { ...type.label, fontSize: 10.5, lineHeight: 13, color: common.white },
+  unreadText: {
+    fontFamily: gfonts.hand,
+    fontSize: 12,
+    lineHeight: 15,
+    color: "#FFFFFF",
+  },
 });

@@ -1,10 +1,11 @@
 /**
- * Inicio de sesión verificado por el servidor (DNI + contraseña).
- * Incluye accesos de demostración de un toque para los 3 roles.
+ * Inicio de sesión "cuaderno de cuidado": ilustración de bienvenida hecha a
+ * mano, campos cálidos con letra manuscrita y accesos de demostración de un
+ * toque para los 3 roles. La verificación la hace el servidor (DNI + clave).
  */
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { ChevronRight, Eye, EyeOff, Info, ShieldCheck } from "lucide-react-native";
+import { ChevronRight, Eye, EyeOff, Info } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -17,21 +18,15 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import {
-  brand,
-  cardBorder,
-  common,
-  radius,
-  roleAccent,
-  semantic,
-  spacing,
-  type,
-} from "@/constants/theme";
+import { brand, gfonts, gShadow, gwarm, warmAccent } from "@/constants/theme";
 import { ROLE_LABEL } from "@/constants/labels";
+import { GICON, ILU } from "@/constants/illustrations";
 import { ApiError } from "@/lib/api";
 import { useApp } from "@/providers/AppProvider";
 import type { Role } from "@/types";
 import { AppButton } from "@/components/AppButton";
+import { Illustration } from "@/components/gestante/Illustration";
+import { PopIn } from "@/components/gestante/PopIn";
 import { PressableScale } from "@/components/PressableScale";
 
 const DEMO_PASSWORD = "Test@1234";
@@ -42,6 +37,13 @@ const DEMO_ACCOUNTS: { dni: string; name: string; role: Role }[] = [
   { dni: "11111111", name: "Carmen Rojas", role: "obstetra" },
   { dni: "22222222", name: "Patricia Salas", role: "admin" },
 ];
+
+/** Dibujo de cada rol para la lista de demostración. */
+const ROLE_ILU: Record<Role, string> = {
+  gestante: GICON.gestantes,
+  obstetra: ILU.obstetra,
+  admin: ILU.centroSalud,
+};
 
 export default function LoginScreen(): React.ReactElement {
   const router = useRouter();
@@ -81,7 +83,7 @@ export default function LoginScreen(): React.ReactElement {
       } catch (e) {
         if (e instanceof ApiError && e.status === 0) {
           setError(
-            "No hay conexión con el servidor. Para iniciar sesión necesitas señal; vuelve a intentarlo cuando tengas conexión.",
+            "No hay conexión. Para entrar necesitas señal; vuelve a intentarlo cuando tengas conexión.",
           );
         } else {
           setError(e instanceof Error ? e.message : "No se pudo iniciar sesión.");
@@ -112,119 +114,129 @@ export default function LoginScreen(): React.ReactElement {
         style={styles.flex}
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + spacing.xl, paddingBottom: insets.bottom + spacing.lg },
+          { paddingTop: insets.top + 10, paddingBottom: insets.bottom + 28 },
         ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.brandBlock}>
-          <Image
-            source={require("@/assets/images/vitmaterna_logo.png")}
-            style={styles.logo}
-            contentFit="contain"
-          />
-          <Text style={styles.title}>
-            <Text style={{ color: brand.plum }}>Vit</Text>
-            <Text style={{ color: common.text }}>Materna</Text>
-          </Text>
-          <Text style={styles.subtitle}>Salud prenatal · C.S. Talavera, Andahuaylas</Text>
-        </View>
+        <PopIn>
+          <View style={styles.heroBlock}>
+            <Illustration source={ILU.bienvenida} width={310} height={196} />
+            <View style={styles.brandRow}>
+              <Image
+                source={require("@/assets/images/vitmaterna_logo.png")}
+                style={styles.logo}
+                contentFit="contain"
+              />
+              <Text style={styles.title}>
+                <Text style={{ color: brand.plum }}>Vit</Text>
+                <Text style={{ color: gwarm.ink }}>Materna</Text>
+              </Text>
+            </View>
+            <Text style={styles.subtitle}>Cuidamos tu embarazo, cerquita de ti</Text>
+          </View>
+        </PopIn>
 
         {authNotice ? (
           <View style={styles.noticeBox}>
-            <Info size={16} color={semantic.info} />
+            <Info size={16} color={gwarm.tealDeep} />
             <Text style={styles.noticeText}>{authNotice}</Text>
           </View>
         ) : null}
 
-        <View style={styles.formCard}>
-          <View style={styles.fieldBlock}>
-            <Text style={styles.fieldLabel}>DNI</Text>
-            <TextInput
-              value={dni}
-              onChangeText={(t) => setDni(t.replace(/[^0-9]/g, ""))}
-              placeholder="8 dígitos"
-              placeholderTextColor={common.textTertiary}
-              keyboardType="number-pad"
-              maxLength={8}
-              style={styles.input}
-              testID="login-dni"
+        <PopIn delay={90}>
+          <View style={styles.formCard}>
+            <View style={styles.fieldBlock}>
+              <Text style={styles.fieldLabel}>Tu DNI</Text>
+              <TextInput
+                value={dni}
+                onChangeText={(t) => setDni(t.replace(/[^0-9]/g, ""))}
+                placeholder="8 dígitos"
+                placeholderTextColor={gwarm.inkFaint}
+                keyboardType="number-pad"
+                maxLength={8}
+                style={styles.input}
+                testID="login-dni"
+              />
+            </View>
+            <View style={styles.fieldBlock}>
+              <Text style={styles.fieldLabel}>Tu contraseña</Text>
+              <View>
+                <TextInput
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Escríbela aquí"
+                  placeholderTextColor={gwarm.inkFaint}
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  style={[styles.input, { paddingRight: 52 }]}
+                  testID="login-password"
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  onPress={() => setShowPassword((v) => !v)}
+                  style={styles.eyeButton}
+                  hitSlop={8}
+                >
+                  {showPassword ? (
+                    <EyeOff size={20} color={gwarm.inkFaint} />
+                  ) : (
+                    <Eye size={20} color={gwarm.inkFaint} />
+                  )}
+                </Pressable>
+              </View>
+            </View>
+
+            {error ? (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : null}
+
+            <AppButton
+              title="Entrar"
+              onPress={() => void doLogin(dni, password)}
+              color={brand.plum}
+              loading={loading}
+              large
+              testID="login-submit"
             />
           </View>
-          <View style={styles.fieldBlock}>
-            <Text style={styles.fieldLabel}>Contraseña</Text>
-            <View>
-              <TextInput
-                value={password}
-                onChangeText={setPassword}
-                placeholder="Tu contraseña"
-                placeholderTextColor={common.textTertiary}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                style={[styles.input, { paddingRight: 48 }]}
-                testID="login-password"
-              />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-                onPress={() => setShowPassword((v) => !v)}
-                style={styles.eyeButton}
-                hitSlop={8}
-              >
-                {showPassword ? (
-                  <EyeOff size={19} color={common.textTertiary} />
-                ) : (
-                  <Eye size={19} color={common.textTertiary} />
-                )}
-              </Pressable>
-            </View>
+        </PopIn>
+
+        <PopIn delay={180}>
+          <Text style={styles.demoTitle}>¿Solo quieres mirar? Entra de prueba</Text>
+          <View style={styles.demoList}>
+            {DEMO_ACCOUNTS.map((account, index) => {
+              const accent = warmAccent(account.role);
+              return (
+                <PressableScale
+                  key={account.dni}
+                  onPress={() => fillAndLogin(account)}
+                  accessibilityLabel={`Entrar como ${account.name}`}
+                  style={[styles.demoRow, index > 0 && styles.demoRowBorder]}
+                  testID={`demo-${account.dni}`}
+                >
+                  <View style={[styles.demoIlu, { backgroundColor: accent.soft }]}>
+                    <Illustration source={ROLE_ILU[account.role]} width={30} height={30} />
+                  </View>
+                  <View style={styles.demoInfo}>
+                    <Text style={styles.demoName}>{account.name}</Text>
+                    <Text style={[styles.demoMeta, { color: accent.main }]}>
+                      {ROLE_LABEL[account.role]}
+                    </Text>
+                  </View>
+                  <ChevronRight size={18} color={gwarm.inkFaint} />
+                </PressableScale>
+              );
+            })}
           </View>
-
-          {error ? (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          ) : null}
-
-          <AppButton
-            title="Ingresar"
-            onPress={() => void doLogin(dni, password)}
-            color={brand.plum}
-            loading={loading}
-            testID="login-submit"
-          />
-        </View>
-
-        <Text style={styles.demoTitle}>CUENTAS DE DEMOSTRACIÓN</Text>
-        <View style={styles.demoList}>
-          {DEMO_ACCOUNTS.map((account) => {
-            const accent = roleAccent(account.role);
-            return (
-              <PressableScale
-                key={account.dni}
-                onPress={() => fillAndLogin(account)}
-                accessibilityLabel={`Entrar como ${account.name}`}
-                style={styles.demoRow}
-                testID={`demo-${account.dni}`}
-              >
-                <View style={[styles.demoDot, { backgroundColor: accent.primary }]} />
-                <View style={styles.demoInfo}>
-                  <Text style={styles.demoName}>{account.name}</Text>
-                  <Text style={styles.demoMeta}>
-                    {ROLE_LABEL[account.role]} · DNI {account.dni}
-                  </Text>
-                </View>
-                <ChevronRight size={18} color={common.textTertiary} />
-              </PressableScale>
-            );
-          })}
-        </View>
+        </PopIn>
 
         <View style={styles.footer}>
-          <ShieldCheck size={14} color={common.textTertiary} />
-          <Text style={styles.footerText}>
-            Cálculos clínicos en el servidor · Hb corregida a 2 926 msnm
-          </Text>
+          <Illustration source={ILU.flores} width={92} height={30} />
+          <Text style={styles.footerText}>C.S. Talavera · Andahuaylas</Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -232,132 +244,160 @@ export default function LoginScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: common.background },
+  flex: { flex: 1, backgroundColor: gwarm.bg },
   content: {
-    paddingHorizontal: spacing.md,
-    gap: spacing.md,
+    paddingHorizontal: 16,
+    gap: 14,
   },
-  brandBlock: {
+  heroBlock: {
     alignItems: "center",
-    marginBottom: spacing.sm,
+  },
+  brandRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 2,
   },
   logo: {
-    width: 96,
-    height: 96,
+    width: 46,
+    height: 46,
   },
   title: {
-    ...type.h1,
-    marginTop: spacing.sm,
+    fontFamily: gfonts.hand,
+    fontSize: 36,
+    lineHeight: 44,
   },
   subtitle: {
-    ...type.bodySm,
-    color: common.textSecondary,
-    marginTop: 2,
+    fontFamily: gfonts.handBody,
+    fontSize: 15,
+    lineHeight: 21,
+    color: gwarm.inkSoft,
+    marginTop: 1,
   },
   noticeBox: {
     flexDirection: "row",
-    gap: spacing.sm,
-    backgroundColor: semantic.infoLight,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: semantic.infoMid,
-    padding: spacing.sm2,
+    gap: 8,
+    backgroundColor: gwarm.tealSoft,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: gwarm.tealMid,
+    padding: 12,
     alignItems: "center",
   },
   noticeText: {
-    ...type.bodySm,
-    color: semantic.info,
+    fontFamily: gfonts.handBody,
+    fontSize: 14,
+    lineHeight: 20,
+    color: gwarm.tealDeep,
     flex: 1,
   },
   formCard: {
-    backgroundColor: common.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    gap: spacing.md,
-    ...cardBorder,
+    backgroundColor: gwarm.surface,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: gwarm.border,
+    padding: 18,
+    gap: 14,
+    ...gShadow,
   },
   fieldBlock: {
     gap: 6,
   },
   fieldLabel: {
-    ...type.label,
-    color: common.textSecondary,
+    fontFamily: gfonts.hand,
+    fontSize: 17,
+    lineHeight: 22,
+    color: gwarm.ink,
   },
   input: {
-    ...type.body,
-    color: common.text,
-    backgroundColor: common.surface,
+    fontFamily: gfonts.handBody,
+    fontSize: 17,
+    color: gwarm.ink,
+    backgroundColor: gwarm.surfaceSoft,
     borderWidth: 1.5,
-    borderColor: common.border,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.sm2,
+    borderColor: gwarm.border,
+    borderRadius: 16,
+    paddingHorizontal: 15,
     paddingVertical: 12,
-    minHeight: 48,
+    minHeight: 52,
   },
   eyeButton: {
     position: "absolute",
-    right: spacing.sm2,
+    right: 14,
     top: 0,
     bottom: 0,
     justifyContent: "center",
   },
   errorBox: {
-    backgroundColor: semantic.dangerLight,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: semantic.dangerMid,
-    padding: spacing.sm2,
+    backgroundColor: gwarm.redSoft,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: gwarm.redMid,
+    padding: 12,
   },
   errorText: {
-    ...type.bodySm,
-    color: semantic.danger,
+    fontFamily: gfonts.handBody,
+    fontSize: 14,
+    lineHeight: 20,
+    color: gwarm.rose,
   },
   demoTitle: {
-    ...type.overline,
-    color: common.textTertiary,
-    marginTop: spacing.xs,
+    fontFamily: gfonts.hand,
+    fontSize: 20,
+    lineHeight: 26,
+    color: gwarm.ink,
+    marginBottom: 8,
   },
   demoList: {
-    backgroundColor: common.surface,
-    borderRadius: radius.lg,
-    ...cardBorder,
-    overflow: "hidden" as const,
+    backgroundColor: gwarm.surface,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: gwarm.border,
+    paddingHorizontal: 14,
+    ...gShadow,
   },
   demoRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm2,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm2,
-    borderBottomWidth: 1,
-    borderBottomColor: common.border,
-    minHeight: 56,
+    gap: 12,
+    paddingVertical: 11,
+    minHeight: 62,
   },
-  demoDot: {
-    width: 10,
-    height: 10,
-    borderRadius: radius.pill,
+  demoRowBorder: {
+    borderTopWidth: 1,
+    borderTopColor: gwarm.border,
+  },
+  demoIlu: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
   demoInfo: {
     flex: 1,
+    minWidth: 0,
   },
   demoName: {
-    ...type.bodyMd,
-    color: common.text,
+    fontFamily: gfonts.handBody,
+    fontSize: 16,
+    lineHeight: 22,
+    color: gwarm.ink,
   },
   demoMeta: {
-    ...type.caption,
-    color: common.textTertiary,
+    fontFamily: gfonts.handBody,
+    fontSize: 13,
+    lineHeight: 17,
   },
   footer: {
-    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    marginTop: spacing.xs,
+    gap: 2,
+    marginTop: 4,
   },
   footerText: {
-    ...type.caption,
-    color: common.textTertiary,
+    fontFamily: gfonts.handBody,
+    fontSize: 12.5,
+    lineHeight: 17,
+    color: gwarm.inkFaint,
   },
 });

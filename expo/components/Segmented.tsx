@@ -1,11 +1,11 @@
 /**
- * Control segmentado profesional: contenedor gris con el segmento activo en
- * blanco elevado. Reemplaza las filas de chips de colores en los filtros.
+ * Control segmentado cálido: contenedor crema con el segmento activo en
+ * blanco elevado y letra a mano.
  */
 import React from "react";
 import { Platform, Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
 import * as Haptics from "expo-haptics";
-import { common, radius, type } from "@/constants/theme";
+import { gfonts, gwarm } from "@/constants/theme";
 
 export interface SegmentedOption {
   key: string;
@@ -45,7 +45,7 @@ export function Segmented({ options, value, onChange, style }: SegmentedProps): 
           >
             {opt.dot ? <View style={[styles.dot, { backgroundColor: opt.dot }]} /> : null}
             <Text
-              style={[styles.label, { color: active ? common.text : common.textSecondary }]}
+              style={[styles.label, { color: active ? gwarm.ink : gwarm.inkSoft }]}
               numberOfLines={1}
             >
               {opt.label}
@@ -60,40 +60,41 @@ export function Segmented({ options, value, onChange, style }: SegmentedProps): 
 const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
-    backgroundColor: common.surfaceAlt,
-    borderRadius: radius.md,
+    backgroundColor: "#F1E9D8",
+    borderRadius: 17,
     padding: 3,
-    height: 40,
+    height: 44,
   },
   segment: {
     flex: 1,
     flexDirection: "row",
-    borderRadius: radius.md - 3,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
     paddingHorizontal: 6,
   },
   segmentActive: {
-    backgroundColor: common.surface,
+    backgroundColor: gwarm.surface,
     ...Platform.select({
-      web: { boxShadow: "0 1px 4px rgba(22,36,43,0.12)" },
+      web: { boxShadow: "0 2px 6px rgba(148,124,90,0.18)" },
       default: {
-        shadowColor: "#16242B",
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-        shadowOffset: { width: 0, height: 1 },
+        shadowColor: "#947C5A",
+        shadowOpacity: 0.16,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 2 },
         elevation: 2,
       },
     }),
   },
   dot: {
-    width: 8,
-    height: 8,
-    borderRadius: radius.pill,
+    width: 9,
+    height: 9,
+    borderRadius: 999,
   },
   label: {
-    ...type.buttonSm,
-    fontSize: 13,
+    fontFamily: gfonts.hand,
+    fontSize: 14.5,
+    lineHeight: 19,
   },
 });

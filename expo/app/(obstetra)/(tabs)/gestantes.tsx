@@ -1,13 +1,14 @@
 /**
- * Gestantes: buscador, filtro segmentado por riesgo, filas limpias con foto
- * y el registro de nuevas gestantes desde el botón "Nueva".
+ * Gestantes ("cuaderno"): buscador cálido, filtro segmentado por riesgo,
+ * filas limpias con foto y el registro de nuevas gestantes desde "Nueva".
  */
 import { useRouter } from "expo-router";
 import { ChevronRight, Search, UserRoundPlus, Users } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { cardBorder, common, obstetraTheme, radius, risk, spacing, type } from "@/constants/theme";
+import { gfonts, gShadow, gwarm, risk, warmBlue } from "@/constants/theme";
 import { RISK_WORD } from "@/constants/labels";
+import { GICON } from "@/constants/illustrations";
 import { avatarUri } from "@/lib/api";
 import { usePatients } from "@/providers/AppProvider";
 import type { RiskLevel } from "@/types";
@@ -18,7 +19,7 @@ import { PressableScale } from "@/components/PressableScale";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Segmented } from "@/components/Segmented";
 
-const accent = obstetraTheme;
+const accent = warmBlue;
 
 export default function GestantesScreen(): React.ReactElement {
   const router = useRouter();
@@ -51,7 +52,7 @@ export default function GestantesScreen(): React.ReactElement {
           <AppButton
             title="Nueva"
             onPress={() => router.push("/(obstetra)/nueva-gestante")}
-            color={accent.primary}
+            color={accent.main}
             icon={UserRoundPlus}
             small
             testID="btn-nueva-gestante"
@@ -59,12 +60,12 @@ export default function GestantesScreen(): React.ReactElement {
         }
       >
         <View style={styles.searchBox}>
-          <Search size={16} color={common.textTertiary} />
+          <Search size={17} color={gwarm.inkFaint} />
           <TextInput
             value={query}
             onChangeText={setQuery}
             placeholder="Buscar por nombre, DNI o comunidad"
-            placeholderTextColor={common.textTertiary}
+            placeholderTextColor={gwarm.inkFaint}
             style={styles.searchInput}
             testID="buscar-gestante"
           />
@@ -91,6 +92,7 @@ export default function GestantesScreen(): React.ReactElement {
         {filtered.length === 0 ? (
           <EmptyState
             icon={Users}
+            illu={GICON.gestantes}
             title="Sin resultados"
             text="Prueba con otro nombre o quita el filtro."
           />
@@ -110,7 +112,7 @@ export default function GestantesScreen(): React.ReactElement {
                   uri={avatarUri(p.dni, p.avatarVersion)}
                   color={risk[p.riskLevel].solid}
                   background={risk[p.riskLevel].light}
-                  size={38}
+                  size={40}
                 />
                 <View style={styles.info}>
                   <Text style={styles.name} numberOfLines={1}>
@@ -123,7 +125,7 @@ export default function GestantesScreen(): React.ReactElement {
                 <Text style={[styles.riskWord, { color: risk[p.riskLevel].solid }]}>
                   {RISK_WORD[p.riskLevel]}
                 </Text>
-                <ChevronRight size={16} color={common.textTertiary} />
+                <ChevronRight size={16} color={gwarm.inkFaint} />
               </PressableScale>
             ))}
           </View>
@@ -134,44 +136,64 @@ export default function GestantesScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: common.background },
+  container: { flex: 1, backgroundColor: gwarm.bg },
   flex: { flex: 1 },
   content: {
-    padding: spacing.md,
-    paddingBottom: spacing.xl,
+    padding: 16,
+    paddingBottom: 32,
   },
   searchBox: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
-    backgroundColor: common.surfaceAlt,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.sm2,
-    height: 44,
-    marginTop: spacing.sm,
+    gap: 8,
+    backgroundColor: gwarm.surface,
+    borderWidth: 1.5,
+    borderColor: gwarm.border,
+    borderRadius: 17,
+    paddingHorizontal: 13,
+    height: 46,
+    marginTop: 8,
   },
   searchInput: {
     flex: 1,
-    ...type.body,
-    color: common.text,
+    fontFamily: gfonts.handBody,
+    fontSize: 15.5,
+    color: gwarm.ink,
   },
-  segmented: { marginTop: spacing.sm },
+  segmented: { marginTop: 8 },
   listCard: {
-    backgroundColor: common.surface,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.md,
-    ...cardBorder,
+    backgroundColor: gwarm.surface,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: gwarm.border,
+    paddingHorizontal: 15,
+    ...gShadow,
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm2,
-    paddingVertical: spacing.sm2,
-    minHeight: 62,
+    gap: 12,
+    paddingVertical: 11,
+    minHeight: 64,
   },
-  rowBorder: { borderTopWidth: 1, borderTopColor: common.border },
-  info: { flex: 1, minWidth: 0, gap: 2 },
-  name: { ...type.bodyMd, fontSize: 15, color: common.text },
-  meta: { ...type.bodySm, color: common.textSecondary },
-  riskWord: { ...type.label, fontSize: 12.5, flexShrink: 0 },
+  rowBorder: { borderTopWidth: 1, borderTopColor: gwarm.border },
+  info: { flex: 1, minWidth: 0, gap: 1 },
+  name: {
+    fontFamily: gfonts.handBody,
+    fontSize: 16,
+    lineHeight: 22,
+    color: gwarm.ink,
+  },
+  meta: {
+    fontFamily: gfonts.handBody,
+    fontSize: 13,
+    lineHeight: 17,
+    color: gwarm.inkSoft,
+  },
+  riskWord: {
+    fontFamily: gfonts.hand,
+    fontSize: 15,
+    lineHeight: 19,
+    flexShrink: 0,
+  },
 });

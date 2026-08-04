@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, StyleSheet, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
-import { common } from "@/constants/theme";
+import { gwarm } from "@/constants/theme";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -21,7 +21,7 @@ export function ProgressRing({
   size = 92,
   strokeWidth = 9,
   color,
-  trackColor = common.surfaceAlt,
+  trackColor = gwarm.border,
   children,
 }: ProgressRingProps): React.ReactElement {
   const clamped = Math.max(0, Math.min(1, progress));

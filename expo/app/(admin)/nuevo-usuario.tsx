@@ -1,7 +1,7 @@
 /**
- * Crear usuario (administración): formulario compacto en bloques con rol
- * segmentado. Para una gestante, el servidor crea también su ficha clínica
- * y genera automáticamente el cronograma de 8 controles MINSA.
+ * Crear usuario (administración, estilo "cuaderno"): formulario compacto en
+ * bloques con rol segmentado. Para una gestante, el servidor crea también su
+ * ficha clínica y genera automáticamente el cronograma de 8 controles MINSA.
  */
 import { useRouter } from "expo-router";
 import { UserPlus, WifiOff } from "lucide-react-native";
@@ -14,7 +14,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { adminTheme, common, radius, semantic, spacing, type } from "@/constants/theme";
+import { gfonts, gwarm, warmPlum } from "@/constants/theme";
 import { ApiError } from "@/lib/api";
 import { showNotice } from "@/lib/confirm";
 import { useApp } from "@/providers/AppProvider";
@@ -26,7 +26,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Segmented } from "@/components/Segmented";
 
-const accent = adminTheme;
+const accent = warmPlum;
 
 export default function NuevoUsuarioScreen(): React.ReactElement {
   const router = useRouter();
@@ -129,7 +129,7 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Nuevo usuario" subtitle="Validado por el servidor" showBack />
+      <ScreenHeader title="Nuevo usuario" subtitle="La cuenta queda activa al instante" showBack />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -142,7 +142,7 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
         >
           {!online ? (
             <View style={styles.offlineBox}>
-              <WifiOff size={15} color={semantic.warning} />
+              <WifiOff size={15} color={gwarm.amber} />
               <Text style={styles.offlineText}>
                 Sin conexión: crear usuarios necesita al servidor.
               </Text>
@@ -169,7 +169,7 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
               placeholder="8 dígitos"
               keyboardType="number-pad"
               maxLength={8}
-              accent={accent.primary}
+              accent={accent.main}
               testID="nuevo-dni"
             />
             <View style={styles.row2}>
@@ -179,7 +179,7 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
                 onChangeText={setFirstName}
                 placeholder="Nombres"
                 autoCapitalize="words"
-                accent={accent.primary}
+                accent={accent.main}
                 style={styles.flex}
               />
               <Field
@@ -188,7 +188,7 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
                 onChangeText={setLastName}
                 placeholder="Apellidos"
                 autoCapitalize="words"
-                accent={accent.primary}
+                accent={accent.main}
                 style={styles.flex}
               />
             </View>
@@ -199,7 +199,7 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
                 onChangeText={setPhone}
                 placeholder="9xx xxx xxx"
                 keyboardType="phone-pad"
-                accent={accent.primary}
+                accent={accent.main}
                 style={styles.flex}
               />
               <Field
@@ -208,7 +208,7 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
                 onChangeText={setPassword}
                 placeholder="Mínimo 6 caracteres"
                 autoCapitalize="none"
-                accent={accent.primary}
+                accent={accent.main}
                 style={styles.flex}
               />
             </View>
@@ -225,7 +225,7 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
                   placeholder="AAAA-MM-DD"
                   keyboardType="numbers-and-punctuation"
                   maxLength={10}
-                  accent={accent.primary}
+                  accent={accent.main}
                   hint="Con la FUM se calculan la edad gestacional, la FPP y los 8 controles."
                   testID="nuevo-fum"
                 />
@@ -235,7 +235,7 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
                     value={age}
                     onChangeText={setAge}
                     keyboardType="number-pad"
-                    accent={accent.primary}
+                    accent={accent.main}
                     style={styles.flex}
                   />
                   <Field
@@ -243,7 +243,7 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
                     value={community}
                     onChangeText={setCommunity}
                     autoCapitalize="words"
-                    accent={accent.primary}
+                    accent={accent.main}
                     style={styles.flex}
                   />
                 </View>
@@ -253,7 +253,7 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
                     value={hb}
                     onChangeText={setHb}
                     keyboardType="decimal-pad"
-                    accent={accent.primary}
+                    accent={accent.main}
                     style={styles.flex}
                   />
                   <Field
@@ -261,7 +261,7 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
                     value={imc}
                     onChangeText={setImc}
                     keyboardType="decimal-pad"
-                    accent={accent.primary}
+                    accent={accent.main}
                     style={styles.flex}
                   />
                 </View>
@@ -271,7 +271,7 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
                     value={bpSys}
                     onChangeText={setBpSys}
                     keyboardType="number-pad"
-                    accent={accent.primary}
+                    accent={accent.main}
                     style={styles.flex}
                   />
                   <Field
@@ -279,7 +279,7 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
                     value={bpDia}
                     onChangeText={setBpDia}
                     keyboardType="number-pad"
-                    accent={accent.primary}
+                    accent={accent.main}
                     style={styles.flex}
                   />
                 </View>
@@ -288,7 +288,7 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
                   value={gestas}
                   onChangeText={setGestas}
                   keyboardType="number-pad"
-                  accent={accent.primary}
+                  accent={accent.main}
                 />
               </Card>
             </>
@@ -303,7 +303,7 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
           <AppButton
             title="Crear usuario"
             onPress={() => void submit()}
-            color={accent.primary}
+            color={accent.main}
             icon={UserPlus}
             loading={submitting}
             disabled={!online || submitting}
@@ -316,36 +316,43 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: common.background },
+  container: { flex: 1, backgroundColor: gwarm.bg },
   flex: { flex: 1 },
   content: {
-    padding: spacing.md,
-    paddingBottom: spacing.xxl,
-    gap: spacing.sm2,
+    padding: 16,
+    paddingBottom: 48,
+    gap: 12,
   },
   offlineBox: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
-    backgroundColor: common.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: common.border,
-    borderLeftWidth: 3,
-    borderLeftColor: semantic.warning,
-    padding: spacing.sm2,
+    gap: 8,
+    backgroundColor: gwarm.amberSoft,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: gwarm.amberMid,
+    padding: 12,
   },
-  offlineText: { ...type.bodySm, color: common.textSecondary, flex: 1 },
-  formCard: { gap: spacing.sm2 },
-  row2: { flexDirection: "row", gap: spacing.sm2 },
+  offlineText: {
+    fontFamily: gfonts.handBody,
+    fontSize: 14,
+    lineHeight: 19,
+    color: gwarm.amber,
+    flex: 1,
+  },
+  formCard: { gap: 12 },
+  row2: { flexDirection: "row", gap: 12 },
   errorBox: {
-    backgroundColor: common.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: common.border,
-    borderLeftWidth: 3,
-    borderLeftColor: semantic.danger,
-    padding: spacing.sm2,
+    backgroundColor: gwarm.redSoft,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: gwarm.redMid,
+    padding: 12,
   },
-  errorText: { ...type.bodySm, color: semantic.danger },
+  errorText: {
+    fontFamily: gfonts.handBody,
+    fontSize: 14,
+    lineHeight: 19,
+    color: gwarm.rose,
+  },
 });

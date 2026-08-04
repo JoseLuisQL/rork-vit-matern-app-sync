@@ -7,7 +7,7 @@ import { Image } from "expo-image";
 import { UserRound } from "lucide-react-native";
 import React from "react";
 import { StyleSheet, View } from "react-native";
-import { common, radius, withAlpha } from "@/constants/theme";
+import { gwarm, withAlpha } from "@/constants/theme";
 
 interface AvatarProps {
   /** URL de la foto; sin ella se muestra el icono por defecto. */
@@ -28,8 +28,8 @@ export function Avatar({ uri, color, background, size = 44, ring }: AvatarProps)
         height: size,
         borderRadius: size / 2,
         borderWidth: 1,
-        borderColor: common.border,
-        backgroundColor: common.surfaceAlt,
+        borderColor: gwarm.border,
+        backgroundColor: gwarm.surfaceSoft,
       }}
       contentFit="cover"
       transition={120}
@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
   },
   ringWrap: {
     borderWidth: 2,
-    borderRadius: radius.pill,
+    borderRadius: 999,
     padding: 2,
   },
 });

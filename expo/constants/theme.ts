@@ -103,6 +103,45 @@ export const gShadow: ViewStyle = Platform.select<ViewStyle>({
   },
 }) as ViewStyle;
 
+/**
+ * Acentos cálidos por rol sobre el papel crema del "cuaderno de cuidado":
+ * teal (gestante), azul petróleo (obstetra) y ciruela (administración).
+ * Toda la app comparte el mismo fondo cálido para sentirse hecha a mano.
+ */
+export interface WarmAccent {
+  main: string;
+  deep: string;
+  soft: string;
+  mid: string;
+}
+
+export const warmTeal: WarmAccent = {
+  main: "#0C8174",
+  deep: "#0A6B60",
+  soft: "#E3F1EE",
+  mid: "#BFE0DA",
+};
+
+export const warmBlue: WarmAccent = {
+  main: "#2E6C96",
+  deep: "#245778",
+  soft: "#E6EFF3",
+  mid: "#C5DBE6",
+};
+
+export const warmPlum: WarmAccent = {
+  main: "#5B2A5E",
+  deep: "#4A2250",
+  soft: "#F2EAF3",
+  mid: "#DFC9E2",
+};
+
+export function warmAccent(role: Role | undefined): WarmAccent {
+  if (role === "obstetra") return warmBlue;
+  if (role === "admin") return warmPlum;
+  return warmTeal;
+}
+
 /** Marca (logo): ciruela + rosa. */
 export const brand = {
   plum: "#5B2A5E",

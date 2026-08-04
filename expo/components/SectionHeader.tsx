@@ -1,7 +1,7 @@
-/** Encabezado de sección editorial: etiqueta pequeña en mayúsculas + acción opcional. */
+/** Título de sección a mano con acción opcional a la derecha. */
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { common, spacing, type } from "@/constants/theme";
+import { gfonts, gwarm, spacing } from "@/constants/theme";
 
 interface SectionHeaderProps {
   title: string;
@@ -11,10 +11,12 @@ interface SectionHeaderProps {
 export function SectionHeader({ title, action }: SectionHeaderProps): React.ReactElement {
   return (
     <View style={styles.row}>
-      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.title} numberOfLines={1}>
+        {title}
+      </Text>
       {action ? (
         <Pressable accessibilityRole="button" onPress={action.onPress} hitSlop={8}>
-          <Text style={[styles.action, action.color != null && { color: action.color }]}>
+          <Text style={[styles.action, { color: action.color ?? gwarm.tealDeep }]}>
             {action.label}
           </Text>
         </Pressable>
@@ -28,20 +30,20 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: spacing.sm,
     marginTop: spacing.sm2,
     marginBottom: 2,
   },
   title: {
-    ...type.overline,
-    fontSize: 12,
-    lineHeight: 16,
-    letterSpacing: 1.1,
-    color: common.textTertiary,
-    textTransform: "uppercase" as const,
+    fontFamily: gfonts.hand,
+    fontSize: 21,
+    lineHeight: 27,
+    color: gwarm.ink,
+    flex: 1,
   },
   action: {
-    ...type.buttonSm,
-    fontSize: 13,
-    color: common.textSecondary,
+    fontFamily: gfonts.hand,
+    fontSize: 16,
+    lineHeight: 21,
   },
 });

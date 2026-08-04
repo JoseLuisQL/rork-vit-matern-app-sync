@@ -1,7 +1,7 @@
 /**
- * Inicio de la obstetra: saludo con foto de perfil, un bloque compacto de
- * emergencias (filas, no tarjetones), indicadores del día, accesos y las
- * listas de citas de hoy y pacientes prioritarias.
+ * Inicio de la obstetra ("cuaderno de cuidado"): saludo con foto de perfil,
+ * nota de emergencias, indicadores del día a mano, accesos con dibujos a
+ * crayola y las listas de citas de hoy y pacientes prioritarias.
  */
 import { useRouter } from "expo-router";
 import {
@@ -11,21 +11,12 @@ import {
   MessageCircle,
   Siren,
   UserRoundPlus,
-  Users,
 } from "lucide-react-native";
 import React, { useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import {
-  brand,
-  common,
-  gestanteTheme,
-  obstetraTheme,
-  risk,
-  semantic,
-  spacing,
-  type,
-} from "@/constants/theme";
+import { gfonts, gShadow, gwarm, risk, warmBlue, warmTeal } from "@/constants/theme";
 import { RISK_WORD } from "@/constants/labels";
+import { GICON } from "@/constants/illustrations";
 import { avatarUri } from "@/lib/api";
 import { fechaLarga, tiempoRelativo } from "@/lib/format";
 import { useApp, usePatients, useUnreadCount } from "@/providers/AppProvider";
@@ -33,12 +24,13 @@ import { Avatar } from "@/components/Avatar";
 import { Card } from "@/components/Card";
 import { HomeHeader } from "@/components/HomeHeader";
 import { ModuleGrid, type ModuleItem } from "@/components/ModuleGrid";
+import { PopIn } from "@/components/gestante/PopIn";
 import { PressableScale } from "@/components/PressableScale";
 import { SectionHeader } from "@/components/SectionHeader";
 import { StatGroup } from "@/components/StatGroup";
 import { StatusWord } from "@/components/Badges";
 
-const accent = obstetraTheme;
+const accent = warmBlue;
 
 export default function InicioObstetra(): React.ReactElement {
   const router = useRouter();
@@ -85,7 +77,8 @@ export default function InicioObstetra(): React.ReactElement {
         key: "nueva-cita",
         label: "Nueva cita",
         icon: CalendarPlus,
-        color: accent.primary,
+        illu: GICON.citas,
+        color: accent.main,
         onPress: () =>
           router.push({ pathname: "/(obstetra)/programar", params: { mode: "cita" } }),
         testID: "mod-nueva-cita",
@@ -94,7 +87,8 @@ export default function InicioObstetra(): React.ReactElement {
         key: "nueva-gestante",
         label: "Gestante",
         icon: UserRoundPlus,
-        color: gestanteTheme.primary,
+        illu: GICON.gestantes,
+        color: warmTeal.main,
         onPress: () => router.push("/(obstetra)/nueva-gestante"),
         testID: "mod-nueva-gestante",
       },
@@ -102,7 +96,8 @@ export default function InicioObstetra(): React.ReactElement {
         key: "alertas",
         label: "Alertas",
         icon: Bell,
-        color: semantic.warning,
+        illu: GICON.campana,
+        color: gwarm.amber,
         badge: openAlerts.length,
         onPress: () => router.push("/(obstetra)/(tabs)/alertas"),
         testID: "mod-alertas",
@@ -111,7 +106,8 @@ export default function InicioObstetra(): React.ReactElement {
         key: "chat",
         label: "Chat",
         icon: MessageCircle,
-        color: brand.plum,
+        illu: GICON.mensajes,
+        color: gwarm.terracotta,
         badge: unread,
         onPress: () => router.push("/(obstetra)/(tabs)/chat"),
         testID: "mod-chat",
@@ -129,9 +125,10 @@ export default function InicioObstetra(): React.ReactElement {
       <HomeHeader
         overline={fechaLarga(todayKey)}
         title={`Hola, ${user.firstName}`}
+        subtitle={`${patients.length} gestantes a tu cuidado`}
         avatarUri={avatarUri(user.dni, user.avatarVersion)}
-        accentColor={accent.primary}
-        accentBackground={accent.primaryLight}
+        accentColor={accent.main}
+        accentBackground={accent.soft}
         onAvatarPress={() => router.push("/(obstetra)/perfil")}
       />
       <ScrollView
@@ -140,207 +137,269 @@ export default function InicioObstetra(): React.ReactElement {
         showsVerticalScrollIndicator={false}
       >
         {emergencies.length > 0 ? (
-          <Card style={styles.urgentCard}>
-            <View style={styles.urgentHeader}>
-              <Text style={styles.urgentTitle}>Atención inmediata</Text>
-              <Text style={styles.urgentCount}>{emergencies.length}</Text>
-            </View>
-            {emergencies.slice(0, 3).map((alert, index) => (
-              <PressableScale
-                key={alert.id}
-                onPress={() => router.push("/(obstetra)/(tabs)/alertas")}
-                accessibilityLabel={`Emergencia de ${patientName(alert.patientId)}`}
-                style={[styles.urgentRow, index > 0 && styles.rowBorder]}
-                testID={`urgente-${alert.id}`}
-              >
-                <Siren size={16} color={semantic.danger} />
-                <View style={styles.rowInfo}>
-                  <Text style={styles.urgentName} numberOfLines={1}>
-                    {patientName(alert.patientId)}
-                  </Text>
-                  <Text style={styles.urgentDetail} numberOfLines={1}>
-                    {alert.detail}
-                  </Text>
+          <PopIn>
+            <View style={styles.urgentCard}>
+              <View style={styles.urgentHeader}>
+                <View style={styles.urgentIconCircle}>
+                  <Siren size={18} color={gwarm.rose} strokeWidth={2.4} />
                 </View>
-                <Text style={styles.urgentTime}>{tiempoRelativo(alert.atISO)}</Text>
-                <ChevronRight size={15} color={common.textTertiary} />
-              </PressableScale>
-            ))}
-          </Card>
+                <Text style={styles.urgentTitle}>Atención inmediata</Text>
+                <Text style={styles.urgentCount}>{emergencies.length}</Text>
+              </View>
+              {emergencies.slice(0, 3).map((alert) => (
+                <PressableScale
+                  key={alert.id}
+                  onPress={() => router.push("/(obstetra)/(tabs)/alertas")}
+                  accessibilityLabel={`Emergencia de ${patientName(alert.patientId)}`}
+                  style={styles.urgentRow}
+                  testID={`urgente-${alert.id}`}
+                >
+                  <View style={styles.rowInfo}>
+                    <Text style={styles.urgentName} numberOfLines={1}>
+                      {patientName(alert.patientId)}
+                    </Text>
+                    <Text style={styles.urgentDetail} numberOfLines={1}>
+                      {alert.detail}
+                    </Text>
+                  </View>
+                  <Text style={styles.urgentTime}>{tiempoRelativo(alert.atISO)}</Text>
+                  <ChevronRight size={15} color={gwarm.rose} />
+                </PressableScale>
+              ))}
+            </View>
+          </PopIn>
         ) : null}
 
-        <StatGroup
-          items={[
-            { key: "citas", value: `${todayAppointments.length}`, label: "Citas hoy" },
-            {
-              key: "alertas",
-              value: `${openAlerts.length}`,
-              label: "Alertas",
-              color: openAlerts.length > 0 ? semantic.warning : common.text,
-            },
-            {
-              key: "rojo",
-              value: `${redCount}`,
-              label: "Riesgo alto",
-              color: redCount > 0 ? semantic.danger : common.text,
-            },
-          ]}
-        />
+        <PopIn delay={60}>
+          <StatGroup
+            items={[
+              { key: "citas", value: `${todayAppointments.length}`, label: "Citas hoy" },
+              {
+                key: "alertas",
+                value: `${openAlerts.length}`,
+                label: "Alertas",
+                color: openAlerts.length > 0 ? gwarm.amber : gwarm.ink,
+              },
+              {
+                key: "rojo",
+                value: `${redCount}`,
+                label: "Riesgo alto",
+                color: redCount > 0 ? gwarm.rose : gwarm.ink,
+              },
+            ]}
+          />
+        </PopIn>
 
-        <SectionHeader title="Accesos" />
-        <ModuleGrid items={modules} />
+        <PopIn delay={120}>
+          <SectionHeader title="Accesos rápidos" />
+          <ModuleGrid items={modules} />
+        </PopIn>
 
-        <SectionHeader
-          title="Citas de hoy"
-          action={{
-            label: "Agenda",
-            onPress: () => router.push("/(obstetra)/(tabs)/agenda"),
-            color: accent.primary,
-          }}
-        />
-        {todayAppointments.length === 0 ? (
-          <Card>
-            <Text style={styles.emptyText}>No hay citas programadas para hoy.</Text>
-          </Card>
-        ) : (
-          <Card style={styles.listCard}>
-            {todayAppointments.map((appt, index) => (
-              <View key={appt.id} style={[styles.apptRow, index > 0 && styles.rowBorder]}>
-                <Text style={styles.timeText}>{appt.time}</Text>
-                <View style={styles.timeDivider} />
-                <View style={styles.rowInfo}>
-                  <Text style={styles.rowName} numberOfLines={1}>
-                    {patientName(appt.patientId)}
-                  </Text>
-                </View>
-                <StatusWord estado={appt.estado} />
-              </View>
-            ))}
-          </Card>
-        )}
-
-        <SectionHeader
-          title="Pacientes prioritarias"
-          action={{
-            label: "Ver todas",
-            onPress: () => router.push("/(obstetra)/(tabs)/gestantes"),
-            color: accent.primary,
-          }}
-        />
-        <Card style={styles.listCard}>
-          {priority.length === 0 ? (
-            <Text style={styles.emptyText}>Ninguna paciente en riesgo medio o alto.</Text>
+        <PopIn delay={180}>
+          <SectionHeader
+            title="Citas de hoy"
+            action={{
+              label: "Ver agenda",
+              onPress: () => router.push("/(obstetra)/(tabs)/agenda"),
+              color: accent.main,
+            }}
+          />
+          {todayAppointments.length === 0 ? (
+            <Card>
+              <Text style={styles.emptyText}>No hay citas programadas para hoy.</Text>
+            </Card>
           ) : (
-            priority.map((p, index) => (
-              <PressableScale
-                key={p.id}
-                onPress={() =>
-                  router.push({ pathname: "/(obstetra)/gestante/[id]", params: { id: p.id } })
-                }
-                accessibilityLabel={`Ficha de ${p.firstName}`}
-                style={[styles.patientRow, index > 0 && styles.rowBorder]}
-              >
-                <Avatar
-                  uri={avatarUri(p.dni, p.avatarVersion)}
-                  color={risk[p.riskLevel].solid}
-                  background={risk[p.riskLevel].light}
-                  size={36}
-                />
-                <View style={styles.rowInfo}>
-                  <Text style={styles.rowName} numberOfLines={1}>
-                    {p.firstName} {p.lastName}
-                  </Text>
-                  <Text style={styles.rowMeta} numberOfLines={1}>
-                    Semana {p.weeks} · {p.community}
-                  </Text>
+            <Card style={styles.listCard}>
+              {todayAppointments.map((appt, index) => (
+                <View key={appt.id} style={[styles.apptRow, index > 0 && styles.rowBorder]}>
+                  <Text style={styles.timeText}>{appt.time}</Text>
+                  <View style={styles.timeDivider} />
+                  <View style={styles.rowInfo}>
+                    <Text style={styles.rowName} numberOfLines={1}>
+                      {patientName(appt.patientId)}
+                    </Text>
+                  </View>
+                  <StatusWord estado={appt.estado} />
                 </View>
-                <Text style={[styles.riskWord, { color: risk[p.riskLevel].solid }]}>
-                  {RISK_WORD[p.riskLevel]}
-                </Text>
-              </PressableScale>
-            ))
+              ))}
+            </Card>
           )}
-        </Card>
+        </PopIn>
+
+        <PopIn delay={240}>
+          <SectionHeader
+            title="Pacientes prioritarias"
+            action={{
+              label: "Ver todas",
+              onPress: () => router.push("/(obstetra)/(tabs)/gestantes"),
+              color: accent.main,
+            }}
+          />
+          <Card style={styles.listCard}>
+            {priority.length === 0 ? (
+              <Text style={styles.emptyText}>Ninguna paciente en riesgo medio o alto.</Text>
+            ) : (
+              priority.map((p, index) => (
+                <PressableScale
+                  key={p.id}
+                  onPress={() =>
+                    router.push({ pathname: "/(obstetra)/gestante/[id]", params: { id: p.id } })
+                  }
+                  accessibilityLabel={`Ficha de ${p.firstName}`}
+                  style={[styles.patientRow, index > 0 && styles.rowBorder]}
+                >
+                  <Avatar
+                    uri={avatarUri(p.dni, p.avatarVersion)}
+                    color={risk[p.riskLevel].solid}
+                    background={risk[p.riskLevel].light}
+                    size={38}
+                  />
+                  <View style={styles.rowInfo}>
+                    <Text style={styles.rowName} numberOfLines={1}>
+                      {p.firstName} {p.lastName}
+                    </Text>
+                    <Text style={styles.rowMeta} numberOfLines={1}>
+                      Semana {p.weeks} · {p.community}
+                    </Text>
+                  </View>
+                  <Text style={[styles.riskWord, { color: risk[p.riskLevel].solid }]}>
+                    {RISK_WORD[p.riskLevel]}
+                  </Text>
+                </PressableScale>
+              ))
+            )}
+          </Card>
+        </PopIn>
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: common.background },
+  container: { flex: 1, backgroundColor: gwarm.bg },
   flex: { flex: 1 },
   content: {
-    padding: spacing.md,
-    paddingBottom: spacing.xl,
-    gap: spacing.sm2,
+    padding: 16,
+    paddingBottom: 32,
+    gap: 12,
   },
   urgentCard: {
-    gap: 0,
-    paddingVertical: spacing.sm,
-    borderLeftWidth: 3,
-    borderLeftColor: semantic.danger,
+    backgroundColor: gwarm.redSoft,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: gwarm.redMid,
+    padding: 14,
+    gap: 6,
+    ...gShadow,
   },
   urgentHeader: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: spacing.xs,
+    gap: 10,
+  },
+  urgentIconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: gwarm.surface,
+    alignItems: "center",
+    justifyContent: "center",
   },
   urgentTitle: {
-    ...type.overline,
-    fontSize: 11.5,
-    letterSpacing: 1,
-    color: semantic.danger,
-    textTransform: "uppercase" as const,
+    fontFamily: gfonts.hand,
+    fontSize: 19,
+    lineHeight: 24,
+    color: gwarm.rose,
+    flex: 1,
   },
   urgentCount: {
-    ...type.numericSm,
-    fontSize: 15,
-    color: semantic.danger,
+    fontFamily: gfonts.hand,
+    fontSize: 19,
+    lineHeight: 24,
+    color: gwarm.rose,
   },
   urgentRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm2,
-    paddingVertical: spacing.sm2,
+    gap: 10,
+    backgroundColor: gwarm.surface,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
     minHeight: 52,
   },
-  urgentName: { ...type.bodyMd, fontSize: 15, color: common.text },
-  urgentDetail: { ...type.bodySm, color: common.textSecondary },
-  urgentTime: { ...type.caption, color: common.textTertiary, flexShrink: 0 },
-  listCard: { paddingVertical: spacing.xs, gap: 0 },
+  urgentName: {
+    fontFamily: gfonts.handBody,
+    fontSize: 15.5,
+    lineHeight: 21,
+    color: gwarm.ink,
+  },
+  urgentDetail: {
+    fontFamily: gfonts.handBody,
+    fontSize: 13,
+    lineHeight: 17,
+    color: gwarm.inkSoft,
+  },
+  urgentTime: {
+    fontFamily: gfonts.handBody,
+    fontSize: 12,
+    lineHeight: 16,
+    color: gwarm.inkFaint,
+    flexShrink: 0,
+  },
+  listCard: { paddingVertical: 6, gap: 0 },
   apptRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm2,
-    paddingVertical: spacing.sm2,
+    gap: 12,
+    paddingVertical: 11,
     minHeight: 52,
   },
-  rowBorder: { borderTopWidth: 1, borderTopColor: common.border },
+  rowBorder: { borderTopWidth: 1, borderTopColor: gwarm.border },
   timeText: {
-    ...type.numericSm,
-    fontSize: 15,
-    lineHeight: 20,
-    color: accent.primaryDark,
-    width: 44,
+    fontFamily: gfonts.hand,
+    fontSize: 17,
+    lineHeight: 22,
+    color: accent.deep,
+    width: 48,
     flexShrink: 0,
   },
   timeDivider: {
     width: 1,
     alignSelf: "stretch",
     marginVertical: 2,
-    backgroundColor: common.border,
+    backgroundColor: gwarm.border,
   },
   rowInfo: { flex: 1, minWidth: 0, gap: 1 },
-  rowName: { ...type.bodyMd, fontSize: 15, color: common.text },
-  rowMeta: { ...type.bodySm, color: common.textSecondary },
+  rowName: {
+    fontFamily: gfonts.handBody,
+    fontSize: 15.5,
+    lineHeight: 21,
+    color: gwarm.ink,
+  },
+  rowMeta: {
+    fontFamily: gfonts.handBody,
+    fontSize: 13,
+    lineHeight: 17,
+    color: gwarm.inkSoft,
+  },
   patientRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm2,
-    paddingVertical: spacing.sm2,
+    gap: 12,
+    paddingVertical: 10,
     minHeight: 56,
   },
-  riskWord: { ...type.label, fontSize: 12.5, flexShrink: 0 },
-  emptyText: { ...type.body, color: common.textSecondary },
+  riskWord: {
+    fontFamily: gfonts.hand,
+    fontSize: 15,
+    lineHeight: 19,
+    flexShrink: 0,
+  },
+  emptyText: {
+    fontFamily: gfonts.handBody,
+    fontSize: 14.5,
+    lineHeight: 21,
+    color: gwarm.inkSoft,
+  },
 });

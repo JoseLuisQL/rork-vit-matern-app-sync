@@ -1,20 +1,21 @@
 /**
- * Reportes tipo indicadores MINSA, calculados por el servidor:
+ * Reportes tipo indicadores MINSA ("cuaderno"), calculados por el servidor:
  * controles oportunos, suplementación, anemia por severidad (corregida por
  * altitud), asistencia y atención de alertas. Filtro por periodo.
  */
 import React, { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { adminTheme, common, radius, risk, semantic, spacing, type } from "@/constants/theme";
+import { gfonts, gwarm, risk } from "@/constants/theme";
 import { ANEMIA_LABEL, RISK_LABEL } from "@/constants/labels";
+import { GICON } from "@/constants/illustrations";
 import { useApp } from "@/providers/AppProvider";
 import type { AnemiaClass, ReportBlock, RiskLevel } from "@/types";
 import { Card } from "@/components/Card";
-import { PressableScale } from "@/components/PressableScale";
+import { Illustration } from "@/components/gestante/Illustration";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SectionHeader } from "@/components/SectionHeader";
+import { Segmented } from "@/components/Segmented";
 
-const accent = adminTheme;
 type Period = "d30" | "total";
 
 function IndicatorCard({
@@ -43,9 +44,9 @@ function IndicatorCard({
 }
 
 function pctColor(pct: number): string {
-  if (pct >= 75) return semantic.success;
-  if (pct >= 50) return semantic.warning;
-  return semantic.danger;
+  if (pct >= 75) return gwarm.teal;
+  if (pct >= 50) return gwarm.amber;
+  return gwarm.rose;
 }
 
 export default function ReportesScreen(): React.ReactElement {
@@ -60,31 +61,20 @@ export default function ReportesScreen(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Reportes" subtitle="Indicadores del centro de salud">
-        <View style={styles.periodRow}>
-          {(["d30", "total"] as Period[]).map((p) => {
-            const active = period === p;
-            return (
-              <PressableScale
-                key={p}
-                onPress={() => setPeriod(p)}
-                accessibilityLabel={p === "d30" ? "Últimos 30 días" : "Histórico"}
-                style={[
-                  styles.periodChip,
-                  active
-                    ? { backgroundColor: accent.primary, borderColor: accent.primary }
-                    : { backgroundColor: common.surface, borderColor: common.border },
-                ]}
-              >
-                <Text
-                  style={[styles.periodText, { color: active ? common.white : common.textSecondary }]}
-                >
-                  {p === "d30" ? "Últimos 30 días" : "Histórico"}
-                </Text>
-              </PressableScale>
-            );
-          })}
-        </View>
+      <ScreenHeader
+        title="Reportes"
+        subtitle="Indicadores del centro de salud"
+        right={<Illustration source={GICON.reportes} width={46} height={46} />}
+      >
+        <Segmented
+          options={[
+            { key: "d30", label: "Últimos 30 días" },
+            { key: "total", label: "Histórico" },
+          ]}
+          value={period}
+          onChange={(k) => setPeriod(k as Period)}
+          style={styles.segmented}
+        />
       </ScreenHeader>
 
       <ScrollView
@@ -130,14 +120,12 @@ export default function ReportesScreen(): React.ReactElement {
             const count = report.anemia[cls];
             const pct = report.gestantes > 0 ? Math.round((count / report.gestantes) * 100) : 0;
             const color =
-              cls === "normal"
-                ? semantic.success
-                : cls === "leve"
-                  ? semantic.warning
-                  : semantic.danger;
+              cls === "normal" ? gwarm.teal : cls === "leve" ? gwarm.amber : gwarm.rose;
             return (
               <View key={cls} style={styles.distRow}>
-                <Text style={styles.distLabel}>{ANEMIA_LABEL[cls]}</Text>
+                <Text style={styles.distLabel} numberOfLines={1}>
+                  {ANEMIA_LABEL[cls]}
+                </Text>
                 <View style={styles.track}>
                   <View
                     style={[
@@ -162,7 +150,9 @@ export default function ReportesScreen(): React.ReactElement {
             const pct = report.gestantes > 0 ? Math.round((count / report.gestantes) * 100) : 0;
             return (
               <View key={level} style={styles.distRow}>
-                <Text style={styles.distLabel}>{RISK_LABEL[level]}</Text>
+                <Text style={styles.distLabel} numberOfLines={1}>
+                  {RISK_LABEL[level]}
+                </Text>
                 <View style={styles.track}>
                   <View
                     style={[
@@ -191,53 +181,81 @@ export default function ReportesScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: common.background },
+  container: { flex: 1, backgroundColor: gwarm.bg },
   flex: { flex: 1 },
   content: {
-    padding: spacing.md,
-    paddingBottom: spacing.xl,
-    gap: spacing.sm2,
+    padding: 16,
+    paddingBottom: 32,
+    gap: 12,
   },
-  periodRow: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.sm },
-  periodChip: {
-    paddingHorizontal: spacing.sm2,
-    height: 38,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  periodText: { ...type.buttonSm, fontSize: 12 },
-  indicatorCard: { gap: spacing.sm },
+  segmented: { marginTop: 8 },
+  indicatorCard: { gap: 8 },
   indicatorTop: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: spacing.sm,
+    gap: 8,
   },
-  indicatorTitle: { ...type.h4, color: common.text, flex: 1 },
-  indicatorPct: { ...type.numericMd },
+  indicatorTitle: {
+    fontFamily: gfonts.hand,
+    fontSize: 19,
+    lineHeight: 24,
+    color: gwarm.ink,
+    flex: 1,
+  },
+  indicatorPct: {
+    fontFamily: gfonts.hand,
+    fontSize: 26,
+    lineHeight: 32,
+  },
   track: {
-    height: 10,
-    borderRadius: radius.pill,
-    backgroundColor: common.surfaceAlt,
+    height: 11,
+    borderRadius: 999,
+    backgroundColor: "#F1E9D8",
     overflow: "hidden" as const,
+    flex: 1,
   },
-  fill: { height: "100%", borderRadius: radius.pill },
-  indicatorDetail: { ...type.bodySm, color: common.textSecondary },
-  distCard: { gap: spacing.sm2 },
+  fill: { height: "100%", borderRadius: 999 },
+  indicatorDetail: {
+    fontFamily: gfonts.handBody,
+    fontSize: 13.5,
+    lineHeight: 19,
+    color: gwarm.inkSoft,
+  },
+  distCard: { gap: 12 },
   distRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm2,
+    gap: 12,
   },
-  distLabel: { ...type.bodySm, color: common.textSecondary, width: 120 },
-  distValue: { ...type.caption, color: common.text, width: 56, textAlign: "right" },
-  distNote: { ...type.caption, color: common.textTertiary, marginTop: 2 },
+  distLabel: {
+    fontFamily: gfonts.handBody,
+    fontSize: 14,
+    lineHeight: 19,
+    color: gwarm.inkSoft,
+    width: 118,
+  },
+  distValue: {
+    fontFamily: gfonts.handBody,
+    fontSize: 12.5,
+    lineHeight: 17,
+    color: gwarm.ink,
+    width: 58,
+    textAlign: "right",
+  },
+  distNote: {
+    fontFamily: gfonts.handBody,
+    fontSize: 12,
+    lineHeight: 16,
+    color: gwarm.inkFaint,
+    marginTop: 2,
+  },
   footerNote: {
-    ...type.caption,
-    color: common.textTertiary,
+    fontFamily: gfonts.handBody,
+    fontSize: 12.5,
+    lineHeight: 17,
+    color: gwarm.inkFaint,
     textAlign: "center",
-    marginTop: spacing.sm,
+    marginTop: 8,
   },
 });

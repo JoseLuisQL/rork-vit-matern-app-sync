@@ -1,5 +1,5 @@
 /**
- * Programar / reprogramar cita o visita en 3 pasos claros:
+ * Programar / reprogramar cita o visita en 3 pasos claros ("cuaderno"):
  * 1 elegir paciente (lista ordenada), 2 elegir día, 3 elegir hora.
  * Si el horario se ocupa, se muestran los huecos libres del día.
  */
@@ -7,7 +7,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { CalendarCheck2, Check, WifiOff } from "lucide-react-native";
 import React, { useCallback, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { cardBorder, common, obstetraTheme, radius, semantic, spacing, type } from "@/constants/theme";
+import { gfonts, gShadow, gwarm, warmBlue } from "@/constants/theme";
 import { AGENDA_SLOTS } from "@/constants/labels";
 import { ApiError } from "@/lib/api";
 import { addDaysToKey, fechaLarga } from "@/lib/format";
@@ -20,7 +20,7 @@ import { PressableScale } from "@/components/PressableScale";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SlotGrid } from "@/components/SlotGrid";
 
-const accent = obstetraTheme;
+const accent = warmBlue;
 
 type Mode = "cita" | "reprogramar" | "visita";
 
@@ -160,18 +160,18 @@ export default function ProgramarScreen(): React.ReactElement {
       >
         {!online ? (
           <View style={styles.offlineBox}>
-            <WifiOff size={16} color={semantic.warning} />
+            <WifiOff size={16} color={gwarm.amber} />
             <Text style={styles.offlineText}>Sin conexión: necesitas señal para programar.</Text>
           </View>
         ) : null}
 
         {appointment ? (
-          <Card style={styles.currentCard}>
+          <View style={styles.currentCard}>
             <Text style={styles.currentLabel}>Cita actual</Text>
             <Text style={styles.currentText}>
               {fechaLarga(appointment.dateKey)} a las {appointment.time}
             </Text>
-          </Card>
+          </View>
         ) : null}
 
         <StepTitle n={1} title="Elige a la paciente" />
@@ -200,15 +200,15 @@ export default function ProgramarScreen(): React.ReactElement {
                     style={[
                       styles.radio,
                       active
-                        ? { backgroundColor: accent.primary, borderColor: accent.primary }
-                        : { borderColor: common.borderStrong },
+                        ? { backgroundColor: accent.main, borderColor: accent.main }
+                        : { borderColor: gwarm.borderStrong },
                     ]}
                   >
-                    {active ? <Check size={13} color={common.white} /> : null}
+                    {active ? <Check size={13} color="#FFFFFF" /> : null}
                   </View>
                   <View style={styles.rowInfo}>
                     <Text
-                      style={[styles.patientName, active && { color: accent.primary }]}
+                      style={[styles.patientName, active && { color: accent.main }]}
                       numberOfLines={1}
                     >
                       {p.firstName} {p.lastName}
@@ -230,13 +230,13 @@ export default function ProgramarScreen(): React.ReactElement {
             selected={day}
             onSelect={selectDay}
             todayKey={todayKey}
-            accent={accent.primary}
-            accentLight={accent.primaryLight}
+            accent={accent.main}
+            accentLight={accent.soft}
           />
         </View>
 
         <StepTitle n={3} title="Elige la hora" />
-        <SlotGrid taken={taken} selected={slot} onSelect={setSlot} accent={accent.primary} />
+        <SlotGrid taken={taken} selected={slot} onSelect={setSlot} accent={accent.main} />
         <Text style={styles.slotHint}>Los horarios tachados ya están ocupados.</Text>
 
         {mode !== "reprogramar" ? (
@@ -245,7 +245,7 @@ export default function ProgramarScreen(): React.ReactElement {
             value={motivo}
             onChangeText={setMotivo}
             placeholder={mode === "visita" ? "Motivo de la visita" : "Motivo de la cita"}
-            accent={accent.primary}
+            accent={accent.main}
             maxLength={120}
           />
         ) : null}
@@ -263,7 +263,7 @@ export default function ProgramarScreen(): React.ReactElement {
               : "Elige un horario"
           }
           onPress={() => void submit()}
-          color={accent.primary}
+          color={accent.main}
           icon={CalendarCheck2}
           disabled={!canSubmit}
           loading={submitting}
@@ -275,85 +275,134 @@ export default function ProgramarScreen(): React.ReactElement {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: common.background },
+  container: { flex: 1, backgroundColor: gwarm.bg },
   flex: { flex: 1 },
   content: {
-    padding: spacing.md,
-    paddingBottom: spacing.xxl,
-    gap: spacing.sm2,
+    padding: 16,
+    paddingBottom: 48,
+    gap: 12,
   },
   offlineBox: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
-    backgroundColor: semantic.warningLight,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: semantic.warningMid,
-    padding: spacing.sm2,
+    gap: 8,
+    backgroundColor: gwarm.amberSoft,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: gwarm.amberMid,
+    padding: 12,
   },
-  offlineText: { ...type.body, color: semantic.warning, flex: 1 },
-  currentCard: { gap: 2, borderLeftWidth: 3, borderLeftColor: semantic.info },
+  offlineText: {
+    fontFamily: gfonts.handBody,
+    fontSize: 14.5,
+    lineHeight: 20,
+    color: gwarm.amber,
+    flex: 1,
+  },
+  currentCard: {
+    backgroundColor: warmBlue.soft,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: warmBlue.mid,
+    padding: 14,
+    gap: 2,
+  },
   currentLabel: {
-    ...type.overline,
-    fontSize: 10.5,
-    lineHeight: 14,
-    letterSpacing: 0.6,
-    color: common.textTertiary,
-    textTransform: "uppercase" as const,
+    fontFamily: gfonts.handBody,
+    fontSize: 12.5,
+    lineHeight: 17,
+    color: warmBlue.deep,
   },
-  currentText: { ...type.bodyMd, fontSize: 15, color: common.text },
+  currentText: {
+    fontFamily: gfonts.hand,
+    fontSize: 17,
+    lineHeight: 22,
+    color: gwarm.ink,
+  },
   stepRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm,
-    marginTop: spacing.sm,
+    gap: 10,
+    marginTop: 8,
   },
   stepNum: {
-    width: 26,
-    height: 26,
-    borderRadius: radius.pill,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: warmBlue.soft,
     borderWidth: 1.5,
-    borderColor: obstetraTheme.primary,
+    borderColor: warmBlue.mid,
     alignItems: "center",
     justifyContent: "center",
   },
-  stepNumText: { ...type.buttonSm, fontSize: 13, lineHeight: 17, color: obstetraTheme.primary },
-  stepTitle: { ...type.h4, fontSize: 16, color: common.text },
+  stepNumText: {
+    fontFamily: gfonts.hand,
+    fontSize: 16,
+    lineHeight: 20,
+    color: accent.deep,
+  },
+  stepTitle: {
+    fontFamily: gfonts.hand,
+    fontSize: 20,
+    lineHeight: 26,
+    color: gwarm.ink,
+  },
   patientFixed: { gap: 2 },
   listCard: {
-    backgroundColor: common.surface,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.md,
-    ...cardBorder,
+    backgroundColor: gwarm.surface,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: gwarm.border,
+    paddingHorizontal: 15,
+    ...gShadow,
   },
   patientRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.sm2,
-    paddingVertical: spacing.sm2,
+    gap: 12,
+    paddingVertical: 11,
     minHeight: 56,
   },
-  rowBorder: { borderTopWidth: 1, borderTopColor: common.border },
+  rowBorder: { borderTopWidth: 1, borderTopColor: gwarm.border },
   radio: {
-    width: 22,
-    height: 22,
-    borderRadius: radius.pill,
-    borderWidth: 1.5,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
     alignItems: "center",
     justifyContent: "center",
   },
   rowInfo: { flex: 1, minWidth: 0, gap: 1 },
-  patientName: { ...type.bodyMd, fontSize: 15, color: common.text },
-  patientMeta: { ...type.bodySm, color: common.textSecondary },
-  dayStripWrap: { marginHorizontal: -spacing.md },
-  slotHint: { ...type.caption, color: common.textTertiary },
-  errorBox: {
-    backgroundColor: semantic.dangerLight,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: semantic.dangerMid,
-    padding: spacing.sm2,
+  patientName: {
+    fontFamily: gfonts.handBody,
+    fontSize: 15.5,
+    lineHeight: 21,
+    color: gwarm.ink,
   },
-  errorText: { ...type.body, color: semantic.danger },
+  patientMeta: {
+    fontFamily: gfonts.handBody,
+    fontSize: 13,
+    lineHeight: 17,
+    color: gwarm.inkSoft,
+  },
+  dayStripWrap: { marginHorizontal: -16 },
+  slotHint: {
+    fontFamily: gfonts.handBody,
+    fontSize: 12.5,
+    lineHeight: 17,
+    color: gwarm.inkFaint,
+  },
+  errorBox: {
+    backgroundColor: gwarm.redSoft,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: gwarm.redMid,
+    padding: 12,
+  },
+  errorText: {
+    fontFamily: gfonts.handBody,
+    fontSize: 14.5,
+    lineHeight: 20,
+    color: gwarm.rose,
+  },
 });

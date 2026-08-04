@@ -1,7 +1,9 @@
 /**
- * Hilo de chat clínico (gestante ↔ obstetra) en tiempo casi real.
- * Los mensajes escritos sin señal se muestran con reloj "pendiente" y se
- * envían solos al reconectar. Emergencias y signos de alarma destacados.
+ * Hilo de chat cálido (obstetra ↔ gestante) en tiempo casi real, con el
+ * mismo estilo "cuaderno" de toda la app: burbujas redondas con letra a
+ * mano, separadores de día y avisos de emergencia como notas suaves.
+ * Los mensajes escritos sin señal se muestran con relojito y se envían
+ * solos al reconectar.
  */
 import { Check, CheckCheck, Clock3, Send, Siren, TriangleAlert } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -15,17 +17,40 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { chatColors, common, radius, semantic, spacing, type } from "@/constants/theme";
-import { horaDeISO } from "@/lib/format";
+import { gfonts, gShadow, gwarm, spacing } from "@/constants/theme";
+import {
+  addDaysToKey,
+  capitalize,
+  dayKey,
+  fechaLarga,
+  horaDeISO,
+  todayKeyLocal,
+} from "@/lib/format";
 import { useApp } from "@/providers/AppProvider";
 import type { Message } from "@/types";
 import { PressableScale } from "@/components/PressableScale";
+
+/** Colores de hora y palomitas sobre la burbuja de acento. */
+const onAccent = {
+  time: "rgba(255,255,255,0.85)",
+  tick: "rgba(255,255,255,0.7)",
+  read: "#BDEBFF",
+} as const;
 
 interface ChatThreadProps {
   convId: string;
   accent: string;
   /** Padding inferior extra cuando no hay tab bar debajo. */
   bottomInset?: boolean;
+}
+
+/** "Hoy" / "Ayer" / "Lunes 3 de agosto" para los separadores del hilo. */
+function diaDelMensaje(iso: string): string {
+  const key = dayKey(new Date(iso));
+  const hoy = todayKeyLocal();
+  if (key === hoy) return "Hoy";
+  if (key === addDaysToKey(hoy, -1)) return "Ayer";
+  return capitalize(fechaLarga(key));
 }
 
 export function ChatThread({
@@ -37,6 +62,7 @@ export function ChatThread({
   const { view, user, dispatch } = useApp();
   const [draft, setDraft] = useState<string>("");
   const myRole = user?.role === "obstetra" ? "obstetra" : "gestante";
+  const canSend = draft.trim().length > 0;
 
   const messages = useMemo(() => {
     const list = (view?.messages ?? []).filter((m) => m.convId === convId);
@@ -66,68 +92,84 @@ export function ChatThread({
   }, [draft, convId, dispatch]);
 
   const renderItem = useCallback(
-    ({ item }: { item: Message }) => {
+    ({ item, index }: { item: Message; index: number }) => {
       const own = item.sender === myRole;
       const readByPeer = myRole === "gestante" ? item.readByObstetra : item.readByGestante;
+      const older = messages[index + 1];
+      const showDay =
+        older === undefined || dayKey(new Date(older.atISO)) !== dayKey(new Date(item.atISO));
+
+      let body: React.ReactElement;
 
       if (item.kind === "emergencia" || item.kind === "alarma") {
-        const Icon = item.kind === "emergencia" ? Siren : TriangleAlert;
-        return (
-          <View style={[styles.emergencyCard, own ? styles.rowEnd : styles.rowStart]}>
-            <View style={styles.emergencyHeader}>
-              <Icon size={15} color={semantic.danger} />
-              <Text style={styles.emergencyTitle}>
-                {item.kind === "emergencia" ? "Alerta de emergencia" : "Signos de alarma"}
+        const esEmergencia = item.kind === "emergencia";
+        const tinta = esEmergencia ? gwarm.rose : gwarm.amber;
+        body = (
+          <View style={[styles.note, esEmergencia ? styles.noteRoja : styles.noteAmbar]}>
+            <View style={styles.noteHeader}>
+              <View style={styles.noteIconCircle}>
+                {esEmergencia ? (
+                  <Siren size={18} color={tinta} strokeWidth={2.4} />
+                ) : (
+                  <TriangleAlert size={18} color={tinta} strokeWidth={2.4} />
+                )}
+              </View>
+              <Text style={[styles.noteTitle, { color: tinta }]} numberOfLines={1}>
+                {esEmergencia ? "Pidió ayuda urgente" : "Avisó sus síntomas"}
               </Text>
             </View>
-            <Text style={styles.emergencyText}>{item.text}</Text>
+            <Text style={styles.noteText}>{item.text}</Text>
             <View style={styles.metaRow}>
               {item.pending === true ? (
                 <>
-                  <Clock3 size={12} color={common.textTertiary} />
-                  <Text style={styles.emergencyTime}>Se enviará al reconectar</Text>
+                  <Clock3 size={13} color={gwarm.inkFaint} />
+                  <Text style={styles.noteTime}>Se enviará al volver la señal</Text>
                 </>
               ) : (
-                <Text style={styles.emergencyTime}>{horaDeISO(item.atISO)}</Text>
+                <Text style={styles.noteTime}>{horaDeISO(item.atISO)}</Text>
               )}
+            </View>
+          </View>
+        );
+      } else {
+        body = (
+          <View
+            style={[
+              styles.bubble,
+              own ? [styles.bubbleOwn, { backgroundColor: accent }] : styles.bubbleOther,
+            ]}
+          >
+            <Text style={[styles.msgText, own && styles.msgTextOwn]}>{item.text}</Text>
+            <View style={styles.metaRow}>
+              <Text style={[styles.msgTime, own && styles.msgTimeOwn]}>
+                {item.pending === true ? "esperando señal" : horaDeISO(item.atISO)}
+              </Text>
+              {own ? (
+                item.pending === true ? (
+                  <Clock3 size={13} color={onAccent.tick} />
+                ) : readByPeer ? (
+                  <CheckCheck size={15} color={onAccent.read} />
+                ) : (
+                  <Check size={15} color={onAccent.tick} />
+                )
+              ) : null}
             </View>
           </View>
         );
       }
 
       return (
-        <View
-          style={[
-            styles.bubble,
-            own ? [styles.bubbleOwn, { backgroundColor: accent }] : styles.bubbleOther,
-          ]}
-        >
-          <Text style={[styles.msgText, { color: own ? common.white : common.text }]}>
-            {item.text}
-          </Text>
-          <View style={styles.metaRow}>
-            <Text
-              style={[
-                styles.msgTime,
-                { color: own ? chatColors.timeOnBubble : common.textTertiary },
-              ]}
-            >
-              {item.pending === true ? "pendiente" : horaDeISO(item.atISO)}
-            </Text>
-            {own ? (
-              item.pending === true ? (
-                <Clock3 size={12} color={chatColors.tickOnBubble} />
-              ) : readByPeer ? (
-                <CheckCheck size={13} color={chatColors.readReceipt} />
-              ) : (
-                <Check size={13} color={chatColors.tickOnBubble} />
-              )
-            ) : null}
-          </View>
+        <View>
+          {showDay ? (
+            <View style={styles.dayRow}>
+              <Text style={styles.dayChip}>{diaDelMensaje(item.atISO)}</Text>
+            </View>
+          ) : null}
+          {body}
         </View>
       );
     },
-    [myRole, accent],
+    [myRole, accent, messages],
   );
 
   return (
@@ -154,7 +196,7 @@ export function ChatThread({
           value={draft}
           onChangeText={setDraft}
           placeholder="Escribe un mensaje…"
-          placeholderTextColor={common.textTertiary}
+          placeholderTextColor={gwarm.inkFaint}
           style={styles.input}
           multiline
           maxLength={500}
@@ -162,12 +204,15 @@ export function ChatThread({
         />
         <PressableScale
           onPress={handleSend}
-          disabled={draft.trim().length === 0}
+          disabled={!canSend}
           accessibilityLabel="Enviar mensaje"
-          style={[styles.sendButton, { backgroundColor: accent }]}
+          style={[
+            styles.sendButton,
+            { backgroundColor: canSend ? accent : gwarm.borderStrong },
+          ]}
           testID="chat-send"
         >
-          <Send size={18} color={common.white} />
+          <Send size={20} color="#FFFFFF" />
         </PressableScale>
       </View>
     </KeyboardAvoidingView>
@@ -179,28 +224,51 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
-    gap: spacing.sm,
+    gap: spacing.sm2,
+  },
+  dayRow: {
+    alignItems: "center",
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm2,
+  },
+  dayChip: {
+    fontFamily: gfonts.hand,
+    fontSize: 14.5,
+    lineHeight: 19,
+    color: gwarm.inkSoft,
+    backgroundColor: gwarm.surface,
+    borderWidth: 1,
+    borderColor: gwarm.border,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 3,
+    overflow: "hidden" as const,
   },
   bubble: {
-    maxWidth: "82%",
-    borderRadius: 18,
-    paddingHorizontal: spacing.sm2,
-    paddingVertical: spacing.sm,
+    maxWidth: "84%",
+    borderRadius: 22,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    ...gShadow,
   },
   bubbleOwn: {
     alignSelf: "flex-end",
-    borderBottomRightRadius: radius.xs,
+    borderBottomRightRadius: 8,
   },
   bubbleOther: {
     alignSelf: "flex-start",
-    backgroundColor: common.surface,
+    backgroundColor: gwarm.surface,
     borderWidth: 1,
-    borderColor: common.border,
-    borderBottomLeftRadius: radius.xs,
+    borderColor: gwarm.border,
+    borderBottomLeftRadius: 8,
   },
   msgText: {
-    ...type.body,
+    fontFamily: gfonts.handBody,
+    fontSize: 16.5,
+    lineHeight: 24,
+    color: gwarm.ink,
   },
+  msgTextOwn: { color: "#FFFFFF" },
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -209,68 +277,88 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   msgTime: {
-    ...type.caption,
-    fontSize: 11,
+    fontFamily: gfonts.handBody,
+    fontSize: 12,
+    lineHeight: 16,
+    color: gwarm.inkFaint,
   },
-  emergencyCard: {
-    maxWidth: "88%",
-    backgroundColor: common.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: common.border,
-    borderLeftWidth: 3,
-    borderLeftColor: semantic.danger,
-    padding: spacing.sm2,
-    gap: 4,
+  msgTimeOwn: { color: onAccent.time },
+  note: {
+    alignSelf: "stretch",
+    borderRadius: 20,
+    borderWidth: 1.5,
+    padding: spacing.md,
+    gap: 6,
+    ...gShadow,
   },
-  rowEnd: { alignSelf: "flex-end" },
-  rowStart: { alignSelf: "flex-start" },
-  emergencyHeader: {
+  noteRoja: {
+    backgroundColor: gwarm.redSoft,
+    borderColor: gwarm.redMid,
+  },
+  noteAmbar: {
+    backgroundColor: gwarm.amberSoft,
+    borderColor: gwarm.amberMid,
+  },
+  noteHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: spacing.sm,
   },
-  emergencyTitle: {
-    ...type.label,
-    color: semantic.danger,
-    textTransform: "uppercase" as const,
-    letterSpacing: 0.6,
-    fontSize: 11,
+  noteIconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: gwarm.surface,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  emergencyText: {
-    ...type.body,
-    color: common.text,
+  noteTitle: {
+    fontFamily: gfonts.hand,
+    fontSize: 18,
+    lineHeight: 23,
+    flex: 1,
   },
-  emergencyTime: {
-    ...type.caption,
-    fontSize: 11,
-    color: common.textTertiary,
+  noteText: {
+    fontFamily: gfonts.handBody,
+    fontSize: 16,
+    lineHeight: 24,
+    color: gwarm.ink,
+  },
+  noteTime: {
+    fontFamily: gfonts.handBody,
+    fontSize: 12,
+    lineHeight: 16,
+    color: gwarm.inkFaint,
   },
   inputBar: {
     flexDirection: "row",
     alignItems: "flex-end",
     gap: spacing.sm,
-    backgroundColor: common.surface,
-    borderTopWidth: 1,
-    borderTopColor: common.border,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm2,
     paddingVertical: spacing.sm,
+    backgroundColor: gwarm.bg,
+    borderTopWidth: 1,
+    borderTopColor: gwarm.border,
   },
   input: {
     flex: 1,
-    ...type.body,
-    color: common.text,
-    backgroundColor: common.surfaceAlt,
-    borderRadius: 21,
-    paddingHorizontal: spacing.md,
-    paddingVertical: Platform.OS === "ios" ? 10 : 8,
-    maxHeight: 110,
+    fontFamily: gfonts.handBody,
+    fontSize: 16.5,
+    color: gwarm.ink,
+    backgroundColor: gwarm.surface,
+    borderWidth: 1.5,
+    borderColor: gwarm.border,
+    borderRadius: 26,
+    paddingHorizontal: 18,
+    paddingVertical: Platform.OS === "ios" ? 12 : 9,
+    maxHeight: 120,
   },
   sendButton: {
-    width: 42,
-    height: 42,
-    borderRadius: radius.pill,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     alignItems: "center",
     justifyContent: "center",
+    ...gShadow,
   },
 });

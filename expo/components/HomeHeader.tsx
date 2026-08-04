@@ -1,11 +1,11 @@
 /**
- * Cabecera de inicio personalizada: fecha pequeña arriba, saludo grande y
- * la foto de perfil (o icono profesional) que lleva al perfil del usuario.
+ * Cabecera de inicio cálida: fecha pequeña a mano, saludo grande manuscrito
+ * y la foto de perfil (o icono amable) que lleva al perfil del usuario.
  */
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { common, spacing, type } from "@/constants/theme";
+import { gfonts, gwarm, spacing } from "@/constants/theme";
 import { Avatar } from "@/components/Avatar";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { PressableScale } from "@/components/PressableScale";
@@ -48,7 +48,7 @@ export function HomeHeader({
           ) : null}
         </View>
         <PressableScale onPress={onAvatarPress} accessibilityLabel="Mi perfil" testID="btn-perfil">
-          <Avatar uri={avatarUri} color={accentColor} background={accentBackground} size={46} />
+          <Avatar uri={avatarUri} color={accentColor} background={accentBackground} size={50} />
         </PressableScale>
       </View>
       <OfflineBanner />
@@ -58,9 +58,7 @@ export function HomeHeader({
 
 const styles = StyleSheet.create({
   wrapper: {
-    backgroundColor: common.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: common.border,
+    backgroundColor: gwarm.bg,
   },
   container: {
     paddingHorizontal: spacing.md,
@@ -68,13 +66,26 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm2,
+    backgroundColor: gwarm.bg,
   },
-  titles: { flex: 1, minWidth: 0, gap: 2 },
+  titles: { flex: 1, minWidth: 0 },
   overline: {
-    ...type.overline,
-    color: common.textTertiary,
-    textTransform: "uppercase" as const,
+    fontFamily: gfonts.handBody,
+    fontSize: 13,
+    lineHeight: 17,
+    color: gwarm.inkFaint,
   },
-  title: { ...type.h1, color: common.text },
-  subtitle: { ...type.bodySm, color: common.textSecondary },
+  title: {
+    fontFamily: gfonts.hand,
+    fontSize: 30,
+    lineHeight: 37,
+    color: gwarm.ink,
+  },
+  subtitle: {
+    fontFamily: gfonts.handBody,
+    fontSize: 13.5,
+    lineHeight: 18,
+    color: gwarm.inkSoft,
+    marginTop: 1,
+  },
 });

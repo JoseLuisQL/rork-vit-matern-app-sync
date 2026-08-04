@@ -2,7 +2,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React from "react";
 import { StyleSheet, View } from "react-native";
-import { common, obstetraTheme } from "@/constants/theme";
+import { gwarm, warmBlue } from "@/constants/theme";
 import { avatarUri } from "@/lib/api";
 import { usePatient } from "@/providers/AppProvider";
 import { Avatar } from "@/components/Avatar";
@@ -31,21 +31,21 @@ export default function ChatThreadObstetra(): React.ReactElement {
             >
               <Avatar
                 uri={avatarUri(patient.dni, patient.avatarVersion)}
-                color={obstetraTheme.primary}
-                background={obstetraTheme.primaryLight}
-                size={38}
+                color={warmBlue.main}
+                background={warmBlue.soft}
+                size={40}
               />
             </PressableScale>
           ) : undefined
         }
       />
       {patient ? (
-        <ChatThread convId={patient.id} accent={obstetraTheme.primary} bottomInset />
+        <ChatThread convId={patient.id} accent={warmBlue.main} bottomInset />
       ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: common.background },
+  container: { flex: 1, backgroundColor: gwarm.bg },
 });

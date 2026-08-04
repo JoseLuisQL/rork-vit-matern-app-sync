@@ -1,14 +1,16 @@
 /**
- * Cabecera clínica minimalista: superficie blanca, borde inferior fino,
- * título jerárquico y acciones. Incluye el indicador de conexión.
+ * Cabecera cálida del cuaderno: título a mano grande sobre el fondo crema
+ * (sin barras blancas), botón de volver redondo, acciones a la derecha y
+ * espacio para buscador o filtros debajo. Incluye el aviso de conexión.
  */
 import { ArrowLeft } from "lucide-react-native";
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { common, radius, spacing, type } from "@/constants/theme";
+import { gfonts, gShadow, gwarm, spacing } from "@/constants/theme";
 import { OfflineBanner } from "@/components/OfflineBanner";
+import { PressableScale } from "@/components/PressableScale";
 
 interface ScreenHeaderProps {
   title: string;
@@ -30,21 +32,19 @@ export function ScreenHeader({
 
   return (
     <View style={styles.wrapper}>
-      <View style={[styles.container, { paddingTop: insets.top + spacing.sm }]}>
+      <View style={[styles.container, { paddingTop: insets.top + spacing.sm2 }]}>
         <View style={styles.row}>
           {showBack ? (
-            <Pressable
-              accessibilityRole="button"
+            <PressableScale
               accessibilityLabel="Volver"
               onPress={() => router.back()}
               style={styles.backButton}
-              hitSlop={8}
             >
-              <ArrowLeft size={20} color={common.text} />
-            </Pressable>
+              <ArrowLeft size={22} color={gwarm.ink} strokeWidth={2.4} />
+            </PressableScale>
           ) : null}
           <View style={styles.titles}>
-            <Text style={showBack ? styles.titleSm : styles.title} numberOfLines={1}>
+            <Text style={[styles.title, showBack && styles.titleSm]} numberOfLines={1}>
               {title}
             </Text>
             {subtitle ? (
@@ -64,44 +64,49 @@ export function ScreenHeader({
 
 const styles = StyleSheet.create({
   wrapper: {
-    backgroundColor: common.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: common.border,
+    backgroundColor: gwarm.bg,
   },
   container: {
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.sm2,
-    backgroundColor: common.surface,
+    backgroundColor: gwarm.bg,
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm2,
-    minHeight: 44,
+    minHeight: 46,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.pill,
-    backgroundColor: common.surfaceAlt,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: gwarm.surface,
+    borderWidth: 1,
+    borderColor: gwarm.border,
     alignItems: "center",
     justifyContent: "center",
+    ...gShadow,
   },
   titles: {
     flex: 1,
     minWidth: 0,
   },
   title: {
-    ...type.h1,
-    color: common.text,
+    fontFamily: gfonts.hand,
+    fontSize: 30,
+    lineHeight: 37,
+    color: gwarm.ink,
   },
   titleSm: {
-    ...type.h3,
-    color: common.text,
+    fontSize: 25,
+    lineHeight: 31,
   },
   subtitle: {
-    ...type.bodySm,
-    color: common.textSecondary,
+    fontFamily: gfonts.handBody,
+    fontSize: 14,
+    lineHeight: 19,
+    color: gwarm.inkSoft,
     marginTop: 1,
   },
   actions: {

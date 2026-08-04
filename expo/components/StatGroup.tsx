@@ -1,17 +1,17 @@
 /**
- * Panel de indicadores: número grande arriba y etiqueta pequeña debajo,
- * separados por líneas finas. Sin adornos — estilo tablero clínico.
+ * Panel de indicadores cálido: número grande a mano arriba y etiqueta
+ * pequeña debajo, separados por líneas finas color crema.
  */
 import type { LucideIcon } from "lucide-react-native";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { cardBorder, common, radius, spacing, type } from "@/constants/theme";
+import { gfonts, gShadow, gwarm, spacing } from "@/constants/theme";
 
 export interface StatItem {
   key: string;
   value: string;
   label: string;
-  /** Se mantiene por compatibilidad; el panel ya no dibuja iconos. */
+  /** Se mantiene por compatibilidad; el panel no dibuja iconos. */
   icon?: LucideIcon;
   color?: string;
 }
@@ -21,7 +21,7 @@ export function StatGroup({ items }: { items: StatItem[] }): React.ReactElement 
     <View style={styles.card}>
       {items.map((item, index) => (
         <View key={item.key} style={[styles.cell, index > 0 && styles.cellBorder]}>
-          <Text style={[styles.value, { color: item.color ?? common.text }]} numberOfLines={1}>
+          <Text style={[styles.value, { color: item.color ?? gwarm.ink }]} numberOfLines={1}>
             {item.value}
           </Text>
           <Text style={styles.label} numberOfLines={1}>
@@ -36,31 +36,31 @@ export function StatGroup({ items }: { items: StatItem[] }): React.ReactElement 
 const styles = StyleSheet.create({
   card: {
     flexDirection: "row",
-    backgroundColor: common.surface,
-    borderRadius: radius.lg,
+    backgroundColor: gwarm.surface,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: gwarm.border,
     paddingVertical: spacing.md,
-    ...cardBorder,
+    ...gShadow,
   },
   cell: {
     flex: 1,
     paddingHorizontal: spacing.md,
-    gap: 3,
+    gap: 1,
   },
   cellBorder: {
     borderLeftWidth: 1,
-    borderLeftColor: common.border,
+    borderLeftColor: gwarm.border,
   },
   value: {
-    ...type.numeric,
-    fontSize: 26,
-    lineHeight: 32,
+    fontFamily: gfonts.hand,
+    fontSize: 30,
+    lineHeight: 37,
   },
   label: {
-    ...type.overline,
-    fontSize: 10.5,
-    lineHeight: 14,
-    letterSpacing: 0.7,
-    color: common.textTertiary,
-    textTransform: "uppercase" as const,
+    fontFamily: gfonts.handBody,
+    fontSize: 12.5,
+    lineHeight: 17,
+    color: gwarm.inkSoft,
   },
 });

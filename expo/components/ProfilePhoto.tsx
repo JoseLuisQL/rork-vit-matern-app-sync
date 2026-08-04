@@ -6,7 +6,7 @@
 import { Camera } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
-import { common, radius, spacing, type } from "@/constants/theme";
+import { common, gfonts, gwarm, spacing } from "@/constants/theme";
 import { ApiError, avatarUri } from "@/lib/api";
 import { confirmAction, showNotice } from "@/lib/confirm";
 import { pickAvatarDataUrl } from "@/lib/photo";
@@ -94,11 +94,11 @@ export function ProfilePhoto({
           <Avatar uri={uri} color={accentColor} background={accentBackground} size={size} />
           {busy ? (
             <View style={[styles.busyOverlay, { borderRadius: size / 2 }]}>
-              <ActivityIndicator color={common.white} />
+              <ActivityIndicator color="#FFFFFF" />
             </View>
           ) : null}
           <View style={[styles.cameraBadge, { backgroundColor: accentColor }]}>
-            <Camera size={14} color={common.white} strokeWidth={2.2} />
+            <Camera size={14} color="#FFFFFF" strokeWidth={2.2} />
           </View>
         </View>
       </Pressable>
@@ -134,9 +134,9 @@ const styles = StyleSheet.create({
     bottom: -2,
     width: 30,
     height: 30,
-    borderRadius: radius.pill,
+    borderRadius: 999,
     borderWidth: 2.5,
-    borderColor: common.surface,
+    borderColor: gwarm.surface,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -145,8 +145,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   removeText: {
-    ...type.bodySm,
-    color: common.textSecondary,
+    fontFamily: gfonts.handBody,
+    fontSize: 14,
+    lineHeight: 19,
+    color: gwarm.inkSoft,
     textDecorationLine: "underline" as const,
   },
 });

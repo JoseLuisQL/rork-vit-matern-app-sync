@@ -1,6 +1,6 @@
 /**
- * Indicadores clínicos ligeros: estado de cita en una palabra con color,
- * punto de semáforo y tipo de alerta. Sin cápsulas recargadas.
+ * Indicadores clínicos con letra a mano: estado de cita en una palabra con
+ * color, punto de semáforo y tipo de alerta. Sin cápsulas recargadas.
  */
 import {
   CalendarClock,
@@ -13,7 +13,7 @@ import {
 } from "lucide-react-native";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { gfonts, radius, risk, semantic, type } from "@/constants/theme";
+import { gfonts, risk, semantic } from "@/constants/theme";
 import { ALERT_LABEL, RISK_LABEL, STATUS_LABEL } from "@/constants/labels";
 import type { AlertType, AppointmentStatus, RiskLevel } from "@/types";
 
@@ -25,19 +25,19 @@ export const STATUS_COLOR: Record<AppointmentStatus, string> = {
   solicitud_reprogramacion: semantic.warning,
 };
 
-/** Estado de cita: punto de color + una palabra. `hand` usa letra manuscrita (gestante). */
+/** Estado de cita: punto de color + una palabra a mano. */
 export function StatusWord({
   estado,
-  hand = false,
 }: {
   estado: AppointmentStatus;
+  /** Compatibilidad: la letra manuscrita ya es el estilo por defecto. */
   hand?: boolean;
 }): React.ReactElement {
   const color = STATUS_COLOR[estado];
   return (
     <View style={styles.wordRow}>
       <View style={[styles.dot, { backgroundColor: color }]} />
-      <Text style={[styles.wordText, hand && styles.wordTextHand, { color }]} numberOfLines={1}>
+      <Text style={[styles.wordText, { color }]} numberOfLines={1}>
         {STATUS_LABEL[estado]}
       </Text>
     </View>
@@ -52,7 +52,7 @@ export function RiskDot({ level, size = 12 }: { level: RiskLevel; size?: number 
       style={{
         width: size,
         height: size,
-        borderRadius: radius.pill,
+        borderRadius: 999,
         backgroundColor: risk[level].solid,
       }}
     />
@@ -103,32 +103,28 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   wordText: {
-    ...type.label,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  wordTextHand: {
     fontFamily: gfonts.handBody,
     fontSize: 13.5,
-    letterSpacing: 0,
+    lineHeight: 18,
   },
   dot: {
     width: 8,
     height: 8,
-    borderRadius: radius.pill,
+    borderRadius: 999,
   },
   chip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 5,
-    borderRadius: radius.pill,
-    borderWidth: 1,
+    borderRadius: 999,
+    borderWidth: 1.5,
     alignSelf: "flex-start",
   },
   chipText: {
-    ...type.label,
-    fontSize: 13,
+    fontFamily: gfonts.hand,
+    fontSize: 15.5,
+    lineHeight: 20,
   },
 });
