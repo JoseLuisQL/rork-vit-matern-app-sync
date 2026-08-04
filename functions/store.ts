@@ -21,14 +21,25 @@ import {
   peruDayKey,
   trimester,
 } from "./clinical";
-import { buildSeed, HEALTH_CENTER, SEED_VERSION } from "./seed";
+import {
+  buildProductionSeed,
+  buildSeed,
+  defaultConfig,
+  DEFAULT_MAINTENANCE_MESSAGE,
+  DEMO_DNIS,
+  HEALTH_CENTER,
+  SEED_VERSION,
+} from "./seed";
 import type {
   ActionResult,
   Alert,
   AnemiaClass,
+  AppEnvironment,
   Appointment,
   ClientAction,
+  CommunityReport,
   DBState,
+  DemoAccount,
   Message,
   Patient,
   PatientView,
@@ -41,6 +52,7 @@ import type {
   Supplement,
   SupplementFields,
   Visit,
+  WeeklyAttendance,
 } from "./types";
 
 const STATE_KEY = "state";
@@ -131,6 +143,11 @@ export class VitmaternaStore extends DurableObject {
     if (this.db) return this.db;
     const stored = await this.ctx.storage.get<DBState>(STATE_KEY);
     if (stored && stored.seedVersion === SEED_VERSION) {
+      // Migración suave: estados guardados antes de existir la configuración.
+      if (!stored.config) {
+        stored.config = defaultConfig("demo");
+        await this.ctx.storage.put(STATE_KEY, stored);
+      }
       this.db = stored;
     } else {
       this.db = buildSeed();
@@ -161,12 +178,20 @@ export class VitmaternaStore extends DurableObject {
       }
 
       if (path === "/api/login") return await this.handleLogin(request, db);
+      if (path === "/api/config") return this.handlePublicConfig(db);
 
       const user = this.resolveUser(request, db);
       if (!user) {
         return json({ error: "Sesión inválida o cuenta desactivada" }, 401);
       }
       this.touchPresence(user);
+
+      // Mantenimiento activo: solo administración opera; la sincronización
+      // sigue viva (sin aplicar cambios) para que el aviso llegue y se vaya
+      // en tiempo real en todos los teléfonos.
+      if (db.config.maintenance && user.role !== "admin" && path !== "/api/sync") {
+        return json({ error: db.config.maintenanceMessage || DEFAULT_MAINTENANCE_MESSAGE }, 503);
+      }
 
       switch (path) {
         case "/api/sync":
@@ -179,6 +204,8 @@ export class VitmaternaStore extends DurableObject {
           return await this.handleCreateUser(request, db, user);
         case "/api/admin/set-active":
           return await this.handleSetActive(request, db, user);
+        case "/api/admin/config":
+          return await this.handleAdminConfig(request, db, user);
         case "/api/admin/reset":
           return await this.handleReset(db, user);
         default:
@@ -213,6 +240,9 @@ export class VitmaternaStore extends DurableObject {
     if (!user.active) {
       return json({ error: "Tu cuenta está desactivada. Comunícate con la administración del centro de salud." }, 403);
     }
+    if (db.config.maintenance && user.role !== "admin") {
+      return json({ error: db.config.maintenanceMessage || DEFAULT_MAINTENANCE_MESSAGE }, 503);
+    }
     const token = crypto.randomUUID();
     db.sessions[token] = { dni: user.dni, atISO: new Date().toISOString() };
     this.touchPresence(user);
@@ -236,7 +266,10 @@ export class VitmaternaStore extends DurableObject {
       presence?: PresenceInput;
     };
     this.touchPresence(user, body.presence ?? {});
-    const actions = Array.isArray(body.actions) ? body.actions : [];
+    // Durante el mantenimiento no se aplican cambios de gestantes/obstetras;
+    // sus acciones quedan en cola en el teléfono y entran solas al reabrir.
+    const maintenanceHold = db.config.maintenance && user.role !== "admin";
+    const actions = !maintenanceHold && Array.isArray(body.actions) ? body.actions : [];
     const results: ActionResult[] = [];
     let mutated = false;
 
@@ -705,6 +738,93 @@ export class VitmaternaStore extends DurableObject {
     return json({ snapshot: this.snapshotFor(user, db) });
   }
 
+  // ---------- Configuración del sistema ----------
+
+  /** Configuración pública para el login: mantenimiento, entorno y accesos demo. */
+  private handlePublicConfig(db: DBState): Response {
+    const demoAccounts: DemoAccount[] =
+      db.config.environment === "demo"
+        ? DEMO_DNIS.map((dni) => db.users.find((u) => u.dni === dni))
+            .filter((u): u is StoredUser => u !== undefined && u.active)
+            .map((u) => ({
+              dni: u.dni,
+              name: `${u.firstName} ${u.lastName.split(" ")[0]}`,
+              role: u.role,
+            }))
+        : [];
+    return json({
+      maintenance: db.config.maintenance,
+      maintenanceMessage: db.config.maintenanceMessage,
+      environment: db.config.environment,
+      demoAccounts,
+    });
+  }
+
+  /**
+   * Cambia mantenimiento, mensaje o entorno (solo admin). Pasar a producción
+   * limpia los datos de demostración y conserva únicamente las cuentas de
+   * administración; volver a demostración restaura el seed completo. El
+   * cambio viaja en el snapshot y llega a todos los teléfonos en segundos.
+   */
+  private async handleAdminConfig(request: Request, db: DBState, user: StoredUser): Promise<Response> {
+    if (user.role !== "admin") return json({ error: "Acción no permitida" }, 403);
+    const body = (await request.json()) as {
+      maintenance?: boolean;
+      maintenanceMessage?: string;
+      environment?: AppEnvironment;
+    };
+    const nowISO = new Date().toISOString();
+    let current = db;
+
+    if (
+      (body.environment === "demo" || body.environment === "produccion") &&
+      body.environment !== db.config.environment
+    ) {
+      if (body.environment === "produccion") {
+        const admins = db.users.filter((u) => u.role === "admin" && u.active);
+        const keep = admins.length > 0 ? admins : [user];
+        const keptDnis = new Set(keep.map((u) => u.dni));
+        const fresh = buildProductionSeed(keep);
+        fresh.sessions = Object.fromEntries(
+          Object.entries(db.sessions).filter(([, s]) => keptDnis.has(s.dni)),
+        );
+        fresh.config = { ...db.config, environment: "produccion" };
+        const avatarKeys = await this.ctx.storage.list({ prefix: AVATAR_PREFIX });
+        const stale = [...avatarKeys.keys()].filter(
+          (k) => !keptDnis.has(k.slice(AVATAR_PREFIX.length)),
+        );
+        if (stale.length > 0) await this.ctx.storage.delete(stale);
+        this.db = fresh;
+        current = fresh;
+        console.log("[VitmaternaStore] Entorno cambiado a PRODUCCIÓN");
+      } else {
+        const fresh = buildSeed();
+        if (!fresh.users.some((u) => u.dni === user.dni)) {
+          fresh.users.push({ ...user });
+        }
+        fresh.sessions = db.sessions;
+        fresh.config = { ...db.config, environment: "demo" };
+        this.db = fresh;
+        current = fresh;
+        console.log("[VitmaternaStore] Entorno cambiado a DEMOSTRACIÓN");
+      }
+    }
+
+    if (body.maintenance !== undefined) {
+      current.config.maintenance = body.maintenance === true;
+    }
+    if (typeof body.maintenanceMessage === "string") {
+      const msg = body.maintenanceMessage.trim().slice(0, 240);
+      current.config.maintenanceMessage = msg.length > 0 ? msg : DEFAULT_MAINTENANCE_MESSAGE;
+    }
+    current.config.updatedAtISO = nowISO;
+
+    this.regenerateAutoAlerts(current);
+    await this.save();
+    const freshUser = current.users.find((u) => u.dni === user.dni) ?? user;
+    return json({ snapshot: this.snapshotFor(freshUser, current) });
+  }
+
   // ---------- Administración ----------
 
   /** Admin crea cualquier rol; la obstetra solo puede registrar gestantes. */
@@ -861,6 +981,11 @@ export class VitmaternaStore extends DurableObject {
     if (user.role !== "admin") return json({ error: "Acción no permitida" }, 403);
     const fresh = buildSeed();
     fresh.sessions = db.sessions;
+    // Se conserva el mantenimiento y la cuenta admin actual si no es del seed.
+    fresh.config = { ...db.config, environment: "demo", updatedAtISO: new Date().toISOString() };
+    if (!fresh.users.some((u) => u.dni === user.dni)) {
+      fresh.users.push({ ...user });
+    }
     this.db = fresh;
     this.regenerateAutoAlerts(fresh);
     const avatarKeys = await this.ctx.storage.list({ prefix: AVATAR_PREFIX });
@@ -1048,6 +1173,7 @@ export class VitmaternaStore extends DurableObject {
       alerts: scopeById(db.alerts),
       visits: scopeById(db.visits),
       presence: this.presenceFor(user, db),
+      config: db.config,
     };
 
     if (user.role === "admin") {
@@ -1093,6 +1219,50 @@ export class VitmaternaStore extends DurableObject {
 
     const pct = (num: number, den: number) => (den > 0 ? Math.round((num / den) * 100) : 0);
 
+    // Visitas domiciliarias del periodo.
+    const periodVisits = db.visits.filter((v) => v.dateKey >= fromKey);
+    const visitasRealizadas = periodVisits.filter((v) => v.estado === "realizada").length;
+
+    // Distribución por trimestre de embarazo.
+    const trimestres = { t1: 0, t2: 0, t3: 0 };
+    views.forEach((v) => {
+      trimestres[`t${v.trimester}` as "t1" | "t2" | "t3"] += 1;
+    });
+
+    // Desglose por comunidad (ordenado por cantidad de gestantes).
+    const byCommunity = new Map<string, PatientView[]>();
+    views.forEach((v) => {
+      const list = byCommunity.get(v.community) ?? [];
+      list.push(v);
+      byCommunity.set(v.community, list);
+    });
+    const porComunidad: CommunityReport[] = [...byCommunity.entries()]
+      .map(([community, list]) => ({
+        community,
+        gestantes: list.length,
+        riesgoAlto: list.filter((v) => v.riskLevel === "rojo").length,
+        anemiaCount: list.filter((v) => v.anemia === "moderada" || v.anemia === "severa").length,
+        adherenciaPromedio: Math.round(
+          list.reduce((acc, v) => acc + v.adherence30, 0) / list.length,
+        ),
+      }))
+      .sort((a, b) => b.gestantes - a.gestantes);
+
+    // Asistencia por bloques de 7 días (6 semanas, de la más antigua a la actual).
+    const asistenciaSemanal: WeeklyAttendance[] = [];
+    for (let w = 5; w >= 0; w--) {
+      const startKey = addDaysToKey(todayKey, -(w * 7) - 6);
+      const endKey = addDaysToKey(todayKey, -(w * 7));
+      const inBlock = db.appointments.filter(
+        (a) => a.dateKey >= startKey && a.dateKey <= endKey,
+      );
+      asistenciaSemanal.push({
+        startKey,
+        asistidas: inBlock.filter((a) => a.estado === "asistida").length,
+        total: inBlock.length,
+      });
+    }
+
     return {
       gestantes: views.length,
       riesgo,
@@ -1108,6 +1278,14 @@ export class VitmaternaStore extends DurableObject {
         pct: pct(atendidas, periodAlerts.length),
       },
       citasHoy: db.appointments.filter((a) => a.dateKey === todayKey && isActiveState(a.estado)).length,
+      visitas: {
+        programadas: periodVisits.filter((v) => v.estado === "programada").length,
+        realizadas: visitasRealizadas,
+        pct: pct(visitasRealizadas, periodVisits.length),
+      },
+      trimestres,
+      porComunidad,
+      asistenciaSemanal,
     };
   }
 }

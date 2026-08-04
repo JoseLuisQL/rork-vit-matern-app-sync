@@ -1,8 +1,11 @@
 /**
  * Inicio de sesión "cuaderno de cuidado": ilustración de bienvenida hecha a
- * mano, campos cálidos con letra manuscrita y accesos de demostración de un
- * toque para los 3 roles. La verificación la hace el servidor (DNI + clave).
+ * mano y campos cálidos con letra manuscrita. Los accesos de demostración
+ * vienen del servidor en tiempo real: en modo producción desaparecen solos,
+ * y si hay mantenimiento se muestra el aviso ilustrado. La verificación la
+ * hace el servidor (DNI + clave).
  */
+import { useQuery } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { ChevronRight, Eye, EyeOff, Info } from "lucide-react-native";
@@ -21,22 +24,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { brand, gfonts, gShadow, gwarm, warmAccent } from "@/constants/theme";
 import { ROLE_LABEL } from "@/constants/labels";
 import { GICON, ILU } from "@/constants/illustrations";
-import { ApiError } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { useApp } from "@/providers/AppProvider";
-import type { Role } from "@/types";
+import type { PublicConfig, Role } from "@/types";
 import { AppButton } from "@/components/AppButton";
 import { Illustration } from "@/components/gestante/Illustration";
 import { PopIn } from "@/components/gestante/PopIn";
 import { PressableScale } from "@/components/PressableScale";
 
 const DEMO_PASSWORD = "Test@1234";
-
-const DEMO_ACCOUNTS: { dni: string; name: string; role: Role }[] = [
-  { dni: "33333333", name: "Ana Quispe", role: "gestante" },
-  { dni: "44444444", name: "Lucía Huamán", role: "gestante" },
-  { dni: "11111111", name: "Carmen Rojas", role: "obstetra" },
-  { dni: "22222222", name: "Patricia Salas", role: "admin" },
-];
 
 /** Dibujo de cada rol para la lista de demostración. */
 const ROLE_ILU: Record<Role, string> = {
@@ -54,6 +50,20 @@ export default function LoginScreen(): React.ReactElement {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  /**
+   * Configuración pública en tiempo real: entorno (demo/producción),
+   * mantenimiento y cuentas de prueba. Se consulta cada pocos segundos para
+   * que los cambios de administración se reflejen sin recargar.
+   */
+  const { data: publicConfig } = useQuery<PublicConfig>({
+    queryKey: ["public-config"],
+    queryFn: () => api<PublicConfig>("/api/config", {}),
+    refetchInterval: 5000,
+    retry: false,
+  });
+  const demoAccounts = publicConfig?.environment === "demo" ? publicConfig.demoAccounts : [];
+  const maintenanceOn = publicConfig?.maintenance === true;
 
   const goHome = useCallback(
     (role: Role) => {
@@ -137,6 +147,21 @@ export default function LoginScreen(): React.ReactElement {
           </View>
         </PopIn>
 
+        {maintenanceOn ? (
+          <PopIn>
+            <View style={styles.maintenanceBox}>
+              <Illustration source={ILU.mantenimiento} width={72} height={72} />
+              <View style={styles.maintenanceInfo}>
+                <Text style={styles.maintenanceTitle}>Estamos en mantenimiento</Text>
+                <Text style={styles.maintenanceText}>
+                  {publicConfig?.maintenanceMessage ??
+                    "Volvemos en un ratito. Gracias por tu paciencia."}
+                </Text>
+              </View>
+            </View>
+          </PopIn>
+        ) : null}
+
         {authNotice ? (
           <View style={styles.noticeBox}>
             <Info size={16} color={gwarm.tealDeep} />
@@ -205,34 +230,36 @@ export default function LoginScreen(): React.ReactElement {
           </View>
         </PopIn>
 
-        <PopIn delay={180}>
-          <Text style={styles.demoTitle}>¿Solo quieres mirar? Entra de prueba</Text>
-          <View style={styles.demoList}>
-            {DEMO_ACCOUNTS.map((account, index) => {
-              const accent = warmAccent(account.role);
-              return (
-                <PressableScale
-                  key={account.dni}
-                  onPress={() => fillAndLogin(account)}
-                  accessibilityLabel={`Entrar como ${account.name}`}
-                  style={[styles.demoRow, index > 0 && styles.demoRowBorder]}
-                  testID={`demo-${account.dni}`}
-                >
-                  <View style={[styles.demoIlu, { backgroundColor: accent.soft }]}>
-                    <Illustration source={ROLE_ILU[account.role]} width={30} height={30} />
-                  </View>
-                  <View style={styles.demoInfo}>
-                    <Text style={styles.demoName}>{account.name}</Text>
-                    <Text style={[styles.demoMeta, { color: accent.main }]}>
-                      {ROLE_LABEL[account.role]}
-                    </Text>
-                  </View>
-                  <ChevronRight size={18} color={gwarm.inkFaint} />
-                </PressableScale>
-              );
-            })}
-          </View>
-        </PopIn>
+        {demoAccounts.length > 0 ? (
+          <PopIn delay={180}>
+            <Text style={styles.demoTitle}>¿Solo quieres mirar? Entra de prueba</Text>
+            <View style={styles.demoList}>
+              {demoAccounts.map((account, index) => {
+                const accent = warmAccent(account.role);
+                return (
+                  <PressableScale
+                    key={account.dni}
+                    onPress={() => fillAndLogin(account)}
+                    accessibilityLabel={`Entrar como ${account.name}`}
+                    style={[styles.demoRow, index > 0 && styles.demoRowBorder]}
+                    testID={`demo-${account.dni}`}
+                  >
+                    <View style={[styles.demoIlu, { backgroundColor: accent.soft }]}>
+                      <Illustration source={ROLE_ILU[account.role]} width={30} height={30} />
+                    </View>
+                    <View style={styles.demoInfo}>
+                      <Text style={styles.demoName}>{account.name}</Text>
+                      <Text style={[styles.demoMeta, { color: accent.main }]}>
+                        {ROLE_LABEL[account.role]}
+                      </Text>
+                    </View>
+                    <ChevronRight size={18} color={gwarm.inkFaint} />
+                  </PressableScale>
+                );
+              })}
+            </View>
+          </PopIn>
+        ) : null}
 
         <View style={styles.footer}>
           <Illustration source={ILU.flores} width={92} height={30} />
@@ -283,6 +310,33 @@ const styles = StyleSheet.create({
     borderColor: gwarm.tealMid,
     padding: 12,
     alignItems: "center",
+  },
+  maintenanceBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: gwarm.amberSoft,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: gwarm.amberMid,
+    padding: 14,
+  },
+  maintenanceInfo: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  maintenanceTitle: {
+    fontFamily: gfonts.hand,
+    fontSize: 19,
+    lineHeight: 24,
+    color: gwarm.amber,
+  },
+  maintenanceText: {
+    fontFamily: gfonts.handBody,
+    fontSize: 13.5,
+    lineHeight: 19,
+    color: gwarm.inkSoft,
   },
   noticeText: {
     fontFamily: gfonts.handBody,

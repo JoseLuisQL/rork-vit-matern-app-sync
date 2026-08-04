@@ -50,6 +50,16 @@ export const ILU = {
   sintomas: `${R2}/77f2592e-ae32-43b1-b9ba-d794fcbe99ed.png`,
   /** Campanita dormida bajo la luna (sin alertas pendientes). */
   calma: `${R2}/8231e083-e646-4a2b-a512-812396724425.png`,
+  /** Agenda abierta con corazoncito, sol y cantutas (agenda de la obstetra). */
+  agenda: `${R2}/4c97cf00-1da1-4f49-a0b8-8d006d76a357.png`,
+  /** Calendario con corazón, lápiz y relojito (programar cita o visita). */
+  citaNueva: `${R2}/de64c1ed-c44c-463c-ae92-b4336de8d89a.png`,
+  /** Tablilla con barras que crecen y sello de corazón (reportes / exportar). */
+  reporte: `${R2}/daee8c58-9ef6-48a4-b3b3-0d84157a0bd3.png`,
+  /** Caja de herramientas con regadera y corazones (modo mantenimiento). */
+  mantenimiento: `${R2}/88b28f6b-2f4d-4eff-a5f4-3283c978adbe.png`,
+  /** Cohete de papel despegando con un brote (modo producción). */
+  produccion: `${R2}/c23bfb9c-bff2-4acc-b4ad-6c56cec0d457.png`,
 } as const;
 
 /** Iconos dibujados a crayola para pestañas, bloques y recordatorios. */
@@ -74,6 +84,8 @@ export const GICON = {
   usuarios: `${R2}/fb46aa66-331d-4a5c-93f8-d254030027c0.png`,
   /** Persona sonriente en círculo con solcito (Perfil). */
   perfil: `${R2}/0c2937d8-712b-4c8e-bd0c-caef5fdb39b6.png`,
+  /** Engranaje con corazón (pestaña Sistema de administración). */
+  ajustes: `${R2}/73b89ade-7f27-4a77-822e-6ccb8cc7bca3.png`,
 } as const;
 
 /**

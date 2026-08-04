@@ -26,12 +26,14 @@ import { useToast } from "@/components/Toast";
 import { todayKeyLocal } from "@/lib/format";
 import type {
   ActionInput,
+  AppEnvironment,
   ClientAction,
   LoginResponse,
   PatientView,
   PresenceView,
   Snapshot,
   SyncResponse,
+  SystemConfig,
   User,
 } from "@/types";
 
@@ -347,6 +349,13 @@ export const [AppProvider, useApp] = createContextHook(() => {
   );
   const adminReset = useCallback(() => runOnline("/api/admin/reset", {}), [runOnline]);
 
+  /** Configuración del sistema (solo admin): mantenimiento, mensaje y entorno. */
+  const adminSetConfig = useCallback(
+    (params: { maintenance?: boolean; maintenanceMessage?: string; environment?: AppEnvironment }) =>
+      runOnline("/api/admin/config", params),
+    [runOnline],
+  );
+
   /** Sube (o quita con null) la foto de perfil del usuario actual. */
   const setAvatar = useCallback(
     (dataUrl: string | null) => runOnline("/api/user/avatar", { dataUrl }),
@@ -364,6 +373,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const online = netOnline && syncOk;
   /** Momento de la última sincronización exitosa con el servidor. */
   const lastSyncISO = cached?.serverTimeISO ?? null;
+  /** Configuración global del sistema (mantenimiento + entorno), en tiempo real. */
+  const systemConfig: SystemConfig | null = cached?.config ?? null;
 
   // Permiso de notificaciones nativas al tener sesión (banner del teléfono).
   useEffect(() => {
@@ -430,6 +441,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       todayKey,
       online,
       lastSyncISO,
+      systemConfig,
       pendingCount: outbox.length,
       authNotice,
       clearAuthNotice,
@@ -440,6 +452,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       createUser,
       adminSetActive,
       adminReset,
+      adminSetConfig,
       setAvatar,
       setChatPresence,
       readArticles,
@@ -457,6 +470,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       todayKey,
       online,
       lastSyncISO,
+      systemConfig,
       outbox.length,
       authNotice,
       clearAuthNotice,
@@ -467,6 +481,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       createUser,
       adminSetActive,
       adminReset,
+      adminSetConfig,
       setAvatar,
       setChatPresence,
       readArticles,

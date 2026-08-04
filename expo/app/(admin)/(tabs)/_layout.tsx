@@ -66,6 +66,13 @@ export default function AdminTabsLayout(): React.ReactElement {
         }}
       />
       <Tabs.Screen
+        name="sistema"
+        options={{
+          title: "Sistema",
+          tabBarIcon: ({ focused }) => <TabIcon uri={GICON.ajustes} focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
         name="perfil"
         options={{
           title: "Perfil",

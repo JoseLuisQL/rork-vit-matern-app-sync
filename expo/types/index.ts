@@ -5,6 +5,32 @@
 
 export type Role = "gestante" | "obstetra" | "admin";
 
+/** Entorno de datos del sistema: demostración o producción (datos reales). */
+export type AppEnvironment = "demo" | "produccion";
+
+/** Configuración global del sistema (mantenimiento + entorno), en tiempo real. */
+export interface SystemConfig {
+  maintenance: boolean;
+  maintenanceMessage: string;
+  environment: AppEnvironment;
+  updatedAtISO: string;
+}
+
+/** Acceso de demostración visible en el login (solo en entorno demo). */
+export interface DemoAccount {
+  dni: string;
+  name: string;
+  role: Role;
+}
+
+/** Configuración pública (sin sesión) que consume la pantalla de login. */
+export interface PublicConfig {
+  maintenance: boolean;
+  maintenanceMessage: string;
+  environment: AppEnvironment;
+  demoAccounts: DemoAccount[];
+}
+
 export type RiskLevel = "verde" | "amarillo" | "rojo";
 
 export type AnemiaClass = "normal" | "leve" | "moderada" | "severa";
@@ -168,6 +194,23 @@ export interface PresenceView {
   typing: boolean;
 }
 
+/** Desglose de indicadores por comunidad (para reportes). */
+export interface CommunityReport {
+  community: string;
+  gestantes: number;
+  riesgoAlto: number;
+  /** Gestantes con anemia moderada o severa. */
+  anemiaCount: number;
+  adherenciaPromedio: number;
+}
+
+/** Asistencia a citas por bloque semanal (7 días), del más antiguo al actual. */
+export interface WeeklyAttendance {
+  startKey: string;
+  asistidas: number;
+  total: number;
+}
+
 export interface ReportBlock {
   gestantes: number;
   riesgo: Record<RiskLevel, number>;
@@ -178,6 +221,10 @@ export interface ReportBlock {
   asistencia: { asistidas: number; noAsistidas: number; pct: number };
   alertas: { total: number; atendidas: number; abiertas: number; pct: number };
   citasHoy: number;
+  visitas: { programadas: number; realizadas: number; pct: number };
+  trimestres: { t1: number; t2: number; t3: number };
+  porComunidad: CommunityReport[];
+  asistenciaSemanal: WeeklyAttendance[];
 }
 
 export interface Snapshot {
@@ -199,6 +246,8 @@ export interface Snapshot {
   presence?: Record<string, PresenceView>;
   users?: User[];
   reports?: { d30: ReportBlock; total: ReportBlock };
+  /** Configuración global (mantenimiento + entorno) visible por todos los roles. */
+  config?: SystemConfig;
 }
 
 /** Campos de un medicamento asignado por la obstetra. */

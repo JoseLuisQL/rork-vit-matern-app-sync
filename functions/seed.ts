@@ -9,17 +9,35 @@ import {
   peruDayKey,
 } from "./clinical";
 import type {
+  AppEnvironment,
   Appointment,
   DBState,
   Message,
   Patient,
   StoredUser,
   Supplement,
+  SystemConfig,
   Visit,
 } from "./types";
 
 export const HEALTH_CENTER = "C.S. Talavera";
 export const SEED_VERSION = 3;
+
+/** DNIs de las cuentas de demostración que se muestran en el login (solo en demo). */
+export const DEMO_DNIS = ["33333333", "44444444", "11111111", "22222222"] as const;
+
+export const DEFAULT_MAINTENANCE_MESSAGE =
+  "Estamos mejorando VitMaterna para cuidarte mejor. Vuelve a intentarlo en un ratito; tus datos están seguros.";
+
+/** Configuración inicial del sistema. */
+export function defaultConfig(environment: AppEnvironment = "demo"): SystemConfig {
+  return {
+    maintenance: false,
+    maintenanceMessage: DEFAULT_MAINTENANCE_MESSAGE,
+    environment,
+    updatedAtISO: new Date().toISOString(),
+  };
+}
 
 function nowISO(minusMinutes = 0): string {
   return new Date(Date.now() - minusMinutes * 60000).toISOString();
@@ -464,6 +482,7 @@ export function buildSeed(): DBState {
   const supplements = buildSupplements();
   return {
     seedVersion: SEED_VERSION,
+    config: defaultConfig("demo"),
     users: buildUsers(),
     patients,
     appointments: buildAppointments(patients, todayKey),
@@ -484,6 +503,29 @@ export function buildSeed(): DBState {
       },
     ],
     visits: buildVisits(todayKey),
+    sessions: {},
+    appliedActionIds: [],
+  };
+}
+
+/**
+ * Seed de PRODUCCIÓN: plataforma limpia para uso real. Conserva únicamente
+ * las cuentas de administración indicadas (para no cortar su sesión); el
+ * resto de usuarios, pacientes, citas, mensajes y alertas de demostración
+ * desaparecen. Desde aquí la administración registra al personal real.
+ */
+export function buildProductionSeed(keepUsers: StoredUser[]): DBState {
+  return {
+    seedVersion: SEED_VERSION,
+    config: defaultConfig("produccion"),
+    users: keepUsers.map((u) => ({ ...u })),
+    patients: [],
+    appointments: [],
+    supplements: [],
+    intakes: {},
+    messages: [],
+    alerts: [],
+    visits: [],
     sessions: {},
     appliedActionIds: [],
   };
