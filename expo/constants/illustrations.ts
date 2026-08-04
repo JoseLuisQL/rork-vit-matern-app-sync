@@ -38,6 +38,10 @@ export const ILU = {
   centroSalud: `${R2}/b00f5587-b43d-4d84-b571-1aeb94b48bfe.png`,
   /** Libreta de citas abierta con lápiz y cantutas (agenda de la obstetra). */
   libreta: `${R2}/7763fb6e-3f8d-4081-b837-2dc13cd4314a.png`,
+  /** Carnet prenatal con corazón y lápiz (actualizar datos de la ficha). */
+  carnet: `${R2}/4a7249b9-89a8-487a-89f1-04223a4d83df.png`,
+  /** Estetoscopio que forma un corazón (bloque "Su salud"). */
+  estetoscopio: `${R2}/22019f07-b430-47b1-85c9-bc1716424966.png`,
 } as const;
 
 /** Iconos dibujados a crayola para pestañas, bloques y recordatorios. */

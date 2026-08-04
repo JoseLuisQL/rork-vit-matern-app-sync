@@ -334,6 +334,33 @@ export class VitmaternaStore extends DurableObject {
         visit.resultado = action.resultado.trim();
         return null;
       }
+      case "update_patient": {
+        if (user.role === "gestante") return "Solo el personal de salud puede actualizar la ficha";
+        const patient = db.patients.find((p) => p.id === action.patientId);
+        if (!patient) return "Paciente no encontrada";
+        const f = action.fields ?? {};
+        if (f.fumKey !== undefined) {
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(f.fumKey) || f.fumKey > peruDayKey()) {
+            return "La fecha de última menstruación no es válida";
+          }
+          patient.fumKey = f.fumKey;
+        }
+        if (f.hbObserved !== undefined) {
+          patient.hbObserved = Math.max(4, Math.min(20, Math.round(f.hbObserved * 10) / 10));
+        }
+        if (f.bpSys !== undefined) patient.bpSys = Math.max(70, Math.min(240, Math.round(f.bpSys)));
+        if (f.bpDia !== undefined) patient.bpDia = Math.max(40, Math.min(140, Math.round(f.bpDia)));
+        if (f.imc !== undefined) patient.imc = Math.max(12, Math.min(60, Math.round(f.imc * 10) / 10));
+        if (f.age !== undefined) patient.age = Math.max(12, Math.min(60, Math.round(f.age)));
+        if (f.gestas !== undefined) patient.gestas = Math.max(1, Math.min(20, Math.round(f.gestas)));
+        if (f.cesareas !== undefined) patient.cesareas = Math.max(0, Math.min(10, Math.round(f.cesareas)));
+        if (f.abortos !== undefined) patient.abortos = Math.max(0, Math.min(10, Math.round(f.abortos)));
+        if (f.community !== undefined && f.community.trim().length > 0) {
+          patient.community = f.community.trim().slice(0, 60);
+        }
+        if (f.phone !== undefined) patient.phone = f.phone.trim().slice(0, 20);
+        return null;
+      }
       default:
         return "Acción desconocida";
     }

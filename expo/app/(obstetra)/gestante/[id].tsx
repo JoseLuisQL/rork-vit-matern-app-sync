@@ -1,22 +1,26 @@
 /**
- * Ficha clínica de la gestante (vista obstetra, estilo "cuaderno"): riesgo
- * con factores, salud con hemoglobina corregida, tratamiento, controles y
- * visitas. La corrección por altitud aparece como nota pequeña al pie.
+ * Ficha clínica de la gestante (vista obstetra, estilo "cuaderno"): acciones
+ * rápidas en fichas ilustradas, riesgo con factores, salud con hemoglobina
+ * corregida y botón para actualizar los datos del control, tratamiento,
+ * citas y visitas. La corrección por altitud va como nota al pie.
  */
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   CalendarPlus,
   HousePlus,
   MessageCircle,
+  Pencil,
   Phone,
   UserRound,
+  type LucideIcon,
 } from "lucide-react-native";
 import React, { useMemo } from "react";
 import { Linking, ScrollView, StyleSheet, Text, View } from "react-native";
-import { gfonts, gwarm, risk, warmBlue } from "@/constants/theme";
+import { gfonts, gShadow, gwarm, risk, warmBlue } from "@/constants/theme";
 import { ANEMIA_LABEL } from "@/constants/labels";
+import { ILU } from "@/constants/illustrations";
 import { avatarUri } from "@/lib/api";
-import { fechaCompleta, fechaCorta, fechaLarga } from "@/lib/format";
+import { fechaCompleta, fechaCorta, horaAmigable } from "@/lib/format";
 import { useApp, usePatient } from "@/providers/AppProvider";
 import { AppButton } from "@/components/AppButton";
 import { Avatar } from "@/components/Avatar";
@@ -27,14 +31,55 @@ import { ProgressRing } from "@/components/ProgressRing";
 import { RiskBadge, StatusWord } from "@/components/Badges";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SectionHeader } from "@/components/SectionHeader";
+import { Illustration } from "@/components/gestante/Illustration";
+import { PopIn } from "@/components/gestante/PopIn";
 
 const accent = warmBlue;
+
+/** Acción rápida en ficha blanca con icono en círculo suave. */
+function ActionTile({
+  icon: Icon,
+  label,
+  color,
+  soft,
+  onPress,
+  testID,
+}: {
+  icon: LucideIcon;
+  label: string;
+  color: string;
+  soft: string;
+  onPress: () => void;
+  testID?: string;
+}): React.ReactElement {
+  return (
+    <PressableScale onPress={onPress} accessibilityLabel={label} style={styles.tile} testID={testID}>
+      <View style={[styles.tileCircle, { backgroundColor: soft }]}>
+        <Icon size={19} color={color} strokeWidth={2.4} />
+      </View>
+      <Text style={styles.tileLabel} numberOfLines={1}>
+        {label}
+      </Text>
+    </PressableScale>
+  );
+}
 
 function DataItem({ label, value, alert }: { label: string; value: string; alert?: boolean }) {
   return (
     <View style={styles.dataItem}>
       <Text style={styles.dataLabel}>{label}</Text>
       <Text style={[styles.dataValue, alert === true && { color: gwarm.rose }]}>{value}</Text>
+    </View>
+  );
+}
+
+/** Fichita de fecha (día grande + mes) para las listas de citas. */
+function DatePill({ dateKey, color, soft }: { dateKey: string; color: string; soft: string }) {
+  const [dayNum, mon] = fechaCorta(dateKey).split(" ");
+  return (
+    <View style={[styles.datePill, { backgroundColor: soft }]}>
+      <Text style={[styles.datePillDay, { color }]}>{dayNum}</Text>
+      <Text style={[styles.datePillMon, { color }]}>{mon}</Text>
     </View>
   );
 }
@@ -87,6 +132,9 @@ export default function FichaGestante(): React.ReactElement {
   const riskPalette = risk[patient.riskLevel];
   const anemiaAlert = patient.anemia !== "normal";
 
+  const goUpdate = () =>
+    router.push({ pathname: "/(obstetra)/actualizar-datos", params: { id: patient.id } });
+
   return (
     <View style={styles.container}>
       <ScreenHeader
@@ -107,173 +155,209 @@ export default function FichaGestante(): React.ReactElement {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.actionsRow}>
-          <AppButton
-            title="Chat"
-            onPress={() => router.push({ pathname: "/(obstetra)/chat/[id]", params: { id: patient.id } })}
-            color={accent.main}
-            icon={MessageCircle}
-            small
-            style={styles.flex}
-          />
-          <AppButton
-            title="Cita"
-            onPress={() =>
-              router.push({
-                pathname: "/(obstetra)/programar",
-                params: { mode: "cita", patientId: patient.id },
-              })
-            }
-            color={accent.main}
-            variant="soft"
-            icon={CalendarPlus}
-            small
-            style={styles.flex}
-          />
-          <AppButton
-            title="Visita"
-            onPress={() =>
-              router.push({
-                pathname: "/(obstetra)/programar",
-                params: { mode: "visita", patientId: patient.id },
-              })
-            }
-            color={accent.main}
-            variant="soft"
-            icon={HousePlus}
-            small
-            style={styles.flex}
-          />
-        </View>
-
-        <SectionHeader title="Su riesgo" />
-        <Card style={[styles.riskCard, { borderLeftColor: riskPalette.solid }]}>
-          <RiskBadge level={patient.riskLevel} />
-          {patient.riskFactors.length === 0 ? (
-            <Text style={styles.riskNone}>Sin factores de riesgo identificados.</Text>
-          ) : (
-            patient.riskFactors.map((factor) => (
-              <View key={factor} style={styles.factorRow}>
-                <View style={[styles.factorDot, { backgroundColor: riskPalette.solid }]} />
-                <Text style={styles.factorText}>{factor}</Text>
-              </View>
-            ))
-          )}
-        </Card>
-
-        <SectionHeader title="Su salud" />
-        <Card style={styles.dataCard}>
-          <View style={styles.hbBlock}>
-            <Text style={styles.hbLabel}>Hemoglobina</Text>
-            <Text style={[styles.hbValue, { color: anemiaAlert ? gwarm.rose : gwarm.teal }]}>
-              {patient.hbCorrected} g/dL
-            </Text>
-            <Text
-              style={[
-                styles.hbStatus,
-                { color: anemiaAlert ? gwarm.rose : gwarm.tealDeep },
-              ]}
-            >
-              {ANEMIA_LABEL[patient.anemia]}
-            </Text>
-          </View>
-          <View style={styles.dataGrid}>
-            <DataItem
-              label="Presión"
-              value={`${patient.bpSys}/${patient.bpDia}`}
-              alert={patient.bpSys >= 140 || patient.bpDia >= 90}
-            />
-            <DataItem label="IMC" value={`${patient.imc}`} />
-            <DataItem label="Edad" value={`${patient.age} años`} />
-            <DataItem
-              label="G · C · A"
-              value={`${patient.gestas} · ${patient.cesareas} · ${patient.abortos}`}
-            />
-            <DataItem label="FUM" value={fechaCorta(patient.fumKey)} />
-            <DataItem label="FPP" value={fechaCorta(patient.fppKey)} />
-          </View>
-          <PressableScale
-            onPress={() => Linking.openURL(`tel:${patient.phone.replace(/\s/g, "")}`).catch(() => {})}
-            accessibilityLabel={`Llamar a ${patient.firstName}`}
-            style={styles.phoneRow}
-          >
-            <Phone size={16} color={accent.main} />
-            <Text style={styles.phoneText}>{patient.phone || "Sin teléfono"}</Text>
-          </PressableScale>
-          <Text style={styles.footNote}>
-            Hb medida {patient.hbObserved} g/dL, ajustada por la altitud del centro (
-            {view.center.altitudeMsnm} m).
-          </Text>
-        </Card>
-
-        <SectionHeader title="Sus pastillas" />
-        <Card style={styles.treatCard}>
-          <View style={styles.treatTop}>
-            <ProgressRing
-              progress={patient.adherence30 / 100}
-              color={
-                patient.adherence30 >= 75
-                  ? gwarm.teal
-                  : patient.adherence30 >= 50
-                    ? gwarm.amber
-                    : gwarm.rose
+        <PopIn delay={0}>
+          <View style={styles.actionsRow}>
+            <ActionTile
+              icon={MessageCircle}
+              label="Chat"
+              color={accent.main}
+              soft={accent.soft}
+              onPress={() =>
+                router.push({ pathname: "/(obstetra)/chat/[id]", params: { id: patient.id } })
               }
-              size={78}
-              strokeWidth={8}
-            >
-              <Text style={styles.treatPct}>{patient.adherence30}%</Text>
-            </ProgressRing>
-            <View style={styles.flex}>
-              <Text style={styles.treatTitle}>Tomas en los últimos 30 días</Text>
-              <Text style={styles.treatMeta}>
-                Hoy: {supplements.filter((s) => todayIntakes.includes(s.id)).length} de{" "}
-                {supplements.length}
-                {patient.streak > 1 ? ` · ${patient.streak} días seguidos` : ""}
-              </Text>
-            </View>
+              testID="accion-chat"
+            />
+            <ActionTile
+              icon={CalendarPlus}
+              label="Cita"
+              color={gwarm.teal}
+              soft={gwarm.tealSoft}
+              onPress={() =>
+                router.push({
+                  pathname: "/(obstetra)/programar",
+                  params: { mode: "cita", patientId: patient.id },
+                })
+              }
+            />
+            <ActionTile
+              icon={HousePlus}
+              label="Visita"
+              color={gwarm.terracotta}
+              soft={gwarm.terracottaSoft}
+              onPress={() =>
+                router.push({
+                  pathname: "/(obstetra)/programar",
+                  params: { mode: "visita", patientId: patient.id },
+                })
+              }
+            />
           </View>
-          {supplements.map((s) => (
-            <View key={s.id} style={styles.suppRow}>
-              <View
-                style={[
-                  styles.suppDot,
-                  {
-                    backgroundColor: todayIntakes.includes(s.id)
-                      ? gwarm.teal
-                      : gwarm.borderStrong,
-                  },
-                ]}
-              />
-              <Text style={styles.suppName}>{s.name}</Text>
-            </View>
-          ))}
-          {supplements.length === 0 ? (
-            <Text style={styles.treatMeta}>Sin suplementos asignados.</Text>
-          ) : null}
-        </Card>
+        </PopIn>
 
-        <SectionHeader title="Próximas citas" />
-        {upcoming.length === 0 ? (
-          <Card>
-            <Text style={styles.treatMeta}>Sin citas próximas.</Text>
-          </Card>
-        ) : (
-          <Card style={styles.listCard}>
-            {upcoming.map((appt, index) => (
-              <View key={appt.id} style={[styles.apptRow, index > 0 && styles.rowBorder]}>
-                <View style={styles.rowInfo}>
-                  <Text style={styles.apptTitle} numberOfLines={1}>
-                    {appt.motivo}
-                  </Text>
-                  <Text style={styles.apptMeta}>
-                    {fechaLarga(appt.dateKey)} · {appt.time}
-                  </Text>
+        <PopIn delay={60}>
+          <SectionHeader title="Su riesgo" />
+          <Card style={[styles.riskCard, { borderLeftColor: riskPalette.solid }]}>
+            <RiskBadge level={patient.riskLevel} />
+            {patient.riskFactors.length === 0 ? (
+              <Text style={styles.riskNone}>Sin factores de riesgo identificados.</Text>
+            ) : (
+              patient.riskFactors.map((factor) => (
+                <View key={factor} style={styles.factorRow}>
+                  <View style={[styles.factorDot, { backgroundColor: riskPalette.solid }]} />
+                  <Text style={styles.factorText}>{factor}</Text>
                 </View>
-                <StatusWord estado={appt.estado} />
+              ))
+            )}
+          </Card>
+        </PopIn>
+
+        <PopIn delay={120}>
+          <SectionHeader
+            title="Su salud"
+            action={{ label: "Actualizar", onPress: goUpdate, color: accent.main }}
+          />
+          <Card style={styles.dataCard}>
+            <View style={styles.hbRow}>
+              <View style={styles.hbBlock}>
+                <Text style={styles.hbLabel}>Hemoglobina</Text>
+                <Text style={[styles.hbValue, { color: anemiaAlert ? gwarm.rose : gwarm.teal }]}>
+                  {patient.hbCorrected} g/dL
+                </Text>
+                <Text
+                  style={[
+                    styles.hbStatus,
+                    { color: anemiaAlert ? gwarm.rose : gwarm.tealDeep },
+                  ]}
+                >
+                  {ANEMIA_LABEL[patient.anemia]}
+                </Text>
+              </View>
+              <Illustration source={ILU.estetoscopio} width={80} height={80} />
+            </View>
+            <View style={styles.dataGrid}>
+              <DataItem
+                label="Presión"
+                value={`${patient.bpSys}/${patient.bpDia}`}
+                alert={patient.bpSys >= 140 || patient.bpDia >= 90}
+              />
+              <DataItem label="IMC" value={`${patient.imc}`} />
+              <DataItem label="Edad" value={`${patient.age} años`} />
+              <DataItem
+                label="G · C · A"
+                value={`${patient.gestas} · ${patient.cesareas} · ${patient.abortos}`}
+              />
+              <DataItem label="FUM" value={fechaCorta(patient.fumKey)} />
+              <DataItem label="FPP" value={fechaCorta(patient.fppKey)} />
+            </View>
+            <PressableScale
+              onPress={() => Linking.openURL(`tel:${patient.phone.replace(/\s/g, "")}`).catch(() => {})}
+              accessibilityLabel={`Llamar a ${patient.firstName}`}
+              style={styles.phoneRow}
+            >
+              <Phone size={16} color={accent.main} />
+              <Text style={styles.phoneText}>{patient.phone || "Sin teléfono"}</Text>
+            </PressableScale>
+            <AppButton
+              title="Actualizar datos del control"
+              onPress={goUpdate}
+              color={accent.main}
+              variant="soft"
+              icon={Pencil}
+              testID="btn-actualizar-datos"
+            />
+            <Text style={styles.footNote}>
+              Hb medida {patient.hbObserved} g/dL, ajustada por la altitud del centro (
+              {view.center.altitudeMsnm} m).
+            </Text>
+          </Card>
+        </PopIn>
+
+        <PopIn delay={180}>
+          <SectionHeader title="Sus pastillas" />
+          <Card style={styles.treatCard}>
+            <View style={styles.treatTop}>
+              <ProgressRing
+                progress={patient.adherence30 / 100}
+                color={
+                  patient.adherence30 >= 75
+                    ? gwarm.teal
+                    : patient.adherence30 >= 50
+                      ? gwarm.amber
+                      : gwarm.rose
+                }
+                size={78}
+                strokeWidth={8}
+              >
+                <Text style={styles.treatPct}>{patient.adherence30}%</Text>
+              </ProgressRing>
+              <View style={styles.flex}>
+                <Text style={styles.treatTitle}>Tomas en los últimos 30 días</Text>
+                <Text style={styles.treatMeta}>
+                  Hoy: {supplements.filter((s) => todayIntakes.includes(s.id)).length} de{" "}
+                  {supplements.length}
+                  {patient.streak > 1 ? ` · ${patient.streak} días seguidos` : ""}
+                </Text>
+              </View>
+            </View>
+            {supplements.map((s) => (
+              <View key={s.id} style={styles.suppRow}>
+                <View
+                  style={[
+                    styles.suppDot,
+                    {
+                      backgroundColor: todayIntakes.includes(s.id)
+                        ? gwarm.teal
+                        : gwarm.borderStrong,
+                    },
+                  ]}
+                />
+                <Text style={styles.suppName}>{s.name}</Text>
               </View>
             ))}
+            {supplements.length === 0 ? (
+              <Text style={styles.treatMeta}>Sin suplementos asignados.</Text>
+            ) : null}
           </Card>
-        )}
+        </PopIn>
+
+        <PopIn delay={240}>
+          <SectionHeader title="Próximas citas" />
+          {upcoming.length === 0 ? (
+            <Card style={styles.emptyApptCard}>
+              <Text style={styles.treatMeta}>Sin citas próximas.</Text>
+              <AppButton
+                title="Programar cita"
+                onPress={() =>
+                  router.push({
+                    pathname: "/(obstetra)/programar",
+                    params: { mode: "cita", patientId: patient.id },
+                  })
+                }
+                color={accent.main}
+                variant="outline"
+                icon={CalendarPlus}
+                small
+              />
+            </Card>
+          ) : (
+            <Card style={styles.listCard}>
+              {upcoming.map((appt, index) => (
+                <View key={appt.id} style={[styles.apptRow, index > 0 && styles.rowBorder]}>
+                  <DatePill dateKey={appt.dateKey} color={accent.deep} soft={accent.soft} />
+                  <View style={styles.rowInfo}>
+                    <Text style={styles.apptTitle} numberOfLines={1}>
+                      {appt.motivo}
+                    </Text>
+                    <Text style={styles.apptMeta} numberOfLines={1}>
+                      A las {horaAmigable(appt.time)}
+                    </Text>
+                  </View>
+                  <StatusWord estado={appt.estado} />
+                </View>
+              ))}
+            </Card>
+          )}
+        </PopIn>
 
         {past.length > 0 ? (
           <>
@@ -333,7 +417,31 @@ const styles = StyleSheet.create({
     paddingBottom: 48,
     gap: 12,
   },
-  actionsRow: { flexDirection: "row", gap: 8 },
+  actionsRow: { flexDirection: "row", gap: 10 },
+  tile: {
+    flex: 1,
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: gwarm.surface,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: gwarm.border,
+    paddingVertical: 12,
+    ...gShadow,
+  },
+  tileCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tileLabel: {
+    fontFamily: gfonts.hand,
+    fontSize: 15.5,
+    lineHeight: 20,
+    color: gwarm.ink,
+  },
   riskCard: { gap: 8, borderLeftWidth: 4 },
   riskNone: {
     fontFamily: gfonts.handBody,
@@ -351,7 +459,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   dataCard: { gap: 12 },
-  hbBlock: { gap: 1 },
+  hbRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  hbBlock: { gap: 1, flex: 1, minWidth: 0 },
   hbLabel: {
     fontFamily: gfonts.handBody,
     fontSize: 13,
@@ -451,16 +565,34 @@ const styles = StyleSheet.create({
     color: gwarm.ink,
     flex: 1,
   },
+  emptyApptCard: { gap: 10, alignItems: "flex-start" },
   listCard: { paddingVertical: 6 },
   apptRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    paddingVertical: 11,
-    minHeight: 52,
+    paddingVertical: 10,
+    minHeight: 56,
   },
   rowBorder: { borderTopWidth: 1, borderTopColor: gwarm.border },
   rowInfo: { flex: 1, minWidth: 0, gap: 1 },
+  datePill: {
+    width: 46,
+    borderRadius: 14,
+    alignItems: "center",
+    paddingVertical: 6,
+    flexShrink: 0,
+  },
+  datePillDay: {
+    fontFamily: gfonts.hand,
+    fontSize: 18,
+    lineHeight: 22,
+  },
+  datePillMon: {
+    fontFamily: gfonts.handBody,
+    fontSize: 11.5,
+    lineHeight: 15,
+  },
   apptTitle: {
     fontFamily: gfonts.handBody,
     fontSize: 15.5,

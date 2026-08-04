@@ -1,11 +1,12 @@
 /**
  * Alertas tempranas ("cuaderno"): filtro segmentado y tarjetas cálidas —
  * quién, hace cuánto y qué pasa. Las urgencias van como notas rosadas con
- * un botón "Atender" y el chat como icono.
+ * borde de color y un botón "Atender"; al cerrar una alerta se confirma
+ * con un toast.
  */
 import { useRouter } from "expo-router";
 import { BellOff, CheckCircle2, MapPin, MessageCircle } from "lucide-react-native";
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { Linking, ScrollView, StyleSheet, Text, View } from "react-native";
 import { gfonts, gwarm, warmBlue } from "@/constants/theme";
 import { GICON } from "@/constants/illustrations";
@@ -22,14 +23,16 @@ import { Field } from "@/components/Field";
 import { PressableScale } from "@/components/PressableScale";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Segmented } from "@/components/Segmented";
+import { useToast } from "@/components/Toast";
 
 const accent = warmBlue;
 type Filter = "abiertas" | "atendidas" | "todas";
 
 export default function AlertasScreen(): React.ReactElement {
   const router = useRouter();
-  const { view, dispatch } = useApp();
+  const { view, dispatch, online } = useApp();
   const patients = usePatients();
+  const { show } = useToast();
   const [filter, setFilter] = useState<Filter>("abiertas");
   const [attendingId, setAttendingId] = useState<string | null>(null);
   const [note, setNote] = useState<string>("");
@@ -49,7 +52,10 @@ export default function AlertasScreen(): React.ReactElement {
 
   const openCount = (view?.alerts ?? []).filter((a) => a.status === "abierta").length;
 
-  const patientOf = (patientId: string) => patients.find((p) => p.id === patientId) ?? null;
+  const patientOf = useCallback(
+    (patientId: string) => patients.find((p) => p.id === patientId) ?? null,
+    [patients],
+  );
 
   const attend = (alertId: string) => {
     const text = note.trim();
@@ -57,6 +63,10 @@ export default function AlertasScreen(): React.ReactElement {
     dispatch({ type: "attend_alert", alertId, note: text });
     setAttendingId(null);
     setNote("");
+    show(
+      online ? "Alerta atendida y cerrada ✓" : "Alerta cerrada · se enviará con señal",
+      online ? "success" : "info",
+    );
   };
 
   const openMap = (lat: number, lng: number) => {
@@ -65,7 +75,10 @@ export default function AlertasScreen(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Alertas" subtitle={`${openCount} por atender`}>
+      <ScreenHeader
+        title="Alertas"
+        subtitle={openCount === 0 ? "Todo atendido" : `${openCount} por atender`}
+      >
         <Segmented
           options={[
             { key: "abiertas", label: "Abiertas" },
@@ -103,7 +116,11 @@ export default function AlertasScreen(): React.ReactElement {
             return (
               <Card
                 key={alert.id}
-                style={[styles.alertCard, urgentOpen && styles.alertUrgent]}
+                style={[
+                  styles.alertCard,
+                  alert.status === "abierta" && styles.alertOpen,
+                  urgentOpen && styles.alertUrgent,
+                ]}
               >
                 <View style={styles.alertTop}>
                   <PressableScale
@@ -119,7 +136,7 @@ export default function AlertasScreen(): React.ReactElement {
                         uri={avatarUri(p.dni, p.avatarVersion)}
                         color={isUrgent ? gwarm.rose : accent.main}
                         background={isUrgent ? gwarm.redSoft : accent.soft}
-                        size={38}
+                        size={40}
                       />
                     ) : null}
                     <View style={styles.rowInfo}>
@@ -233,10 +250,16 @@ const styles = StyleSheet.create({
   },
   segmented: { marginTop: 8 },
   alertCard: { gap: 10 },
+  alertOpen: {
+    borderLeftWidth: 4,
+    borderLeftColor: gwarm.amber,
+  },
   alertUrgent: {
     backgroundColor: gwarm.redSoft,
     borderColor: gwarm.redMid,
     borderWidth: 1.5,
+    borderLeftWidth: 4,
+    borderLeftColor: gwarm.rose,
   },
   alertTop: {
     flexDirection: "row",

@@ -16,9 +16,12 @@ import { applyOutbox } from "@/lib/outbox";
 import {
   cancelAllReminders,
   DEFAULT_REMINDERS,
+  notifySnapshotDelta,
   ReminderSettings,
+  requestNotificationPermission,
   syncReminders,
 } from "@/lib/notifications";
+import { useToast } from "@/components/Toast";
 import { todayKeyLocal } from "@/lib/format";
 import type {
   ActionInput,
@@ -73,6 +76,7 @@ export interface CreateUserParams {
 
 export const [AppProvider, useApp] = createContextHook(() => {
   const queryClient = useQueryClient();
+  const { show: showToast } = useToast();
   const [session, setSession] = useState<SessionState | null>(null);
   const [hydrated, setHydrated] = useState<boolean>(false);
   const [cached, setCached] = useState<Snapshot | null>(null);
@@ -85,6 +89,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   const sessionRef = useRef<SessionState | null>(null);
   const outboxRef = useRef<ClientAction[]>([]);
+  const cachedRef = useRef<Snapshot | null>(null);
+  const syncOkRef = useRef<boolean>(false);
 
   // ---------- Hidratación inicial ----------
   useEffect(() => {
@@ -109,7 +115,11 @@ export const [AppProvider, useApp] = createContextHook(() => {
           if (!cancelled) {
             sessionRef.current = s;
             setSession(s);
-            if (rawSnap) setCached(JSON.parse(rawSnap) as Snapshot);
+            if (rawSnap) {
+              const snap = JSON.parse(rawSnap) as Snapshot;
+              cachedRef.current = snap;
+              setCached(snap);
+            }
             if (rawOut) {
               const o = JSON.parse(rawOut) as ClientAction[];
               outboxRef.current = o;
@@ -146,6 +156,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
   }, []);
 
   const persistSnapshot = useCallback((dni: string, snapshot: Snapshot) => {
+    cachedRef.current = snapshot;
     setCached(snapshot);
     AsyncStorage.setItem(snapKey(dni), JSON.stringify(snapshot)).catch(() => {});
   }, []);
@@ -156,6 +167,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
     const dni = sessionRef.current?.user.dni;
     sessionRef.current = null;
     outboxRef.current = [];
+    cachedRef.current = null;
+    syncOkRef.current = false;
     setSession(null);
     setCached(null);
     setOutboxState([]);
@@ -171,6 +184,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
     const s: SessionState = { token: res.token, user: res.user };
     sessionRef.current = s;
     outboxRef.current = [];
+    cachedRef.current = res.snapshot;
+    syncOkRef.current = true;
     setSession(s);
     setCached(res.snapshot);
     setOutboxState([]);
@@ -196,6 +211,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
       const s = sessionRef.current;
       if (!s) throw new ApiError("Sin sesión", 0);
       const pending = [...outboxRef.current];
+      const prevSnapshot = cachedRef.current;
+      const wasSynced = syncOkRef.current;
       try {
         const res = await api<SyncResponse>("/api/sync", {
           token: s.token,
@@ -205,15 +222,29 @@ export const [AppProvider, useApp] = createContextHook(() => {
         const rejected = res.results.filter((r) => !r.ok);
         if (rejected.length > 0) {
           console.log("[VitMaterna] Acciones rechazadas por el servidor:", rejected);
+          showToast(
+            rejected[0].error ?? "Un cambio no se pudo aplicar. Revisa la información.",
+            "error",
+          );
         }
         persistOutbox(s.user.dni, outboxRef.current.filter((a) => !acked.has(a.id)));
         persistSnapshot(s.user.dni, res.snapshot);
+        syncOkRef.current = true;
         setSyncOk(true);
+        if (!wasSynced && pending.length > 0 && rejected.length < pending.length) {
+          showToast("Volvió la señal: tus cambios guardados ya se enviaron", "success");
+        }
+        if (Platform.OS !== "web") {
+          notifySnapshotDelta(prevSnapshot, res.snapshot).catch((err) =>
+            console.log("[VitMaterna] aviso nativo:", err),
+          );
+        }
         return res.snapshot;
       } catch (e) {
         if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
           performLogout("Tu sesión terminó o tu cuenta fue desactivada. Vuelve a iniciar sesión.");
         } else {
+          syncOkRef.current = false;
           setSyncOk(false);
         }
         throw e;
@@ -280,6 +311,14 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
   const todayKey = view?.todayKey ?? todayKeyLocal();
   const online = netOnline && syncOk;
+  /** Momento de la última sincronización exitosa con el servidor. */
+  const lastSyncISO = cached?.serverTimeISO ?? null;
+
+  // Permiso de notificaciones nativas al tener sesión (banner del teléfono).
+  useEffect(() => {
+    if (!hydrated || !session || Platform.OS === "web") return;
+    requestNotificationPermission().catch(() => {});
+  }, [hydrated, session]);
 
   /** Usuario siempre fresco: el snapshot del servidor trae la foto al día. */
   const currentUser = view?.me ?? session?.user ?? null;
@@ -330,6 +369,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       view,
       todayKey,
       online,
+      lastSyncISO,
       pendingCount: outbox.length,
       authNotice,
       clearAuthNotice,
@@ -353,6 +393,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       view,
       todayKey,
       online,
+      lastSyncISO,
       outbox.length,
       authNotice,
       clearAuthNotice,

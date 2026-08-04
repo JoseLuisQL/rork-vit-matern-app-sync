@@ -179,6 +179,21 @@ export interface Snapshot {
   reports?: { d30: ReportBlock; total: ReportBlock };
 }
 
+/** Campos editables de la ficha clínica (solo obstetra/admin). */
+export interface PatientUpdateFields {
+  age?: number;
+  community?: string;
+  phone?: string;
+  fumKey?: string;
+  gestas?: number;
+  cesareas?: number;
+  abortos?: number;
+  hbObserved?: number;
+  bpSys?: number;
+  bpDia?: number;
+  imc?: number;
+}
+
 /** Acciones encolables (offline-first). Idempotentes por id. */
 export type ClientAction =
   | { id: string; atISO: string; type: "confirm_appointment"; appointmentId: string }
@@ -212,7 +227,14 @@ export type ClientAction =
     }
   | { id: string; atISO: string; type: "panic"; lat: number | null; lng: number | null }
   | { id: string; atISO: string; type: "attend_alert"; alertId: string; note: string }
-  | { id: string; atISO: string; type: "complete_visit"; visitId: string; resultado: string };
+  | { id: string; atISO: string; type: "complete_visit"; visitId: string; resultado: string }
+  | {
+      id: string;
+      atISO: string;
+      type: "update_patient";
+      patientId: string;
+      fields: PatientUpdateFields;
+    };
 
 export interface ActionResult {
   id: string;

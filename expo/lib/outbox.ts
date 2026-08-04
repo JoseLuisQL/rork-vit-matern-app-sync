@@ -4,11 +4,13 @@
  * que la app responda al instante aun sin señal. El servidor sigue siendo la
  * fuente de verdad: al sincronizar, su snapshot reemplaza esta vista.
  */
+import { anemiaClassLocal, correctedHbLocal, fppKeyLocal, weeksLocal } from "@/lib/optimistic";
 import type { Alert, ClientAction, Message, Snapshot, User } from "@/types";
 
 function cloneForMutation(snapshot: Snapshot): Snapshot {
   return {
     ...snapshot,
+    patients: snapshot.patients.map((p) => ({ ...p })),
     appointments: snapshot.appointments.map((a) => ({ ...a })),
     messages: snapshot.messages.map((m) => ({ ...m })),
     alerts: snapshot.alerts.map((a) => ({ ...a })),
@@ -150,6 +152,34 @@ export function applyOutbox(snapshot: Snapshot, actions: ClientAction[], user: U
         if (visit) {
           visit.estado = "realizada";
           visit.resultado = action.resultado;
+        }
+        break;
+      }
+      case "update_patient": {
+        if (user.role === "gestante") break;
+        const p = s.patients.find((x) => x.id === action.patientId);
+        if (!p) break;
+        const f = action.fields;
+        if (f.age !== undefined) p.age = Math.round(f.age);
+        if (f.community !== undefined && f.community.trim().length > 0) {
+          p.community = f.community.trim();
+        }
+        if (f.phone !== undefined) p.phone = f.phone.trim();
+        if (f.gestas !== undefined) p.gestas = Math.round(f.gestas);
+        if (f.cesareas !== undefined) p.cesareas = Math.round(f.cesareas);
+        if (f.abortos !== undefined) p.abortos = Math.round(f.abortos);
+        if (f.bpSys !== undefined) p.bpSys = Math.round(f.bpSys);
+        if (f.bpDia !== undefined) p.bpDia = Math.round(f.bpDia);
+        if (f.imc !== undefined) p.imc = Math.round(f.imc * 10) / 10;
+        if (f.hbObserved !== undefined) {
+          p.hbObserved = Math.round(f.hbObserved * 10) / 10;
+          p.hbCorrected = correctedHbLocal(p.hbObserved, s.center.hbFactor);
+          p.anemia = anemiaClassLocal(p.hbCorrected);
+        }
+        if (f.fumKey !== undefined && /^\d{4}-\d{2}-\d{2}$/.test(f.fumKey)) {
+          p.fumKey = f.fumKey;
+          p.weeks = weeksLocal(f.fumKey, s.todayKey);
+          p.fppKey = fppKeyLocal(f.fumKey);
         }
         break;
       }

@@ -1,20 +1,30 @@
-/** Indicador de conexión: sin señal (datos guardados) y cambios pendientes de envío. */
+/** Indicador de conexión: sin señal (con hora del último guardado) y cambios pendientes de envío. */
 import { CloudUpload, WifiOff } from "lucide-react-native";
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { gfonts, gwarm, spacing } from "@/constants/theme";
+import { tiempoRelativo } from "@/lib/format";
 import { useApp } from "@/providers/AppProvider";
 
 export function OfflineBanner(): React.ReactElement | null {
-  const { online, pendingCount, session } = useApp();
+  const { online, pendingCount, session, lastSyncISO } = useApp();
   if (!session) return null;
 
   if (!online) {
+    const rel = lastSyncISO ? tiempoRelativo(lastSyncISO) : "";
+    const when =
+      rel.length === 0
+        ? "mostrando datos guardados"
+        : rel.startsWith("hace") || rel === "ahora"
+          ? `guardado ${rel}`
+          : /^\d{2}:\d{2}$/.test(rel)
+            ? `guardado a las ${rel}`
+            : `guardado el ${rel}`;
     return (
       <View style={[styles.banner, styles.offline]} testID="offline-banner">
         <WifiOff size={14} color={gwarm.amber} />
         <Text style={[styles.text, { color: gwarm.amber }]} numberOfLines={1}>
-          Sin conexión · mostrando datos guardados
+          Sin conexión · {when}
           {pendingCount > 0 ? ` · ${pendingCount} por enviar` : ""}
         </Text>
       </View>

@@ -1,7 +1,8 @@
 /**
- * Agenda de la obstetra ("cuaderno"): días con altura fija, tarjetas cálidas
- * que no se deforman (hora a la izquierda, nombre grande, estado en una
+ * Agenda de la obstetra ("cuaderno"): días con altura fija, resumen del día,
+ * tarjetas cálidas con la hora en fichita (nombre grande, estado en una
  * palabra) y solicitudes de cambio agrupadas en una nota ámbar arriba.
+ * Cada registro (asistió/faltó/resultado) confirma con un toast.
  */
 import { useRouter } from "expo-router";
 import {
@@ -13,7 +14,7 @@ import {
   HousePlus,
   XCircle,
 } from "lucide-react-native";
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { gfonts, gShadow, gwarm, warmBlue } from "@/constants/theme";
 import { ILU } from "@/constants/illustrations";
@@ -28,13 +29,15 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { SectionHeader } from "@/components/SectionHeader";
 import { StatusWord } from "@/components/Badges";
 import { PressableScale } from "@/components/PressableScale";
+import { useToast } from "@/components/Toast";
 
 const accent = warmBlue;
 
 export default function AgendaScreen(): React.ReactElement {
   const router = useRouter();
-  const { view, todayKey, dispatch } = useApp();
+  const { view, todayKey, dispatch, online } = useApp();
   const patients = usePatients();
+  const { show } = useToast();
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [showRequests, setShowRequests] = useState<boolean>(false);
   const [completingVisitId, setCompletingVisitId] = useState<string | null>(null);
@@ -46,10 +49,13 @@ export default function AgendaScreen(): React.ReactElement {
     [todayKey],
   );
 
-  const patientName = (patientId: string): string => {
-    const p = patients.find((x) => x.id === patientId);
-    return p ? `${p.firstName} ${p.lastName.split(" ")[0]}` : "Paciente";
-  };
+  const patientName = useCallback(
+    (patientId: string): string => {
+      const p = patients.find((x) => x.id === patientId);
+      return p ? `${p.firstName} ${p.lastName.split(" ")[0]}` : "Paciente";
+    },
+    [patients],
+  );
 
   const dayAppointments = useMemo(() => {
     const list = (view?.appointments ?? []).filter((a) => a.dateKey === day);
@@ -66,13 +72,43 @@ export default function AgendaScreen(): React.ReactElement {
     [view?.appointments],
   );
 
+  /** Marca asistencia con confirmación visible (toast). */
+  const markAttendance = useCallback(
+    (appointmentId: string, patientId: string, estado: "asistida" | "no_asistida") => {
+      dispatch({ type: "set_appointment_status", appointmentId, estado });
+      const base =
+        estado === "asistida"
+          ? `${patientName(patientId)}: asistencia registrada ✓`
+          : `${patientName(patientId)}: falta registrada`;
+      show(online ? base : `${base} · se enviará con señal`, online ? "success" : "info");
+    },
+    [dispatch, online, patientName, show],
+  );
+
   const saveVisitResult = (visitId: string) => {
     const text = visitResult.trim();
     if (text.length === 0) return;
     dispatch({ type: "complete_visit", visitId, resultado: text });
     setCompletingVisitId(null);
     setVisitResult("");
+    show(
+      online
+        ? "Resultado de la visita guardado ✓"
+        : "Resultado guardado · se enviará con señal",
+      online ? "success" : "info",
+    );
   };
+
+  const countLine = useMemo(() => {
+    const parts: string[] = [];
+    if (dayAppointments.length > 0) {
+      parts.push(dayAppointments.length === 1 ? "1 cita" : `${dayAppointments.length} citas`);
+    }
+    if (dayVisits.length > 0) {
+      parts.push(dayVisits.length === 1 ? "1 visita" : `${dayVisits.length} visitas`);
+    }
+    return parts.join(" · ");
+  }, [dayAppointments.length, dayVisits.length]);
 
   return (
     <View style={styles.container}>
@@ -155,6 +191,8 @@ export default function AgendaScreen(): React.ReactElement {
         ) : null}
 
         <SectionHeader title={capitalize(fechaLarga(day))} />
+        {countLine.length > 0 ? <Text style={styles.dayMeta}>{countLine}</Text> : null}
+
         {dayAppointments.length === 0 && dayVisits.length === 0 ? (
           <EmptyState
             icon={CalendarPlus}
@@ -173,8 +211,9 @@ export default function AgendaScreen(): React.ReactElement {
           return (
             <Card key={appt.id} style={styles.apptCard}>
               <View style={styles.apptRow}>
-                <Text style={styles.timeText}>{appt.time}</Text>
-                <View style={styles.timeDivider} />
+                <View style={styles.timePill}>
+                  <Text style={styles.timeText}>{appt.time}</Text>
+                </View>
                 <PressableScale
                   onPress={() =>
                     router.push({
@@ -198,28 +237,17 @@ export default function AgendaScreen(): React.ReactElement {
                 <View style={styles.actionsRow}>
                   <AppButton
                     title="Asistió"
-                    onPress={() =>
-                      dispatch({
-                        type: "set_appointment_status",
-                        appointmentId: appt.id,
-                        estado: "asistida",
-                      })
-                    }
+                    onPress={() => markAttendance(appt.id, appt.patientId, "asistida")}
                     color={gwarm.teal}
                     variant="soft"
                     icon={CheckCircle2}
                     small
                     style={styles.flex}
+                    testID={`asistio-${appt.id}`}
                   />
                   <AppButton
                     title="Faltó"
-                    onPress={() =>
-                      dispatch({
-                        type: "set_appointment_status",
-                        appointmentId: appt.id,
-                        estado: "no_asistida",
-                      })
-                    }
+                    onPress={() => markAttendance(appt.id, appt.patientId, "no_asistida")}
                     color={gwarm.rose}
                     variant="soft"
                     icon={XCircle}
@@ -252,11 +280,12 @@ export default function AgendaScreen(): React.ReactElement {
             {dayVisits.map((visit) => (
               <Card key={visit.id} style={styles.apptCard}>
                 <View style={styles.apptRow}>
-                  <View style={styles.visitTime}>
-                    <HousePlus size={17} color={gwarm.teal} strokeWidth={2.2} />
-                    <Text style={styles.visitTimeText}>{visit.time}</Text>
+                  <View style={[styles.timePill, styles.timePillVisit]}>
+                    <HousePlus size={15} color={gwarm.tealDeep} strokeWidth={2.3} />
+                    <Text style={[styles.timeText, { color: gwarm.tealDeep, fontSize: 14 }]}>
+                      {visit.time}
+                    </Text>
                   </View>
-                  <View style={styles.timeDivider} />
                   <View style={styles.rowInfo}>
                     <Text style={styles.rowName} numberOfLines={1}>
                       {patientName(visit.patientId)}
@@ -388,37 +417,37 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 12,
   },
+  dayMeta: {
+    fontFamily: gfonts.handBody,
+    fontSize: 13.5,
+    lineHeight: 18,
+    color: gwarm.inkSoft,
+    marginTop: -8,
+  },
   apptCard: { gap: 12 },
   apptRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
   },
+  timePill: {
+    width: 56,
+    borderRadius: 14,
+    backgroundColor: accent.soft,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 8,
+    gap: 2,
+    flexShrink: 0,
+  },
+  timePillVisit: {
+    backgroundColor: gwarm.tealSoft,
+  },
   timeText: {
     fontFamily: gfonts.hand,
-    fontSize: 18,
-    lineHeight: 23,
+    fontSize: 16.5,
+    lineHeight: 21,
     color: accent.deep,
-    width: 50,
-    flexShrink: 0,
-  },
-  timeDivider: {
-    width: 1,
-    alignSelf: "stretch",
-    marginVertical: 2,
-    backgroundColor: gwarm.border,
-  },
-  visitTime: {
-    width: 50,
-    flexShrink: 0,
-    alignItems: "center",
-    gap: 2,
-  },
-  visitTimeText: {
-    fontFamily: gfonts.hand,
-    fontSize: 14.5,
-    lineHeight: 18,
-    color: gwarm.teal,
   },
   rowInfo: { flex: 1, minWidth: 0, gap: 1 },
   rowName: {
