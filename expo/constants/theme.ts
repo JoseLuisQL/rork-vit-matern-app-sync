@@ -84,6 +84,7 @@ export const gwarm = {
   terracottaSoft: "#FAEDE4",
   amber: "#A97613",
   amberSoft: "#FBF1DC",
+  amberMid: "#F0DFB6",
   rose: "#C25B6A",
   roseSoft: "#FAECEA",
   redSoft: "#FCEDE8",
