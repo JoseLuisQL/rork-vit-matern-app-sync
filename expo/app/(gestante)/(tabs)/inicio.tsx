@@ -16,6 +16,7 @@ import { avatarUri } from "@/lib/api";
 import { confirmAction } from "@/lib/confirm";
 import { countDoses, dayDoseTotals, doseName, timesPerDayOf } from "@/lib/doses";
 import { capitalize, fechaCompleta, fechaLarga } from "@/lib/format";
+import { medIllustration } from "@/lib/medIllustration";
 import { useApp, useMyPatient } from "@/providers/AppProvider";
 import { AppButton } from "@/components/AppButton";
 import { Avatar } from "@/components/Avatar";
@@ -180,6 +181,7 @@ export default function InicioGestante(): React.ReactElement {
                     key={`${s.id}-${dose}`}
                     checked={dose < count}
                     label={s.name}
+                    illustration={medIllustration(s.name)}
                     sublabel={times > 1 ? doseName(dose, times) : undefined}
                     onToggle={() =>
                       dispatch({

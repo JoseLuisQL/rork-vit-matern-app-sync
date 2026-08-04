@@ -6,12 +6,13 @@
  */
 import createContextHook from "@nkzw/create-context-hook";
 import * as Haptics from "expo-haptics";
-import { CheckCircle2, CircleAlert, Info, type LucideIcon } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Platform, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { gfonts, gwarm } from "@/constants/theme";
+import { TOASTILU } from "@/constants/illustrations";
 import { PressableScale } from "@/components/PressableScale";
+import { Illustration } from "@/components/gestante/Illustration";
 
 export type ToastKind = "success" | "error" | "info";
 
@@ -36,10 +37,10 @@ export const [ToastProvider, useToast] = createContextHook(() => {
   return useMemo(() => ({ toast, show, hide }), [toast, show, hide]);
 });
 
-const META: Record<ToastKind, { icon: LucideIcon; color: string; soft: string; border: string }> = {
-  success: { icon: CheckCircle2, color: gwarm.tealDeep, soft: gwarm.tealSoft, border: gwarm.tealMid },
-  error: { icon: CircleAlert, color: gwarm.rose, soft: gwarm.roseSoft, border: gwarm.redMid },
-  info: { icon: Info, color: gwarm.amber, soft: gwarm.amberSoft, border: gwarm.amberMid },
+const META: Record<ToastKind, { ilu: string; soft: string; border: string }> = {
+  success: { ilu: TOASTILU.exito, soft: gwarm.tealSoft, border: gwarm.tealMid },
+  error: { ilu: TOASTILU.error, soft: gwarm.roseSoft, border: gwarm.redMid },
+  info: { ilu: TOASTILU.aviso, soft: gwarm.amberSoft, border: gwarm.amberMid },
 };
 
 const AUTO_HIDE_MS = 3400;
@@ -91,7 +92,6 @@ export function ToastHost(): React.ReactElement | null {
 
   if (!visible) return null;
   const meta = META[visible.kind];
-  const Icon = meta.icon;
 
   return (
     <View pointerEvents="box-none" style={[styles.overlay, { top: insets.top + 8 }]}>
@@ -104,9 +104,14 @@ export function ToastHost(): React.ReactElement | null {
           ],
         }}
       >
-        <PressableScale onPress={dismiss} accessibilityLabel="Cerrar aviso" style={styles.card} testID="toast">
+        <PressableScale
+          onPress={dismiss}
+          accessibilityLabel="Cerrar aviso"
+          style={[styles.card, { borderColor: meta.border }]}
+          testID="toast"
+        >
           <View style={[styles.iconCircle, { backgroundColor: meta.soft }]}>
-            <Icon size={18} color={meta.color} strokeWidth={2.4} />
+            <Illustration source={meta.ilu} width={32} height={32} />
           </View>
           <Text style={styles.text} numberOfLines={2}>
             {visible.text}
@@ -148,9 +153,9 @@ const styles = StyleSheet.create({
     }),
   },
   iconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
   },

@@ -1,7 +1,8 @@
 /**
  * Casilla gigante de un toque (pastillas, síntomas): toda la ficha es táctil,
  * el círculo hace "pop" al marcarse y el teléfono vibra suavecito. Cuando hay
- * un icono, se muestra dentro del círculo para reconocer la opción sin leer.
+ * un icono o un dibujo, se muestra dentro del círculo para reconocer la
+ * opción sin leer.
  */
 import * as Haptics from "expo-haptics";
 import { Check, type LucideIcon } from "lucide-react-native";
@@ -9,6 +10,7 @@ import React, { useEffect, useRef } from "react";
 import { Animated, Platform, StyleSheet, Text, View } from "react-native";
 import { gfonts, gwarm, spacing } from "@/constants/theme";
 import { PressableScale } from "@/components/PressableScale";
+import { Illustration } from "@/components/gestante/Illustration";
 
 interface BigCheckRowProps {
   checked: boolean;
@@ -21,6 +23,8 @@ interface BigCheckRowProps {
   softColor?: string;
   /** Icono ilustrativo mostrado cuando aún no está marcada. */
   icon?: LucideIcon;
+  /** Dibujo (URL) mostrado dentro del círculo cuando aún no está marcada. */
+  illustration?: string;
   testID?: string;
 }
 
@@ -32,6 +36,7 @@ export function BigCheckRow({
   color = gwarm.teal,
   softColor = gwarm.tealSoft,
   icon: Icon,
+  illustration,
   testID,
 }: BigCheckRowProps): React.ReactElement {
   const pop = useRef(new Animated.Value(checked ? 1 : 0)).current;
@@ -78,7 +83,7 @@ export function BigCheckRow({
           styles.circle,
           checked
             ? { backgroundColor: color, borderColor: color }
-            : Icon
+            : Icon || illustration
               ? { backgroundColor: softColor, borderColor: "transparent" }
               : { borderColor: gwarm.borderStrong },
         ]}
@@ -89,6 +94,8 @@ export function BigCheckRow({
           </Animated.View>
         ) : Icon ? (
           <Icon size={24} color={color} strokeWidth={2.2} />
+        ) : illustration ? (
+          <Illustration source={illustration} width={36} height={36} />
         ) : null}
       </View>
       <View style={styles.info}>

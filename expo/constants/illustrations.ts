@@ -68,6 +68,37 @@ export const GICON = {
   perfil: `${R2}/0c2937d8-712b-4c8e-bd0c-caef5fdb39b6.png`,
 } as const;
 
+/**
+ * Dibujo de cada tipo de medicamento (el tipo se detecta por el nombre en
+ * lib/medIllustration): así cada pastilla se reconoce por su dibujo sin leer.
+ */
+export const MEDILU = {
+  /** Pastillas de hierro (sulfato ferroso). */
+  hierro: `${R2}/fcb07eec-c02d-4ff1-8f2d-34e38b576fc9.png`,
+  /** Hoja con tableta de ácido fólico. */
+  folico: `${R2}/65678694-5b81-418e-99be-cd6551fbb16f.png`,
+  /** Vaso de leche con tabletas de calcio. */
+  calcio: `${R2}/deb49cd1-3a96-4db1-af8f-255616a026a0.png`,
+  /** Corazón con brazalete de presión. */
+  presion: `${R2}/b05345cd-6ae5-4806-a8ff-9bd45a1d7d86.png`,
+  /** Termómetro con tableta (dolor o fiebre). */
+  alivio: `${R2}/aaf93d26-ace3-418d-802f-3e99ad698842.png`,
+  /** Naranja con tableta de vitaminas. */
+  vitamina: `${R2}/9551a89f-9974-4294-a5a1-e6461d6317b3.png`,
+  /** Blíster de pastillas con vasito de agua (genérico). */
+  generico: `${R2}/f61dd406-c97a-43d4-832e-a286a0734f04.png`,
+} as const;
+
+/** Dibujos de los avisos flotantes (toast): éxito, error y aviso. */
+export const TOASTILU = {
+  /** Corazón con check y confeti (todo salió bien). */
+  exito: `${R2}/0c285158-ab76-4448-b925-4d0447d6229e.png`,
+  /** Corazón con curita (algo salió mal, con cariño). */
+  error: `${R2}/efb337c8-1b5e-449b-be47-9dea7cb114cc.png`,
+  /** Campanita amable (aviso informativo). */
+  aviso: `${R2}/1e7ad2b2-d912-4637-9991-133d4aa4a45a.png`,
+} as const;
+
 /** Dibujo de cada categoría de consejos (educación). */
 export const CATEGORY_ILU: Record<string, string> = {
   "Nutrición": ILU.comida,

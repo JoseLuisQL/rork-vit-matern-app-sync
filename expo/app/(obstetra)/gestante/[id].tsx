@@ -11,7 +11,6 @@ import {
   MessageCircle,
   Pencil,
   Phone,
-  Pill,
   Plus,
   UserRound,
   type LucideIcon,
@@ -24,6 +23,7 @@ import { ILU } from "@/constants/illustrations";
 import { avatarUri } from "@/lib/api";
 import { countDoses, dayDoseTotals, timesLabel, timesPerDayOf } from "@/lib/doses";
 import { fechaCompleta, fechaCorta, horaAmigable } from "@/lib/format";
+import { medIllustration } from "@/lib/medIllustration";
 import { useApp, usePatient } from "@/providers/AppProvider";
 import { AppButton } from "@/components/AppButton";
 import { Avatar } from "@/components/Avatar";
@@ -331,7 +331,7 @@ export default function FichaGestante(): React.ReactElement {
                       { backgroundColor: done ? gwarm.tealSoft : gwarm.surfaceSoft },
                     ]}
                   >
-                    <Pill size={18} color={done ? gwarm.teal : gwarm.inkSoft} />
+                    <Illustration source={medIllustration(s.name)} width={30} height={30} />
                   </View>
                   <View style={styles.rowInfo}>
                     <Text style={styles.medName} numberOfLines={1}>

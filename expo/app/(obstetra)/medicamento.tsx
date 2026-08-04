@@ -12,6 +12,7 @@ import { gfonts, gShadow, gwarm, warmBlue } from "@/constants/theme";
 import { ILU } from "@/constants/illustrations";
 import { confirmAction } from "@/lib/confirm";
 import { MAX_TIMES_PER_DAY, timesLabel } from "@/lib/doses";
+import { medIllustration } from "@/lib/medIllustration";
 import { useApp, usePatient } from "@/providers/AppProvider";
 import { AppButton } from "@/components/AppButton";
 import { Card } from "@/components/Card";
@@ -188,10 +189,14 @@ export default function MedicamentoScreen(): React.ReactElement {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.heroNote}>
-          <Illustration source={ILU.pastillas} width={64} height={64} />
+          <Illustration
+            source={name.trim().length > 0 ? medIllustration(name) : ILU.pastillas}
+            width={68}
+            height={68}
+          />
           <Text style={styles.heroText}>
-            Aparecerá en el teléfono de {patient.firstName} con una casilla gigante por cada toma
-            del día, para marcarla con un toque.
+            Aparecerá en el teléfono de {patient.firstName} con su dibujo y una casilla gigante
+            por cada toma del día, para marcarla con un toque.
           </Text>
         </View>
 
@@ -209,7 +214,7 @@ export default function MedicamentoScreen(): React.ReactElement {
                     style={[styles.presetChip, active && styles.presetChipOn]}
                     testID={`preset-${preset.name}`}
                   >
-                    <Pill size={14} color={active ? "#FFFFFF" : accent.main} />
+                    <Illustration source={medIllustration(preset.name)} width={26} height={26} />
                     <Text style={[styles.presetText, active && styles.presetTextOn]}>
                       {preset.name}
                     </Text>
@@ -272,11 +277,11 @@ export default function MedicamentoScreen(): React.ReactElement {
         <SectionHeader title="¿Cómo debe tomarlo?" />
         <Card style={styles.formCard}>
           <Field
-            label="Indicación"
+            label="Indicación (opcional)"
             value={schedule}
             onChangeText={setSchedule}
             placeholder="En ayunas, con bastante agua…"
-            hint="Se muestra junto al nombre en su lista de pastillas."
+            hint="Puedes dejarla vacía: las casillas y recordatorios funcionan igual. Solo es una ayudita que se muestra junto al nombre."
             accent={accent.main}
             testID="campo-med-indicacion"
           />
@@ -373,8 +378,9 @@ const styles = StyleSheet.create({
     minHeight: 44,
   },
   presetChipOn: {
-    backgroundColor: accent.main,
+    backgroundColor: accent.soft,
     borderColor: accent.main,
+    borderWidth: 2,
   },
   presetText: {
     fontFamily: gfonts.hand,
@@ -382,7 +388,7 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     color: gwarm.ink,
   },
-  presetTextOn: { color: "#FFFFFF" },
+  presetTextOn: { color: accent.deep },
   formCard: { gap: 12 },
   previewBox: {
     backgroundColor: gwarm.tealSoft,

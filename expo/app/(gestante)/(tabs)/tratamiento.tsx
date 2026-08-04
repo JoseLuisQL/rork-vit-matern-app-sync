@@ -11,6 +11,7 @@ import { gfonts, gwarm, spacing } from "@/constants/theme";
 import { GICON, ILU } from "@/constants/illustrations";
 import { countDoses, dayDoseTotals, doseName, timesPerDayOf } from "@/lib/doses";
 import { addDaysToKey, capitalize, fechaLarga } from "@/lib/format";
+import { medIllustration } from "@/lib/medIllustration";
 import { useApp, useMyPatient } from "@/providers/AppProvider";
 import { BigCheckRow } from "@/components/gestante/BigCheckRow";
 import { BlockTitle } from "@/components/gestante/BlockTitle";
@@ -88,6 +89,7 @@ export default function PastillasGestante(): React.ReactElement {
                     key={`${s.id}-${dose}`}
                     checked={dose < count}
                     label={s.name}
+                    illustration={medIllustration(s.name)}
                     sublabel={times > 1 ? doseName(dose, times) : s.schedule}
                     onToggle={() =>
                       dispatch({
