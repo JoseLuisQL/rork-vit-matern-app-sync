@@ -138,18 +138,16 @@ describe("Server Clinical Engine — Obstetric Risk Score Assessment (Semáforo)
     age: 25,
     fumKey: ["2026", "01", "01"].join("-"),
     gestas: 1,
-    paridad: 0,
     cesareas: 0,
     abortos: 0,
     obitoFetal: false,
     rhSensibilizado: false,
-    weightKg: 58,
-    heightCm: 155,
     imc: 24.1,
     hbObserved: 13.5,
     bpSys: 110,
     bpDia: 70,
     antecedentes: [],
+    adherenceBase: 80,
   };
 
   it("evaluates a low-risk patient as 'verde' (score 0)", () => {

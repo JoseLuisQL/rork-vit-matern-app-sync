@@ -3,7 +3,6 @@ import {
   buildReport,
   computePatient,
   countDoses,
-  isActiveState,
   isSupplementActiveOn,
   publicUser,
   sanitizeSupplementFields,
@@ -13,10 +12,10 @@ import {
 import type { AppData, Patient, Supplement, UserRecord } from "./types";
 
 describe("Server Domain — User Sanitization & Security", () => {
-  it("publicUser removes password_hash and internal security attributes", () => {
+  it("publicUser removes passwordHash and internal security attributes", () => {
     const user: UserRecord = {
       dni: "12345678",
-      password_hash: "secret_hash_not_to_be_leaked",
+      passwordHash: "secret_hash_not_to_be_leaked",
       role: "gestante",
       firstName: "María",
       lastName: "Condori",
@@ -28,7 +27,7 @@ describe("Server Domain — User Sanitization & Security", () => {
     };
 
     const publicInfo = publicUser(user);
-    expect((publicInfo as Record<string, unknown>).password_hash).toBeUndefined();
+    expect((publicInfo as unknown as Record<string, unknown>).passwordHash).toBeUndefined();
     expect(publicInfo.dni).toBe("12345678");
     expect(publicInfo.firstName).toBe("María");
     expect(publicInfo.lastName).toBe("Condori");
@@ -98,13 +97,10 @@ describe("Server Domain — Clinical Calculations & Patient View", () => {
     age: 24,
     fumKey: ["2026", "01", "01"].join("-"),
     gestas: 1,
-    paridad: 0,
     cesareas: 0,
     abortos: 0,
     obitoFetal: false,
     rhSensibilizado: false,
-    weightKg: 56,
-    heightCm: 152,
     imc: 24.2,
     hbObserved: 13.0,
     bpSys: 110,
@@ -123,7 +119,10 @@ describe("Server Domain — Clinical Calculations & Patient View", () => {
         dateKey: ["2026", "08", "25"].join("-"),
         time: "09:00",
         control: 6,
+        week: 32,
+        motivo: "Control prenatal",
         estado: "programada",
+        lugar: "C.S. Talavera",
       },
     ],
     supplements: [
@@ -146,10 +145,11 @@ describe("Server Domain — Clinical Calculations & Patient View", () => {
     messages: [],
     alerts: [],
     visits: [],
+    seedVersion: 1,
     config: {
       maintenance: false,
       maintenanceMessage: "",
-      allowOfflineSync: true,
+      environment: "demo",
       updatedAtISO: new Date().toISOString(),
     },
   };
@@ -170,21 +170,28 @@ describe("Server Domain — Clinical Calculations & Patient View", () => {
 describe("Server Domain — Role-based Snapshot Filtering & MINSA Reports", () => {
   const gestanteUser: UserRecord = {
     dni: "33333333",
+    passwordHash: "hash-123",
     role: "gestante",
     firstName: "Ana",
     lastName: "Quispe",
     patientId: "p-ana",
+    phone: "987654321",
     active: true,
     createdAtISO: new Date().toISOString(),
+    avatarVersion: null,
   };
 
   const adminUser: UserRecord = {
     dni: "22222222",
+    passwordHash: "hash-456",
     role: "admin",
     firstName: "Patricia",
     lastName: "Salas",
+    patientId: null,
+    phone: null,
     active: true,
     createdAtISO: new Date().toISOString(),
+    avatarVersion: null,
   };
 
   const appData: AppData = {
@@ -200,13 +207,10 @@ describe("Server Domain — Role-based Snapshot Filtering & MINSA Reports", () =
         age: 24,
         fumKey: ["2026", "01", "01"].join("-"),
         gestas: 1,
-        paridad: 0,
         cesareas: 0,
         abortos: 0,
         obitoFetal: false,
         rhSensibilizado: false,
-        weightKg: 56,
-        heightCm: 152,
         imc: 24.2,
         hbObserved: 13.0,
         bpSys: 110,
@@ -224,13 +228,10 @@ describe("Server Domain — Role-based Snapshot Filtering & MINSA Reports", () =
         age: 36,
         fumKey: ["2026", "03", "01"].join("-"),
         gestas: 3,
-        paridad: 2,
         cesareas: 1,
         abortos: 0,
         obitoFetal: false,
         rhSensibilizado: false,
-        weightKg: 62,
-        heightCm: 150,
         imc: 27.5,
         hbObserved: 10.5, // Corrected 8.7 -> Anemia moderada
         bpSys: 120,
@@ -246,7 +247,10 @@ describe("Server Domain — Role-based Snapshot Filtering & MINSA Reports", () =
         dateKey: ["2026", "08", "25"].join("-"),
         time: "09:00",
         control: 6,
+        week: 32,
+        motivo: "Control prenatal",
         estado: "programada",
+        lugar: "C.S. Talavera",
       },
       {
         id: "a-lucia",
@@ -254,7 +258,10 @@ describe("Server Domain — Role-based Snapshot Filtering & MINSA Reports", () =
         dateKey: ["2026", "08", "26"].join("-"),
         time: "10:00",
         control: 4,
+        week: 24,
+        motivo: "Control prenatal",
         estado: "programada",
+        lugar: "C.S. Talavera",
       },
     ],
     supplements: [],
@@ -262,10 +269,11 @@ describe("Server Domain — Role-based Snapshot Filtering & MINSA Reports", () =
     messages: [],
     alerts: [],
     visits: [],
+    seedVersion: 1,
     config: {
       maintenance: false,
       maintenanceMessage: "",
-      allowOfflineSync: true,
+      environment: "demo",
       updatedAtISO: new Date().toISOString(),
     },
   };

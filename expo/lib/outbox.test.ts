@@ -10,6 +10,7 @@ describe("Frontend Outbox — Optimistic State Reducer", () => {
     lastName: "Quispe",
     patientId: "p-ana",
     active: true,
+    createdAtISO: new Date().toISOString(),
   };
 
   const initialSnapshot: Snapshot = {
@@ -32,16 +33,13 @@ describe("Frontend Outbox — Optimistic State Reducer", () => {
         fumKey: ["2026", "01", "01"].join("-"),
         fppKey: ["2026", "10", "08"].join("-"),
         weeks: 32,
-        days: 3,
+        daysExtra: 3,
         trimester: 3,
         gestas: 1,
-        paridad: 0,
         cesareas: 0,
         abortos: 0,
         obitoFetal: false,
         rhSensibilizado: false,
-        weightKg: 56,
-        heightCm: 152,
         imc: 24.2,
         hbObserved: 12.8,
         hbCorrected: 11.0,
@@ -52,6 +50,9 @@ describe("Frontend Outbox — Optimistic State Reducer", () => {
         riskScore: 0,
         riskLevel: "verde",
         riskFactors: [],
+        adherence30: 85,
+        streak: 5,
+        nextAppointment: null,
       },
     ],
     appointments: [
@@ -60,8 +61,11 @@ describe("Frontend Outbox — Optimistic State Reducer", () => {
         patientId: "p-ana",
         dateKey: ["2026", "08", "20"].join("-"),
         time: "09:00",
-        controlNumber: 6,
+        control: 6,
+        week: 32,
+        motivo: "Control prenatal",
         estado: "programada",
+        lugar: "C.S. Talavera",
       },
     ],
     supplements: [
@@ -106,9 +110,6 @@ describe("Frontend Outbox — Optimistic State Reducer", () => {
       id: "act-2",
       type: "request_reschedule",
       appointmentId: "a-1",
-      preferredDateKey: ["2026", "08", "22"].join("-"),
-      preferredTime: "10:00",
-      reason: "Viaje al campo",
       atISO: new Date().toISOString(),
     };
     const res = applyOutbox(initialSnapshot, [action], baseUser);

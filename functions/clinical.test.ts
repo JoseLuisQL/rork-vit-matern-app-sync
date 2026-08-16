@@ -54,12 +54,10 @@ describe("Clinical Engine — Date & Time Utilities (UTC-5 Peru)", () => {
   });
 
   it("computes Peru local day key and time correctly", () => {
-    // 2026-08-16 03:00 UTC is 2026-08-15 22:00 in Peru (UTC-5)
     const utcDate = new Date(Date.UTC(2026, 7, 16, 3, 0, 0));
     expect(peruDayKey(utcDate)).toBe("2026-08-15");
     expect(peruTime(utcDate)).toBe("22:00");
 
-    // 2026-08-16 15:30 UTC is 2026-08-16 10:30 in Peru (UTC-5)
     const middayUtc = new Date(Date.UTC(2026, 7, 16, 15, 30, 0));
     expect(peruDayKey(middayUtc)).toBe("2026-08-16");
     expect(peruTime(middayUtc)).toBe("10:30");
@@ -68,20 +66,15 @@ describe("Clinical Engine — Date & Time Utilities (UTC-5 Peru)", () => {
 
 describe("Clinical Engine — Gestational Age & FPP (Naegele Rule)", () => {
   it("calculates FPP using Naegele rule: FUM + 7 days - 3 months + 1 year", () => {
-    // FUM: 2026-01-10 -> FPP: 2026-10-17
     expect(fppKeyFromFum("2026-01-10")).toBe("2026-10-17");
-
-    // FUM: 2025-11-20 -> FPP: 2026-08-27
     expect(fppKeyFromFum("2025-11-20")).toBe("2026-08-27");
   });
 
   it("calculates gestational weeks and days accurately", () => {
     const fumDate = "2026-01-01";
-    // 21 days later = exactly 3 weeks + 0 days
     expect(gestationalWeeks(fumDate, "2026-01-22")).toBe(3);
     expect(gestationalDays(fumDate, "2026-01-22")).toBe(0);
 
-    // 25 days later = 3 weeks + 4 days
     expect(gestationalWeeks(fumDate, "2026-01-26")).toBe(3);
     expect(gestationalDays(fumDate, "2026-01-26")).toBe(4);
   });
@@ -90,8 +83,6 @@ describe("Clinical Engine — Gestational Age & FPP (Naegele Rule)", () => {
     const fumDate = "2026-01-01";
     expect(gestationalWeeks(fumDate, "2025-12-01")).toBe(0);
     expect(gestationalDays(fumDate, "2025-12-01")).toBe(0);
-
-    // 400 days later (>42 weeks)
     expect(gestationalWeeks(fumDate, "2027-03-01")).toBe(42);
   });
 
@@ -115,19 +106,12 @@ describe("Clinical Engine — Hemoglobin Altitude Correction & Anemia Classifica
   });
 
   it("classifies anemia based on corrected Hb thresholds", () => {
-    // Normal: >= 11.0
     expect(anemiaClass(11.0)).toBe("normal");
     expect(anemiaClass(13.5)).toBe("normal");
-
-    // Leve: 10.0 - 10.9
     expect(anemiaClass(10.9)).toBe("leve");
     expect(anemiaClass(10.0)).toBe("leve");
-
-    // Moderada: 7.0 - 9.9
     expect(anemiaClass(9.9)).toBe("moderada");
     expect(anemiaClass(7.0)).toBe("moderada");
-
-    // Severa: < 7.0
     expect(anemiaClass(6.9)).toBe("severa");
     expect(anemiaClass(5.2)).toBe("severa");
   });
@@ -144,18 +128,16 @@ describe("Clinical Engine — Obstetric Risk Score Assessment (Semáforo)", () =
     age: 25,
     fumKey: ["2026", "01", "01"].join("-"),
     gestas: 1,
-    paridad: 0,
     cesareas: 0,
     abortos: 0,
     obitoFetal: false,
     rhSensibilizado: false,
-    weightKg: 58,
-    heightCm: 155,
     imc: 24.1,
-    hbObserved: 13.5, // Corrected Hb = 11.7 -> Normal
+    hbObserved: 13.5,
     bpSys: 110,
     bpDia: 70,
     antecedentes: [],
+    adherenceBase: 80,
   };
 
   it("evaluates a low-risk patient as 'verde' (score 0)", () => {
@@ -166,20 +148,17 @@ describe("Clinical Engine — Obstetric Risk Score Assessment (Semáforo)", () =
   });
 
   it("evaluates medium risk factors (amarillo, score 2-3)", () => {
-    // Moderate risk age (17 years -> +2 points)
     const pAgeRisk: Patient = { ...basePatient, age: 17 };
     const resAge = assessRisk(pAgeRisk);
     expect(resAge.score).toBe(2);
     expect(resAge.level).toBe("amarillo");
     expect(resAge.factors).toContain("Edad de riesgo (17 años)");
 
-    // Low BMI (<18.5 -> +2 points)
     const pLowBmi: Patient = { ...basePatient, imc: 17.5 };
     const resBmi = assessRisk(pLowBmi);
     expect(resBmi.score).toBe(2);
     expect(resBmi.level).toBe("amarillo");
 
-    // Moderate Anemia (Hb observed 11.0 -> Corrected 9.2 -> Moderada +2 points)
     const pAnemiaMod: Patient = { ...basePatient, hbObserved: 11.0 };
     const resAnemia = assessRisk(pAnemiaMod);
     expect(resAnemia.score).toBe(2);
@@ -188,25 +167,22 @@ describe("Clinical Engine — Obstetric Risk Score Assessment (Semáforo)", () =
   });
 
   it("evaluates high risk factors (rojo, score >= 4)", () => {
-    // Extreme age (<15 -> +3) + Anemia Leve (+1) = 4 points -> rojo
     const pYoungAnemia: Patient = {
       ...basePatient,
       age: 14,
-      hbObserved: 12.3, // Corrected 10.5 -> Anemia leve (+1)
+      hbObserved: 12.3,
     };
     const resYoung = assessRisk(pYoungAnemia);
     expect(resYoung.score).toBe(4);
     expect(resYoung.level).toBe("rojo");
 
-    // Severe hypertension (>= 160/110 -> +4 points -> rojo)
     const pHypertension: Patient = { ...basePatient, bpSys: 165, bpDia: 112 };
     const resBp = assessRisk(pHypertension);
     expect(resBp.score).toBe(4);
     expect(resBp.level).toBe("rojo");
     expect(resBp.factors).toContain("Presión muy alta (165/112)");
 
-    // Severe Anemia (< 7.0 corrected -> +4 points -> rojo)
-    const pSevereAnemia: Patient = { ...basePatient, hbObserved: 8.0 }; // Corrected 6.2
+    const pSevereAnemia: Patient = { ...basePatient, hbObserved: 8.0 };
     const resSevereAnemia = assessRisk(pSevereAnemia);
     expect(resSevereAnemia.score).toBe(4);
     expect(resSevereAnemia.level).toBe("rojo");
@@ -216,12 +192,12 @@ describe("Clinical Engine — Obstetric Risk Score Assessment (Semáforo)", () =
   it("accumulates multiple obstetric history risk factors", () => {
     const pComplex: Patient = {
       ...basePatient,
-      cesareas: 2, // +3
-      abortos: 3, // +3
-      obitoFetal: true, // +3
-      gestas: 6, // +2
-      rhSensibilizado: true, // +3
-      antecedentes: ["Diabetes gestacional previa", "Preeclampsia previa"], // 3*2 = +6
+      cesareas: 2,
+      abortos: 3,
+      obitoFetal: true,
+      gestas: 6,
+      rhSensibilizado: true,
+      antecedentes: ["Diabetes gestacional previa", "Preeclampsia previa"],
     };
     const res = assessRisk(pComplex);
     expect(res.score).toBe(3 + 3 + 3 + 2 + 3 + 6);
