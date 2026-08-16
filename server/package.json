@@ -12,7 +12,8 @@
   "scripts": {
     "dev": "bun --watch src/index.ts",
     "start": "bun src/index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
   },
   "description": "Backend autoalojable de VitMaterna — API HTTP + PostgreSQL 17"
 }
