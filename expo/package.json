@@ -7,7 +7,8 @@
     "start": "bunx rork start -p ztb4shx7jxkj17tpuz62u",
     "start-web": "bunx rork start -p ztb4shx7jxkj17tpuz62u --web",
     "start-web-dev": "DEBUG=expo* bunx rork start -p ztb4shx7jxkj17tpuz62u --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "test": "bun test"
   },
   "dependencies": {
     "@expo-google-fonts/delius": "^0.4.1",
