@@ -18,12 +18,12 @@ pgTypes.setTypeParser(1700, (v: string) => parseFloat(v));
 // BIGINT → número (columnas seq; rangos pequeños en esta aplicación).
 pgTypes.setTypeParser(20, (v: string) => parseInt(v, 10));
 
-const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  console.error(
-    "[db] Falta DATABASE_URL. Ejemplo: postgres://vitmaterna:CLAVE@localhost:5432/vitmaterna",
+const connectionString =
+  process.env.DATABASE_URL || "postgresql://vitmaterna:vitmaterna@localhost:5432/vitmaterna";
+if (!process.env.DATABASE_URL && process.env.NODE_ENV !== "test") {
+  console.warn(
+    "[db] DATABASE_URL no definida. Usando por defecto postgresql://vitmaterna:vitmaterna@localhost:5432/vitmaterna",
   );
-  process.exit(1);
 }
 
 export const pool = new Pool({

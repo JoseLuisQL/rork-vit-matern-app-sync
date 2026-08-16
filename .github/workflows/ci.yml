@@ -26,6 +26,9 @@ jobs:
           bun test
 
       - name: Test & Typecheck Self-Hosted Server Backend
+        env:
+          DATABASE_URL: postgresql://vitmaterna:vitmaterna@localhost:5432/vitmaterna
+          NODE_ENV: test
         run: |
           cd server
           bun install --frozen-lockfile || bun install
