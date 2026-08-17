@@ -3,11 +3,12 @@
  * configurables y cierre de sesión — en el mismo tono cálido de la sección.
  */
 import { useRouter } from "expo-router";
-import { LogOut } from "lucide-react-native";
+import { LogOut, MessageCircle, Phone } from "lucide-react-native";
 import React, { useCallback } from "react";
-import { ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { Linking, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { gfonts, gwarm, semantic, spacing } from "@/constants/theme";
 import { GICON, ILU, TOASTILU } from "@/constants/illustrations";
+import { avatarUri } from "@/lib/api";
 import { confirmAction, showNotice } from "@/lib/confirm";
 import { fechaCompleta } from "@/lib/format";
 import { playAppSound } from "@/lib/sounds";
@@ -16,8 +17,10 @@ import {
   REMINDERS_SUPPORTED,
   requestNotificationPermission,
 } from "@/lib/notifications";
-import { useApp, useMyPatient } from "@/providers/AppProvider";
+import { useApp, useMyPatient, usePresence } from "@/providers/AppProvider";
 import { AppButton } from "@/components/AppButton";
+import { Avatar } from "@/components/Avatar";
+import { PresenceStatus } from "@/components/PresenceStatus";
 import { useToast } from "@/components/Toast";
 import { PressableScale } from "@/components/PressableScale";
 import { ProfilePhoto } from "@/components/ProfilePhoto";
@@ -40,6 +43,7 @@ export default function PerfilGestante(): React.ReactElement {
     useApp();
   const { show: showToast } = useToast();
   const patient = useMyPatient();
+  const presence = usePresence("obstetra");
 
   /** Al encender suena una muestra para que escuche cómo avisan los mensajes. */
   const toggleSounds = useCallback(
@@ -155,6 +159,73 @@ export default function PerfilGestante(): React.ReactElement {
         <SoftCard style={styles.card}>
           <InfoRow label="Semanas" value={`${patient.weeks}`} />
           <InfoRow label="Fecha probable de parto" value={fechaCompleta(patient.fppKey)} />
+        </SoftCard>
+
+        <Text style={styles.sectionTitle}>Tu obstetra a cargo</Text>
+        <SoftCard style={styles.card}>
+          <View style={styles.obstetraHeader}>
+            <Avatar
+              uri={
+                view.obstetrician
+                  ? avatarUri(view.obstetrician.dni, view.obstetrician.avatarVersion)
+                  : undefined
+              }
+              color={gwarm.teal}
+              background={gwarm.tealSoft}
+              size={54}
+            />
+            <View style={styles.flex}>
+              <Text style={styles.obstetraName}>
+                {view.obstetrician
+                  ? `Obst. ${view.obstetrician.firstName} ${view.obstetrician.lastName}`
+                  : "Obstetra a cargo"}
+              </Text>
+              <Text style={styles.obstetraRole}>
+                {view.center.name} · Obstetricia
+              </Text>
+              <View style={styles.presenceBox}>
+                <PresenceStatus
+                  presence={presence}
+                  accent={gwarm.teal}
+                  fallback="Personal de salud"
+                />
+              </View>
+            </View>
+          </View>
+
+          {view.obstetrician?.phone ? (
+            <InfoRow label="Teléfono" value={view.obstetrician.phone} />
+          ) : null}
+
+          <View style={styles.actionsRow}>
+            {view.obstetrician?.phone ? (
+              <View style={styles.actionBtnWrap}>
+                <AppButton
+                  title="Llamar"
+                  onPress={() => {
+                    const rawPhone = view.obstetrician?.phone?.replace(/\s+/g, "");
+                    if (rawPhone) void Linking.openURL(`tel:${rawPhone}`);
+                  }}
+                  variant="soft"
+                  color={gwarm.teal}
+                  icon={Phone}
+                  small
+                  testID="btn-llamar-obstetra"
+                />
+              </View>
+            ) : null}
+            <View style={styles.actionBtnWrap}>
+              <AppButton
+                title="Mensaje"
+                onPress={() => router.push("/(gestante)/(tabs)/chat")}
+                variant="soft"
+                color={gwarm.terracotta}
+                icon={MessageCircle}
+                small
+                testID="btn-chat-obstetra"
+              />
+            </View>
+          </View>
         </SoftCard>
 
         <Text style={styles.sectionTitle}>Recordatorios</Text>
@@ -369,5 +440,35 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: spacing.md,
     lineHeight: 18,
+  },
+  obstetraHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm2,
+    paddingBottom: spacing.xs,
+  },
+  obstetraName: {
+    fontFamily: gfonts.hand,
+    fontSize: 19,
+    lineHeight: 24,
+    color: gwarm.ink,
+  },
+  obstetraRole: {
+    fontFamily: gfonts.handBody,
+    fontSize: 13.5,
+    lineHeight: 18,
+    color: gwarm.inkSoft,
+    marginTop: 1,
+  },
+  presenceBox: {
+    marginTop: 4,
+  },
+  actionsRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  actionBtnWrap: {
+    flex: 1,
   },
 });

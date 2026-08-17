@@ -246,6 +246,8 @@ export interface Snapshot {
    * obstetra una clave por cada id de paciente (su conversación).
    */
   presence?: Record<string, PresenceView>;
+  /** Obstetra asignado/a para la atención de la gestante. */
+  obstetrician?: User;
   users?: User[];
   reports?: { d30: ReportBlock; total: ReportBlock };
   /** Configuración global (mantenimiento + entorno) visible por todos los roles. */

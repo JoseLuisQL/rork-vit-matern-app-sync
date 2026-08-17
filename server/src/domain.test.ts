@@ -215,8 +215,21 @@ describe("Server Domain — Role-based Snapshot Filtering & MINSA Reports", () =
     avatarVersion: null,
   };
 
+  const obstetraUser: UserRecord = {
+    dni: "11111111",
+    passwordHash: "hash-789",
+    role: "obstetra",
+    firstName: "Carmen",
+    lastName: "Rojas",
+    patientId: null,
+    phone: "983222333",
+    active: true,
+    createdAtISO: new Date().toISOString(),
+    avatarVersion: 1,
+  };
+
   const appData: AppData = {
-    users: [gestanteUser, adminUser],
+    users: [gestanteUser, adminUser, obstetraUser],
     patients: [
       {
         id: "p-ana",
@@ -299,7 +312,7 @@ describe("Server Domain — Role-based Snapshot Filtering & MINSA Reports", () =
     },
   };
 
-  it("snapshotFor strictly filters data for gestante role", () => {
+  it("snapshotFor strictly filters data for gestante role and includes obstetrician", () => {
     const snap = snapshotFor(gestanteUser, appData, {});
     expect(snap.patients.length).toBe(1);
     expect(snap.patients[0]?.id).toBe("p-ana");
@@ -307,13 +320,16 @@ describe("Server Domain — Role-based Snapshot Filtering & MINSA Reports", () =
     expect(snap.appointments[0]?.id).toBe("a-ana");
     expect(snap.users).toBeUndefined();
     expect(snap.reports).toBeUndefined();
+    expect(snap.obstetrician).toBeDefined();
+    expect(snap.obstetrician?.firstName).toBe("Carmen");
+    expect(snap.obstetrician?.phone).toBe("983222333");
   });
 
   it("snapshotFor includes users and population MINSA reports for admin role", () => {
     const snap = snapshotFor(adminUser, appData, {});
     expect(snap.patients.length).toBe(2);
     expect(snap.users).toBeDefined();
-    expect(snap.users?.length).toBe(2);
+    expect(snap.users?.length).toBe(3);
     expect(snap.reports).toBeDefined();
     expect(snap.reports?.d30).toBeDefined();
   });

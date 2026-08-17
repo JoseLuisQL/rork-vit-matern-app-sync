@@ -189,6 +189,9 @@ export function snapshotFor(
   const scopeById = <T extends { patientId: string }>(items: T[]): T[] =>
     isGestante ? items.filter((i) => i.patientId === pid) : items;
 
+  const obstetraUser = data.users.find((u) => u.role === "obstetra" && u.active);
+  const obstetrician = isGestante && obstetraUser ? publicUser(obstetraUser) : undefined;
+
   const snapshot: Snapshot = {
     serverTimeISO: new Date().toISOString(),
     todayKey,
@@ -202,6 +205,7 @@ export function snapshotFor(
     alerts: scopeById(data.alerts),
     visits: scopeById(data.visits),
     presence: presenceViews,
+    obstetrician,
     config: data.config,
   };
 
