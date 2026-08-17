@@ -200,6 +200,8 @@ export class VitmaternaStore extends DurableObject {
           return await this.handleSchedule(request, db, user);
         case "/api/user/avatar":
           return await this.handleSetAvatar(request, db, user);
+        case "/api/user/auto-controls":
+          return await this.handleSetAutoControls(request, db, user);
         case "/api/admin/create-user":
           return await this.handleCreateUser(request, db, user);
         case "/api/admin/set-active":
@@ -647,6 +649,17 @@ export class VitmaternaStore extends DurableObject {
     return json({ snapshot: this.snapshotFor(user, db) });
   }
 
+  private async handleSetAutoControls(request: Request, db: DBState, user: StoredUser): Promise<Response> {
+    if (user.role !== "obstetra" && user.role !== "admin") {
+      return json({ error: "Acción no permitida" }, 403);
+    }
+    const body = (await request.json()) as { autoControls?: boolean };
+    const autoControls = body.autoControls !== false;
+    user.autoControls = autoControls;
+    await this.save();
+    return json({ snapshot: this.snapshotFor(user, db) });
+  }
+
   // ---------- Agenda sin cruces (solo online) ----------
 
   private takenSlots(db: DBState, dateKey: string, ignoreAppointmentId?: string): Set<string> {
@@ -902,46 +915,28 @@ export class VitmaternaStore extends DurableObject {
       };
       db.patients.push(patient);
 
-      // Cronograma MINSA generado por el servidor (solo controles futuros).
-      MINSA_WEEKS.forEach((week, i) => {
-        const dateKey = addDaysToKey(patient.fumKey, week * 7);
-        if (dateKey < todayKey) return;
-        const preferred = ["09:00", "10:30", "11:30", "15:00"][i % 4];
-        const free = this.freeSlots(db, dateKey);
-        const time = free.includes(preferred) ? preferred : free[0] ?? preferred;
-        db.appointments.push({
-          id: `${patientId}-c${i + 1}`,
-          patientId: patientId as string,
-          control: i + 1,
-          week,
-          dateKey,
-          time,
-          motivo: `Control prenatal ${i + 1} de 8`,
-          estado: "programada",
-          lugar: HEALTH_CENTER,
+      // Cronograma MINSA generado por el servidor solo si autoControls está activo.
+      const shouldAutoAssign = user.autoControls !== false;
+      if (shouldAutoAssign) {
+        MINSA_WEEKS.forEach((week, i) => {
+          const dateKey = addDaysToKey(patient.fumKey, week * 7);
+          if (dateKey < todayKey) return;
+          const preferred = ["09:00", "10:30", "11:30", "15:00"][i % 4];
+          const free = this.freeSlots(db, dateKey);
+          const time = free.includes(preferred) ? preferred : free[0] ?? preferred;
+          db.appointments.push({
+            id: `${patientId}-c${i + 1}`,
+            patientId: patientId as string,
+            control: i + 1,
+            week,
+            dateKey,
+            time,
+            motivo: `Control prenatal ${i + 1} de 8`,
+            estado: "programada",
+            lugar: HEALTH_CENTER,
+          });
         });
-      });
-
-      db.supplements.push(
-        {
-          id: `${patientId}-hierro`,
-          patientId,
-          name: "Sulfato ferroso 60 mg",
-          dose: "1 tableta",
-          schedule: "En ayunas, con agua o jugo de naranja",
-          timesPerDay: 1,
-          startKey: todayKey,
-        },
-        {
-          id: `${patientId}-folico`,
-          patientId,
-          name: "Ácido fólico 500 µg",
-          dose: "1 tableta",
-          schedule: "Con el almuerzo",
-          timesPerDay: 1,
-          startKey: todayKey,
-        },
-      );
+      }
     }
 
     db.users.push({

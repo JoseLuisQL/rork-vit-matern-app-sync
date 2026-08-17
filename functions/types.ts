@@ -57,6 +57,8 @@ export interface StoredUser {
   createdAtISO: string;
   /** Versión de la foto de perfil (sube al cambiarla; sirve para el caché). */
   avatarVersion?: number;
+  /** Generar automáticamente los 8 controles según FUM al registrar gestante (por obstetra). */
+  autoControls?: boolean;
 }
 
 /** Usuario visible por el cliente (sin contraseña). */

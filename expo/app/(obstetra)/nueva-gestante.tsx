@@ -28,7 +28,7 @@ const accent = warmBlue;
 
 export default function NuevaGestanteScreen(): React.ReactElement {
   const router = useRouter();
-  const { createUser, online } = useApp();
+  const { createUser, online, user } = useApp();
 
   const [dni, setDni] = useState<string>("");
   const [firstName, setFirstName] = useState<string>("");
@@ -86,9 +86,12 @@ export default function NuevaGestanteScreen(): React.ReactElement {
           gestas: parseInt(gestas, 10) || 1,
         },
       });
+      const isAuto = user?.autoControls !== false;
       showNotice(
         "Gestante registrada",
-        `${firstName.trim()} ya puede iniciar sesión con su DNI. Su cronograma de 8 controles se generó automáticamente.`,
+        isAuto
+          ? `${firstName.trim()} ya puede iniciar sesión con su DNI. Su cronograma de 8 controles se generó automáticamente.`
+          : `${firstName.trim()} ya puede iniciar sesión con su DNI. Los controles se registrarán manualmente desde su ficha.`,
       );
       router.back();
     } catch (e) {
@@ -100,7 +103,7 @@ export default function NuevaGestanteScreen(): React.ReactElement {
     } finally {
       setSubmitting(false);
     }
-  }, [dni, firstName, lastName, password, phone, fumKey, age, community, hb, bpSys, bpDia, imc, gestas, createUser, router]);
+  }, [dni, firstName, lastName, password, phone, fumKey, age, community, hb, bpSys, bpDia, imc, gestas, createUser, router, user?.autoControls]);
 
   return (
     <View style={styles.container}>
@@ -189,7 +192,11 @@ export default function NuevaGestanteScreen(): React.ReactElement {
               keyboardType="numbers-and-punctuation"
               maxLength={10}
               accent={accent.main}
-              hint="Con la FUM se calculan la edad gestacional, la FPP y los 8 controles."
+              hint={
+                user?.autoControls === false
+                  ? "Con la FUM se calculan la edad gestacional y la FPP (los controles los registrarás manualmente)."
+                  : "Con la FUM se calculan la edad gestacional, la FPP y los 8 controles."
+              }
               testID="ng-fum"
             />
             <View style={styles.row2}>

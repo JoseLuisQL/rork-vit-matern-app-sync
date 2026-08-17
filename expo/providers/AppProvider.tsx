@@ -362,6 +362,12 @@ export const [AppProvider, useApp] = createContextHook(() => {
     [runOnline],
   );
 
+  /** Configura si se crean los 8 controles automáticamente según FUM al registrar gestante. */
+  const setAutoControls = useCallback(
+    (enabled: boolean) => runOnline("/api/user/auto-controls", { autoControls: enabled }),
+    [runOnline],
+  );
+
   // ---------- Vista optimista ----------
 
   const view = useMemo(() => {
@@ -454,6 +460,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       adminReset,
       adminSetConfig,
       setAvatar,
+      setAutoControls,
       setChatPresence,
       readArticles,
       markArticleRead,
@@ -483,6 +490,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       adminReset,
       adminSetConfig,
       setAvatar,
+      setAutoControls,
       setChatPresence,
       readArticles,
       markArticleRead,

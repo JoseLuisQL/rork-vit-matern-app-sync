@@ -660,8 +660,8 @@ export async function insertUserRecord(
   opts?: { resetAvatar?: boolean },
 ): Promise<void> {
   await client.query(
-    `INSERT INTO users (dni, password_hash, role, first_name, last_name, active, patient_id, phone, avatar_version, created_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+    `INSERT INTO users (dni, password_hash, role, first_name, last_name, active, patient_id, phone, avatar_version, auto_controls, created_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
     [
       u.dni,
       u.passwordHash,
@@ -672,6 +672,7 @@ export async function insertUserRecord(
       u.patientId,
       u.phone,
       opts?.resetAvatar ? null : u.avatarVersion,
+      u.autoControls !== false,
       u.createdAtISO,
     ],
   );

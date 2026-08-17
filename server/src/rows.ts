@@ -42,6 +42,7 @@ export interface UserRow {
   patient_id: string | null;
   phone: string | null;
   avatar_version: number | null;
+  auto_controls?: boolean | null;
   created_at: string;
 }
 
@@ -152,6 +153,7 @@ export function mapUser(r: UserRow): UserRecord {
     phone: r.phone,
     createdAtISO: r.created_at,
     avatarVersion: r.avatar_version,
+    autoControls: r.auto_controls !== false,
   };
 }
 
@@ -279,7 +281,7 @@ export async function getUserByDni(db: Queryable, dni: string): Promise<UserReco
 export async function getUserByToken(db: Queryable, token: string): Promise<UserRecord | null> {
   const res = await db.query<UserRow>(
     `SELECT u.dni, u.password_hash, u.role, u.first_name, u.last_name,
-            u.active, u.patient_id, u.phone, u.avatar_version, u.created_at
+            u.active, u.patient_id, u.phone, u.avatar_version, u.auto_controls, u.created_at
        FROM sessions s
        JOIN users u ON u.dni = s.dni
       WHERE s.token = $1`,
@@ -292,18 +294,15 @@ export async function getUserByToken(db: Queryable, token: string): Promise<User
 
 /** Carga el estado completo (para cálculos, alertas automáticas y snapshot). */
 export async function loadAppData(db: Queryable): Promise<AppData> {
-  const [cfg, users, patients, appointments, supplements, intakes, messages, alerts, visits] =
-    await Promise.all([
-      loadConfig(db),
-      db.query<UserRow>("SELECT * FROM users ORDER BY seq"),
-      db.query<PatientRow>("SELECT * FROM patients ORDER BY seq"),
-      db.query<AppointmentRow>("SELECT * FROM appointments ORDER BY seq"),
-      db.query<SupplementRow>("SELECT * FROM supplements ORDER BY seq"),
-      db.query<IntakeRow>("SELECT patient_id, day_key, supplement_id, count FROM intakes"),
-      db.query<MessageRow>("SELECT * FROM messages ORDER BY seq"),
-      db.query<AlertRow>("SELECT * FROM alerts ORDER BY seq"),
-      db.query<VisitRow>("SELECT * FROM visits ORDER BY seq"),
-    ]);
+  const cfg = await loadConfig(db);
+  const users = await db.query<UserRow>("SELECT * FROM users ORDER BY seq");
+  const patients = await db.query<PatientRow>("SELECT * FROM patients ORDER BY seq");
+  const appointments = await db.query<AppointmentRow>("SELECT * FROM appointments ORDER BY seq");
+  const supplements = await db.query<SupplementRow>("SELECT * FROM supplements ORDER BY seq");
+  const intakes = await db.query<IntakeRow>("SELECT patient_id, day_key, supplement_id, count FROM intakes");
+  const messages = await db.query<MessageRow>("SELECT * FROM messages ORDER BY seq");
+  const alerts = await db.query<AlertRow>("SELECT * FROM alerts ORDER BY seq");
+  const visits = await db.query<VisitRow>("SELECT * FROM visits ORDER BY seq");
 
   const intakeMap: IntakeMap = {};
   for (const r of intakes.rows) {

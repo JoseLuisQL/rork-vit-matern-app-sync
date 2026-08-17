@@ -7,7 +7,14 @@ import bcrypt from "bcryptjs";
 import type { Context } from "hono";
 import type { PoolClient } from "pg";
 import { applyAction } from "./actions";
-import { addDaysToKey, AGENDA_SLOTS, isValidDayKey, MINSA_WEEKS, peruDayKey } from "./clinical";
+import {
+  addDaysToKey,
+  AGENDA_SLOTS,
+  gestationalWeeks,
+  isValidDayKey,
+  MINSA_WEEKS,
+  peruDayKey,
+} from "./clinical";
 import { pool, withTx } from "./db";
 import type { Queryable } from "./db";
 import { publicUser, regenerateAutoAlerts, snapshotFor } from "./domain";
@@ -249,17 +256,32 @@ export async function handleSchedule(c: AppContext): Promise<Response> {
         [apptId, dateKey, time],
       );
     } else if (body.mode === "cita") {
-      const res = await client.query("SELECT 1 FROM patients WHERE id = $1", [body.patientId ?? ""]);
+      const res = await client.query<{ fum_key: string }>(
+        "SELECT fum_key FROM patients WHERE id = $1",
+        [body.patientId ?? ""],
+      );
       if ((res.rowCount ?? 0) === 0) return { kind: "notFound", error: "Paciente no encontrada" };
       if ((await takenSlots(client, dateKey)).has(time)) return conflict();
+
+      const patientFum = res.rows[0]?.fum_key;
+      let controlNum: number | null = null;
+      if (body.motivo) {
+        const match = body.motivo.match(/control\s*(?:prenatal\s*)?([1-8])/i);
+        if (match && match[1]) {
+          controlNum = parseInt(match[1], 10);
+        }
+      }
+      const week =
+        controlNum !== null && patientFum ? gestationalWeeks(patientFum, dateKey) : null;
+
       await insertAppointment(client, {
         id: `ap-${crypto.randomUUID().slice(0, 8)}`,
         patientId: body.patientId as string,
-        control: null,
-        week: null,
+        control: controlNum,
+        week,
         dateKey,
         time,
-        motivo: (body.motivo ?? "Consulta adicional").trim() || "Consulta adicional",
+        motivo: (body.motivo ?? (controlNum ? `Control prenatal ${controlNum} de 8` : "Consulta adicional")).trim() || "Consulta adicional",
         estado: "programada",
         lugar: HEALTH_CENTER,
       });
@@ -360,6 +382,26 @@ export async function handleSetAvatar(c: AppContext): Promise<Response> {
       [user.dni],
     );
     return buildSnapshot(client, user, { regenerate: false });
+  });
+  return c.json({ snapshot });
+}
+
+/** Configuración de controles automáticos por obstetra / usuario. */
+export async function handleSetAutoControls(c: AppContext): Promise<Response> {
+  const user = c.get("user");
+  if (user.role !== "obstetra" && user.role !== "admin") {
+    return c.json({ error: "Acción no permitida" }, 403);
+  }
+  const body = await readJson<{ autoControls?: boolean }>(c);
+  const autoControls = body.autoControls !== false;
+
+  const snapshot = await withTx(async (client) => {
+    await client.query("UPDATE users SET auto_controls = $2 WHERE dni = $1", [
+      user.dni,
+      autoControls,
+    ]);
+    const updatedUser: UserRecord = { ...user, autoControls };
+    return buildSnapshot(client, updatedUser, { regenerate: false });
   });
   return c.json({ snapshot });
 }
@@ -465,50 +507,34 @@ export async function handleCreateUser(c: AppContext): Promise<Response> {
       };
       await insertPatient(client, patient);
 
-      // Cronograma MINSA generado por el servidor (solo controles futuros).
-      for (const [i, week] of MINSA_WEEKS.entries()) {
-        const dateKey = addDaysToKey(fumKey, week * 7);
-        if (dateKey < todayKey) continue;
-        const preferred = ["09:00", "10:30", "11:30", "15:00"][i % 4] ?? "09:00";
-        const free = await freeSlotsFor(client, dateKey);
-        const time = free.includes(preferred) ? preferred : free[0] ?? preferred;
-        const appointment: Appointment = {
-          id: `${patientId}-c${i + 1}`,
-          patientId,
-          control: i + 1,
-          week,
-          dateKey,
-          time,
-          motivo: `Control prenatal ${i + 1} de 8`,
-          estado: "programada",
-          lugar: HEALTH_CENTER,
-        };
-        await insertAppointment(client, appointment);
+      // Cronograma MINSA generado automáticamente solo si el usuario obstetra tiene habilitada la opción.
+      const shouldAutoAssign = user.autoControls !== false;
+      if (shouldAutoAssign) {
+        for (const [i, week] of MINSA_WEEKS.entries()) {
+          const dateKey = addDaysToKey(fumKey, week * 7);
+          if (dateKey < todayKey) continue;
+          const preferred = ["09:00", "10:30", "11:30", "15:00"][i % 4] ?? "09:00";
+          const free = await freeSlotsFor(client, dateKey);
+          const time = free.includes(preferred) ? preferred : free[0] ?? preferred;
+          const appointment: Appointment = {
+            id: `${patientId}-c${i + 1}`,
+            patientId,
+            control: i + 1,
+            week,
+            dateKey,
+            time,
+            motivo: `Control prenatal ${i + 1} de 8`,
+            estado: "programada",
+            lugar: HEALTH_CENTER,
+          };
+          await insertAppointment(client, appointment);
+        }
       }
-
-      await insertSupplement(client, {
-        id: `${patientId}-hierro`,
-        patientId,
-        name: "Sulfato ferroso 60 mg",
-        dose: "1 tableta",
-        schedule: "En ayunas, con agua o jugo de naranja",
-        timesPerDay: 1,
-        startKey: todayKey,
-      });
-      await insertSupplement(client, {
-        id: `${patientId}-folico`,
-        patientId,
-        name: "Ácido fólico 500 µg",
-        dose: "1 tableta",
-        schedule: "Con el almuerzo",
-        timesPerDay: 1,
-        startKey: todayKey,
-      });
     }
 
     await client.query(
-      `INSERT INTO users (dni, password_hash, role, first_name, last_name, active, patient_id, phone, created_at)
-       VALUES ($1, $2, $3, $4, $5, TRUE, $6, $7, now())`,
+      `INSERT INTO users (dni, password_hash, role, first_name, last_name, active, patient_id, phone, auto_controls, created_at)
+       VALUES ($1, $2, $3, $4, $5, TRUE, $6, $7, TRUE, now())`,
       [
         dni,
         hashPassword(password),

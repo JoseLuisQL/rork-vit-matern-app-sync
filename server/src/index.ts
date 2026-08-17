@@ -23,6 +23,7 @@ import {
   handleReset,
   handleSchedule,
   handleSetActive,
+  handleSetAutoControls,
   handleSetAvatar,
   handleSync,
 } from "./handlers";
@@ -102,6 +103,7 @@ app.use("/api/*", async (c, next) => {
 app.post("/api/sync", handleSync);
 app.post("/api/schedule", handleSchedule);
 app.post("/api/user/avatar", handleSetAvatar);
+app.post("/api/user/auto-controls", handleSetAutoControls);
 app.post("/api/admin/create-user", handleCreateUser);
 app.post("/api/admin/set-active", handleSetActive);
 app.post("/api/admin/config", handleAdminConfig);

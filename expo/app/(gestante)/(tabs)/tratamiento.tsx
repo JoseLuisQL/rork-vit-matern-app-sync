@@ -75,86 +75,100 @@ export default function PastillasGestante(): React.ReactElement {
           <SoftCard style={styles.block}>
             <View style={styles.headRow}>
               <View style={styles.headInfo}>
-                <Text style={styles.question}>¿Ya tomaste tus pastillas?</Text>
+                <Text style={styles.question}>
+                  {supplements.length > 0 ? "¿Ya tomaste tus pastillas?" : "Tus pastillas"}
+                </Text>
                 <Text style={styles.dateText}>{capitalize(fechaLarga(todayKey))}</Text>
               </View>
               <Illustration source={ILU.pastillas} width={92} height={92} />
             </View>
-            <View style={styles.pillsList}>
-              {supplements.map((s) => {
-                const times = timesPerDayOf(s);
-                const count = countDoses(todayIntakes, s.id);
-                return Array.from({ length: times }, (_, dose) => (
-                  <BigCheckRow
-                    key={`${s.id}-${dose}`}
-                    checked={dose < count}
-                    label={s.name}
-                    illustration={medIllustration(s.name)}
-                    sublabel={times > 1 ? doseName(dose, times) : s.schedule}
-                    onToggle={() =>
-                      dispatch({
-                        type: "set_intake_count",
-                        patientId: patient.id,
-                        supplementId: s.id,
-                        dayKey: todayKey,
-                        count: dose < count ? dose : dose + 1,
-                      })
-                    }
-                    testID={`trat-toggle-${s.id}-${dose}`}
-                  />
-                ));
-              })}
-            </View>
-            {allTaken ? (
-              <Celebration title="¡Muy bien!" text="Ya tomaste todo lo de hoy." />
-            ) : null}
+            {supplements.length === 0 ? (
+              <View style={styles.emptyWrap}>
+                <Text style={styles.emptyText}>
+                  Aún no tienes pastillas asignadas. Tu obstetra te indicará y recetará tus suplementos en tu próximo control.
+                </Text>
+              </View>
+            ) : (
+              <>
+                <View style={styles.pillsList}>
+                  {supplements.map((s) => {
+                    const times = timesPerDayOf(s);
+                    const count = countDoses(todayIntakes, s.id);
+                    return Array.from({ length: times }, (_, dose) => (
+                      <BigCheckRow
+                        key={`${s.id}-${dose}`}
+                        checked={dose < count}
+                        label={s.name}
+                        illustration={medIllustration(s.name)}
+                        sublabel={times > 1 ? doseName(dose, times) : s.schedule}
+                        onToggle={() =>
+                          dispatch({
+                            type: "set_intake_count",
+                            patientId: patient.id,
+                            supplementId: s.id,
+                            dayKey: todayKey,
+                            count: dose < count ? dose : dose + 1,
+                          })
+                        }
+                        testID={`trat-toggle-${s.id}-${dose}`}
+                      />
+                    ));
+                  })}
+                </View>
+                {allTaken ? (
+                  <Celebration title="¡Muy bien!" text="Ya tomaste todo lo de hoy." />
+                ) : null}
+              </>
+            )}
           </SoftCard>
         </PopIn>
 
-        <PopIn delay={100}>
-          <SoftCard style={styles.block}>
-            <BlockTitle
-              illu={GICON.citas}
-              title="Tu semana"
-              color={gwarm.teal}
-              soft={gwarm.tealSoft}
-            />
-            <View style={styles.weekRow}>
-              {week.map((d) => {
-                const isToday = d.key === todayKey;
-                return (
-                  <View key={d.key} style={styles.weekDay}>
-                    <View
-                      style={[
-                        styles.weekDot,
-                        d.status === "full" && styles.weekDotFull,
-                        d.status === "partial" && styles.weekDotPartial,
-                        isToday && d.status === "none" && { borderColor: gwarm.teal },
-                      ]}
-                    >
-                      {d.status === "full" ? (
-                        <Check size={17} color="#FFFFFF" strokeWidth={3} />
-                      ) : null}
+        {supplements.length > 0 ? (
+          <PopIn delay={100}>
+            <SoftCard style={styles.block}>
+              <BlockTitle
+                illu={GICON.citas}
+                title="Tu semana"
+                color={gwarm.teal}
+                soft={gwarm.tealSoft}
+              />
+              <View style={styles.weekRow}>
+                {week.map((d) => {
+                  const isToday = d.key === todayKey;
+                  return (
+                    <View key={d.key} style={styles.weekDay}>
+                      <View
+                        style={[
+                          styles.weekDot,
+                          d.status === "full" && styles.weekDotFull,
+                          d.status === "partial" && styles.weekDotPartial,
+                          isToday && d.status === "none" && { borderColor: gwarm.teal },
+                        ]}
+                      >
+                        {d.status === "full" ? (
+                          <Check size={17} color="#FFFFFF" strokeWidth={3} />
+                        ) : null}
+                      </View>
+                      <Text style={[styles.weekLetter, isToday && styles.weekLetterToday]}>
+                        {d.letter}
+                      </Text>
                     </View>
-                    <Text style={[styles.weekLetter, isToday && styles.weekLetterToday]}>
-                      {d.letter}
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-            <Text style={styles.progressText}>
-              Tomaste tus pastillas{" "}
-              <Text style={styles.progressStrong}>{daysTaken} de los últimos 30 días</Text>.
-            </Text>
-            {patient.streak > 1 ? (
-              <View style={styles.streakRow}>
-                <Flame size={19} color={gwarm.amber} />
-                <Text style={styles.streakText}>¡Llevas {patient.streak} días seguidos!</Text>
+                  );
+                })}
               </View>
-            ) : null}
-          </SoftCard>
-        </PopIn>
+              <Text style={styles.progressText}>
+                Tomaste tus pastillas{" "}
+                <Text style={styles.progressStrong}>{daysTaken} de los últimos 30 días</Text>.
+              </Text>
+              {patient.streak > 1 ? (
+                <View style={styles.streakRow}>
+                  <Flame size={19} color={gwarm.amber} />
+                  <Text style={styles.streakText}>¡Llevas {patient.streak} días seguidos!</Text>
+                </View>
+              ) : null}
+            </SoftCard>
+          </PopIn>
+        ) : null}
 
         <PopIn delay={200}>
           <SoftCard
@@ -273,5 +287,57 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     color: gwarm.inkSoft,
     marginTop: 2,
+  },
+  emptyWrap: {
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 12,
+  },
+  emptyText: {
+    fontFamily: gfonts.handBody,
+    fontSize: 14.5,
+    lineHeight: 20,
+    color: gwarm.inkSoft,
+    textAlign: "center",
+  },
+  manageRow: {
+    alignItems: "center",
+    marginTop: 6,
+  },
+  manageList: {
+    gap: 8,
+  },
+  manageItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: gwarm.border,
+  },
+  manageIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: gwarm.tealSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  manageInfo: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  manageName: {
+    fontFamily: gfonts.hand,
+    fontSize: 16,
+    lineHeight: 21,
+    color: gwarm.ink,
+  },
+  manageMeta: {
+    fontFamily: gfonts.handBody,
+    fontSize: 13,
+    lineHeight: 17,
+    color: gwarm.inkSoft,
   },
 });

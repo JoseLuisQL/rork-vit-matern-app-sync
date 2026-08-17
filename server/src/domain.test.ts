@@ -24,6 +24,7 @@ describe("Server Domain — User Sanitization & Security", () => {
       active: true,
       createdAtISO: new Date().toISOString(),
       avatarVersion: 3,
+      autoControls: true,
     };
 
     const publicInfo = publicUser(user);
@@ -33,6 +34,26 @@ describe("Server Domain — User Sanitization & Security", () => {
     expect(publicInfo.lastName).toBe("Condori");
     expect(publicInfo.patientId).toBe("p-maria");
     expect(publicInfo.avatarVersion).toBe(3);
+    expect(publicInfo.autoControls).toBe(true);
+  });
+
+  it("publicUser respects autoControls preference when disabled", () => {
+    const obstetraUser: UserRecord = {
+      dni: "87654321",
+      passwordHash: "secret_hash",
+      role: "obstetra",
+      firstName: "Carmen",
+      lastName: "Rojas",
+      active: true,
+      patientId: null,
+      phone: "987000111",
+      createdAtISO: new Date().toISOString(),
+      avatarVersion: null,
+      autoControls: false,
+    };
+
+    const publicInfo = publicUser(obstetraUser);
+    expect(publicInfo.autoControls).toBe(false);
   });
 });
 

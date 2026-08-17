@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS users (
   patient_id TEXT REFERENCES patients(id) ON DELETE SET NULL,
   phone TEXT,
   avatar_version INTEGER,
+  auto_controls BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -171,6 +172,13 @@ CREATE TABLE IF NOT EXISTS avatars (
   bytes BYTEA NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+`,
+  },
+  {
+    id: 2,
+    name: "add-user-auto-controls",
+    sql: `
+ALTER TABLE users ADD COLUMN IF NOT EXISTS auto_controls BOOLEAN NOT NULL DEFAULT TRUE;
 `,
   },
 ];

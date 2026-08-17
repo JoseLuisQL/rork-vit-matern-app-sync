@@ -189,4 +189,71 @@ describe("Frontend Outbox — Optimistic State Reducer", () => {
     expect(alarmAlert?.detail).toContain("Cefalea intensa, Visión borrosa");
     expect(alarmAlert?.status).toBe("abierta");
   });
+
+  const obstetraUser: User = {
+    ...baseUser,
+    role: "obstetra",
+    patientId: undefined,
+  };
+
+  it("optimistically adds, updates, and removes supplement for health staff", () => {
+    const addAction: ClientAction = {
+      id: "act-8",
+      type: "add_supplement",
+      patientId: "p-ana",
+      fields: {
+        name: "Calcio 500 mg",
+        dose: "1 tableta",
+        schedule: "Con el almuerzo",
+        timesPerDay: 2,
+      },
+      atISO: new Date().toISOString(),
+    };
+    const resAdd = applyOutbox(initialSnapshot, [addAction], obstetraUser);
+    const added = resAdd.supplements.find((s) => s.name === "Calcio 500 mg");
+    expect(added).toBeDefined();
+    expect(added?.timesPerDay).toBe(2);
+
+    const updateAction: ClientAction = {
+      id: "act-9",
+      type: "update_supplement",
+      supplementId: added!.id,
+      fields: {
+        name: "Calcio 500 mg",
+        dose: "2 tabletas",
+        schedule: "Mañana y noche",
+        timesPerDay: 2,
+      },
+      atISO: new Date().toISOString(),
+    };
+    const resUpdate = applyOutbox(resAdd, [updateAction], obstetraUser);
+    const updated = resUpdate.supplements.find((s) => s.id === added!.id);
+    expect(updated?.dose).toBe("2 tabletas");
+
+    const removeAction: ClientAction = {
+      id: "act-10",
+      type: "remove_supplement",
+      supplementId: added!.id,
+      atISO: new Date().toISOString(),
+    };
+    const resRemove = applyOutbox(resUpdate, [removeAction], obstetraUser);
+    expect(resRemove.supplements.find((s) => s.id === added!.id)).toBeUndefined();
+  });
+
+  it("ignores supplement modifications attempted by gestante", () => {
+    const addAction: ClientAction = {
+      id: "act-11",
+      type: "add_supplement",
+      patientId: "p-ana",
+      fields: {
+        name: "Calcio 500 mg",
+        dose: "1 tableta",
+        schedule: "Con el almuerzo",
+        timesPerDay: 2,
+      },
+      atISO: new Date().toISOString(),
+    };
+    const resAdd = applyOutbox(initialSnapshot, [addAction], baseUser);
+    expect(resAdd.supplements.find((s) => s.name === "Calcio 500 mg")).toBeUndefined();
+  });
 });

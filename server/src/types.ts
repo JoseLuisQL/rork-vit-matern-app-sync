@@ -57,6 +57,8 @@ export interface UserRecord {
   phone: string | null;
   createdAtISO: string;
   avatarVersion: number | null;
+  /** Generar automáticamente los 8 controles según FUM al registrar gestante (por obstetra). */
+  autoControls?: boolean;
 }
 
 /** Usuario visible por el cliente (sin contraseña; campos opcionales omitidos). */
@@ -70,6 +72,7 @@ export interface PublicUser {
   phone?: string;
   createdAtISO: string;
   avatarVersion?: number;
+  autoControls?: boolean;
 }
 
 export interface Patient {

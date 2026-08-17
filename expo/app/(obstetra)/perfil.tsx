@@ -1,10 +1,10 @@
 /** Perfil de la obstetra ("cuaderno"): foto, datos y cierre de sesión. */
 import { useRouter } from "expo-router";
 import { LogOut } from "lucide-react-native";
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import { ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { gfonts, gwarm, warmBlue } from "@/constants/theme";
-import { TOASTILU } from "@/constants/illustrations";
+import { GICON, TOASTILU } from "@/constants/illustrations";
 import { confirmAction } from "@/lib/confirm";
 import { playAppSound } from "@/lib/sounds";
 import { useApp, usePatients } from "@/providers/AppProvider";
@@ -27,9 +27,19 @@ function InfoRow({ label, value }: { label: string; value: string }): React.Reac
 
 export default function PerfilObstetra(): React.ReactElement {
   const router = useRouter();
-  const { user, view, logout, pendingCount, soundsEnabled, setSoundsEnabled } = useApp();
+  const {
+    user,
+    view,
+    logout,
+    pendingCount,
+    soundsEnabled,
+    setSoundsEnabled,
+    setAutoControls,
+    online,
+  } = useApp();
   const { show: showToast } = useToast();
   const patients = usePatients();
+  const [updatingControls, setUpdatingControls] = useState<boolean>(false);
 
   /** Al encender suena una muestra para escuchar cómo avisan los mensajes. */
   const toggleSounds = useCallback(
@@ -43,6 +53,39 @@ export default function PerfilObstetra(): React.ReactElement {
       }
     },
     [setSoundsEnabled, showToast],
+  );
+
+  /** Configuración independiente de controles automáticos según FUM para esta obstetra. */
+  const toggleAutoControls = useCallback(
+    async (value: boolean) => {
+      if (!online) {
+        showToast("Necesitas conexión para cambiar esta preferencia", "info");
+        return;
+      }
+      setUpdatingControls(true);
+      try {
+        await setAutoControls(value);
+        if (value) {
+          showToast(
+            "Controles automáticos activados: se generarán los 8 controles MINSA al registrar gestantes",
+            "success",
+          );
+        } else {
+          showToast(
+            "Controles automáticos desactivados: registrarás los controles manualmente",
+            "info",
+          );
+        }
+      } catch (e) {
+        showToast(
+          e instanceof Error ? e.message : "No se pudo actualizar la preferencia",
+          "error",
+        );
+      } finally {
+        setUpdatingControls(false);
+      }
+    },
+    [online, setAutoControls, showToast],
   );
 
   const handleLogout = useCallback(async () => {
@@ -63,6 +106,8 @@ export default function PerfilObstetra(): React.ReactElement {
   }, [logout, pendingCount, router]);
 
   if (!user || !view) return <View style={styles.container} />;
+
+  const autoControlsEnabled = user.autoControls !== false;
 
   return (
     <View style={styles.container}>
@@ -91,6 +136,31 @@ export default function PerfilObstetra(): React.ReactElement {
           <InfoRow label="Rol" value="Obstetra" />
           <InfoRow label="Teléfono" value={user.phone ?? "—"} />
           <InfoRow label="Centro" value={view.center.name} />
+        </Card>
+
+        <SectionHeader title="Controles prenatales" />
+        <Card style={styles.card}>
+          <View style={styles.switchRow}>
+            <View style={[styles.switchIcon, { backgroundColor: warmBlue.soft }]}>
+              <Illustration source={GICON.citas} width={24} height={24} />
+            </View>
+            <View style={styles.flex}>
+              <Text style={styles.switchTitle}>Generar 8 controles según FUM</Text>
+              <Text style={styles.switchText}>
+                {autoControlsEnabled
+                  ? "Al registrar una gestante se crean automáticamente sus 8 controles MINSA."
+                  : "Desactivado: tú registrarás manualmente cada control prenatal en la agenda."}
+              </Text>
+            </View>
+            <Switch
+              value={autoControlsEnabled}
+              onValueChange={toggleAutoControls}
+              disabled={updatingControls}
+              trackColor={{ true: warmBlue.main, false: gwarm.borderStrong }}
+              thumbColor="#FFFFFF"
+              testID="switch-auto-controles"
+            />
+          </View>
         </Card>
 
         <SectionHeader title="Sonidos" />

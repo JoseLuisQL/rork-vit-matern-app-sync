@@ -168,38 +168,48 @@ export default function InicioGestante(): React.ReactElement {
           <SoftCard style={styles.pillsCard}>
             <BlockTitle
               illu={GICON.pastillas}
-              title="Mis pastillas de hoy"
+              title={supplements.length > 0 ? "Mis pastillas de hoy" : "Mis pastillas"}
               color={gwarm.terracotta}
               soft={gwarm.terracottaSoft}
             />
-            <View style={styles.pillsList}>
-              {supplements.map((s) => {
-                const times = timesPerDayOf(s);
-                const count = countDoses(todayIntakes, s.id);
-                return Array.from({ length: times }, (_, dose) => (
-                  <BigCheckRow
-                    key={`${s.id}-${dose}`}
-                    checked={dose < count}
-                    label={s.name}
-                    illustration={medIllustration(s.name)}
-                    sublabel={times > 1 ? doseName(dose, times) : undefined}
-                    onToggle={() =>
-                      dispatch({
-                        type: "set_intake_count",
-                        patientId: patient.id,
-                        supplementId: s.id,
-                        dayKey: todayKey,
-                        count: dose < count ? dose : dose + 1,
-                      })
-                    }
-                    testID={`toggle-${s.id}-${dose}`}
-                  />
-                ));
-              })}
-            </View>
-            {allTaken ? (
-              <Celebration title="¡Muy bien!" text="Ya tomaste todo lo de hoy." />
-            ) : null}
+            {supplements.length === 0 ? (
+              <View style={styles.emptyPillsBox}>
+                <Text style={styles.emptyPillsText}>
+                  Aún no tienes pastillas asignadas. Tu obstetra te las indicará en tu próximo control prenatal.
+                </Text>
+              </View>
+            ) : (
+              <>
+                <View style={styles.pillsList}>
+                  {supplements.map((s) => {
+                    const times = timesPerDayOf(s);
+                    const count = countDoses(todayIntakes, s.id);
+                    return Array.from({ length: times }, (_, dose) => (
+                      <BigCheckRow
+                        key={`${s.id}-${dose}`}
+                        checked={dose < count}
+                        label={s.name}
+                        illustration={medIllustration(s.name)}
+                        sublabel={times > 1 ? doseName(dose, times) : undefined}
+                        onToggle={() =>
+                          dispatch({
+                            type: "set_intake_count",
+                            patientId: patient.id,
+                            supplementId: s.id,
+                            dayKey: todayKey,
+                            count: dose < count ? dose : dose + 1,
+                          })
+                        }
+                        testID={`toggle-${s.id}-${dose}`}
+                      />
+                    ));
+                  })}
+                </View>
+                {allTaken ? (
+                  <Celebration title="¡Muy bien!" text="Ya tomaste todo lo de hoy." />
+                ) : null}
+              </>
+            )}
           </SoftCard>
         </PopIn>
 
@@ -338,6 +348,18 @@ const styles = StyleSheet.create({
   },
   pillsCard: { gap: spacing.sm2 },
   pillsList: { gap: spacing.sm },
+  emptyPillsBox: {
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 10,
+  },
+  emptyPillsText: {
+    fontFamily: gfonts.handBody,
+    fontSize: 14.5,
+    lineHeight: 20,
+    color: gwarm.inkSoft,
+    textAlign: "center",
+  },
   helpCard: {
     gap: spacing.sm2,
     backgroundColor: gwarm.redSoft,
