@@ -119,5 +119,6 @@ console.log(`[server] VitMaterna escuchando en el puerto ${port} (PostgreSQL lis
 
 export default {
   port,
+  hostname: "0.0.0.0",
   fetch: app.fetch,
 };
