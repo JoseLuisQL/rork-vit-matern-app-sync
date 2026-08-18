@@ -20,8 +20,8 @@ import type { Queryable } from "./db";
 import { publicUser, regenerateAutoAlerts, snapshotFor } from "./domain";
 import { presence } from "./presence";
 import type { PresenceInput } from "./presence";
-import { loadAppData, loadConfig, mapUser } from "./rows";
-import type { SessionRow, UserRow } from "./rows";
+import { loadAppData, loadConfig, loadWhatsAppConfig, mapAppointment, mapPatient, mapUser } from "./rows";
+import type { AppointmentRow, PatientRow, SessionRow, UserRow } from "./rows";
 import {
   buildSeed,
   DEFAULT_MAINTENANCE_MESSAGE,
@@ -46,7 +46,11 @@ import type {
   Snapshot,
   SystemConfig,
   UserRecord,
+  WhatsAppConfig,
 } from "./types";
+import { sendWhatsAppText, testWhatsAppConnection } from "./whatsapp/client";
+import { dispatchAppointmentNotification, logWhatsAppDelivery } from "./whatsapp/dispatcher";
+import { templateTestMessage } from "./whatsapp/templates";
 
 export type AppEnv = { Variables: { user: UserRecord; config: SystemConfig } };
 export type AppContext = Context<AppEnv>;
@@ -248,22 +252,45 @@ export async function handleSchedule(c: AppContext): Promise<Response> {
 
     if (body.mode === "reprogramar") {
       const apptId = body.appointmentId ?? "";
-      const res = await client.query("SELECT 1 FROM appointments WHERE id = $1", [apptId]);
-      if ((res.rowCount ?? 0) === 0) return { kind: "notFound", error: "La cita ya no existe" };
+      const res = await client.query<AppointmentRow>("SELECT * FROM appointments WHERE id = $1", [apptId]);
+      const apptRow = res.rows[0];
+      if (!apptRow) return { kind: "notFound", error: "La cita ya no existe" };
       if ((await takenSlots(client, dateKey, apptId)).has(time)) return conflict(apptId);
       await client.query(
         "UPDATE appointments SET date_key = $2, time = $3, estado = 'programada' WHERE id = $1",
         [apptId, dateKey, time],
       );
+
+      // Notificación WhatsApp de reprogramación
+      const patRes = await client.query<PatientRow>("SELECT * FROM patients WHERE id = $1", [
+        apptRow.patient_id,
+      ]);
+      const pRow = patRes.rows[0];
+      if (pRow) {
+        const waConfig = await loadWhatsAppConfig(client);
+        void dispatchAppointmentNotification(
+          client,
+          waConfig,
+          mapPatient(pRow),
+          {
+            ...mapAppointment(apptRow),
+            dateKey,
+            time,
+          },
+          true,
+          user,
+        );
+      }
     } else if (body.mode === "cita") {
-      const res = await client.query<{ fum_key: string }>(
-        "SELECT fum_key FROM patients WHERE id = $1",
+      const res = await client.query<PatientRow>(
+        "SELECT * FROM patients WHERE id = $1",
         [body.patientId ?? ""],
       );
-      if ((res.rowCount ?? 0) === 0) return { kind: "notFound", error: "Paciente no encontrada" };
+      const pRow = res.rows[0];
+      if (!pRow) return { kind: "notFound", error: "Paciente no encontrada" };
       if ((await takenSlots(client, dateKey)).has(time)) return conflict();
 
-      const patientFum = res.rows[0]?.fum_key;
+      const patientFum = pRow.fum_key;
       let controlNum: number | null = null;
       if (body.motivo) {
         const match = body.motivo.match(/control\s*(?:prenatal\s*)?([1-8])/i);
@@ -274,7 +301,7 @@ export async function handleSchedule(c: AppContext): Promise<Response> {
       const week =
         controlNum !== null && patientFum ? gestationalWeeks(patientFum, dateKey) : null;
 
-      await insertAppointment(client, {
+      const newAppt: Appointment = {
         id: `ap-${crypto.randomUUID().slice(0, 8)}`,
         patientId: body.patientId as string,
         control: controlNum,
@@ -284,7 +311,12 @@ export async function handleSchedule(c: AppContext): Promise<Response> {
         motivo: (body.motivo ?? (controlNum ? `Control prenatal ${controlNum} de 8` : "Consulta adicional")).trim() || "Consulta adicional",
         estado: "programada",
         lugar: HEALTH_CENTER,
-      });
+      };
+      await insertAppointment(client, newAppt);
+
+      // Notificación WhatsApp de nueva cita
+      const waConfig = await loadWhatsAppConfig(client);
+      void dispatchAppointmentNotification(client, waConfig, mapPatient(pRow), newAppt, false, user);
     } else if (body.mode === "visita") {
       const res = await client.query("SELECT 1 FROM patients WHERE id = $1", [body.patientId ?? ""]);
       if ((res.rowCount ?? 0) === 0) return { kind: "notFound", error: "Paciente no encontrada" };
@@ -509,6 +541,7 @@ export async function handleCreateUser(c: AppContext): Promise<Response> {
 
       // Cronograma MINSA generado automáticamente solo si el usuario obstetra tiene habilitada la opción.
       const shouldAutoAssign = user.autoControls !== false;
+      let firstAppt: Appointment | null = null;
       if (shouldAutoAssign) {
         for (const [i, week] of MINSA_WEEKS.entries()) {
           const dateKey = addDaysToKey(fumKey, week * 7);
@@ -528,7 +561,13 @@ export async function handleCreateUser(c: AppContext): Promise<Response> {
             lugar: HEALTH_CENTER,
           };
           await insertAppointment(client, appointment);
+          if (!firstAppt) firstAppt = appointment;
         }
+      }
+
+      if (firstAppt) {
+        const waConfig = await loadWhatsAppConfig(client);
+        void dispatchAppointmentNotification(client, waConfig, patient, firstAppt, false, user);
       }
     }
 
@@ -714,4 +753,156 @@ export async function handleReset(c: AppContext): Promise<Response> {
 
   console.log("[server] Datos de demostración restaurados");
   return c.json({ snapshot });
+}
+
+// ---------- Configuración de WhatsApp (Open-WA) ----------
+
+/**
+ * Actualiza la configuración global de WhatsApp (solo admin).
+ */
+export async function handleAdminWhatsAppConfig(c: AppContext): Promise<Response> {
+  const user = c.get("user");
+  if (user.role !== "admin") return c.json({ error: "Acción no permitida" }, 403);
+  const body = await readJson<Partial<WhatsAppConfig>>(c);
+
+  const snapshot = await withTx(async (client) => {
+    const current = await loadWhatsAppConfig(client);
+    const updated: WhatsAppConfig = {
+      enabled: typeof body.enabled === "boolean" ? body.enabled : current.enabled,
+      serverUrl: typeof body.serverUrl === "string" ? body.serverUrl.trim() : current.serverUrl,
+      apiKey: typeof body.apiKey === "string" ? body.apiKey.trim() : current.apiKey,
+      sessionId: typeof body.sessionId === "string" ? body.sessionId.trim() : current.sessionId,
+      notifyAppointments:
+        typeof body.notifyAppointments === "boolean"
+          ? body.notifyAppointments
+          : current.notifyAppointments,
+      notifySupplements:
+        typeof body.notifySupplements === "boolean"
+          ? body.notifySupplements
+          : current.notifySupplements,
+      remindAppointments:
+        typeof body.remindAppointments === "boolean"
+          ? body.remindAppointments
+          : current.remindAppointments,
+      remindSupplements:
+        typeof body.remindSupplements === "boolean"
+          ? body.remindSupplements
+          : current.remindSupplements,
+      chatOfflineFallback:
+        typeof body.chatOfflineFallback === "boolean"
+          ? body.chatOfflineFallback
+          : current.chatOfflineFallback,
+      sosOfflineAlerts:
+        typeof body.sosOfflineAlerts === "boolean"
+          ? body.sosOfflineAlerts
+          : current.sosOfflineAlerts,
+      updatedAtISO: new Date().toISOString(),
+    };
+
+    await client.query(
+      `INSERT INTO whatsapp_config (
+         id, enabled, server_url, api_key, session_id,
+         notify_appointments, notify_supplements, remind_appointments,
+         remind_supplements, chat_offline_fallback, sos_offline_alerts, updated_at
+       ) VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+       ON CONFLICT (id) DO UPDATE SET
+         enabled = EXCLUDED.enabled,
+         server_url = EXCLUDED.server_url,
+         api_key = EXCLUDED.api_key,
+         session_id = EXCLUDED.session_id,
+         notify_appointments = EXCLUDED.notify_appointments,
+         notify_supplements = EXCLUDED.notify_supplements,
+         remind_appointments = EXCLUDED.remind_appointments,
+         remind_supplements = EXCLUDED.remind_supplements,
+         chat_offline_fallback = EXCLUDED.chat_offline_fallback,
+         sos_offline_alerts = EXCLUDED.sos_offline_alerts,
+         updated_at = EXCLUDED.updated_at`,
+      [
+        updated.enabled,
+        updated.serverUrl,
+        updated.apiKey,
+        updated.sessionId,
+        updated.notifyAppointments,
+        updated.notifySupplements,
+        updated.remindAppointments,
+        updated.remindSupplements,
+        updated.chatOfflineFallback,
+        updated.sosOfflineAlerts,
+        updated.updatedAtISO,
+      ],
+    );
+
+    return buildSnapshot(client, user, { regenerate: false });
+  });
+
+  return c.json({ snapshot });
+}
+
+/**
+ * Diagnóstico: Prueba la conexión con el servidor Open-WA (solo admin).
+ */
+export async function handleAdminWhatsAppTestConnection(c: AppContext): Promise<Response> {
+  const user = c.get("user");
+  if (user.role !== "admin") return c.json({ error: "Acción no permitida" }, 403);
+  const body = await readJson<Partial<WhatsAppConfig>>(c);
+
+  const current = await loadWhatsAppConfig(pool);
+  const testCfg: WhatsAppConfig = {
+    ...current,
+    serverUrl: body.serverUrl?.trim() || current.serverUrl,
+    apiKey: body.apiKey?.trim() || current.apiKey,
+    sessionId: body.sessionId?.trim() || current.sessionId,
+  };
+
+  const status = await testWhatsAppConnection(testCfg);
+  return c.json(status);
+}
+
+/**
+ * Envía un mensaje de prueba a un número telefónico (solo admin).
+ */
+export async function handleAdminWhatsAppSendTest(c: AppContext): Promise<Response> {
+  const user = c.get("user");
+  if (user.role !== "admin") return c.json({ error: "Acción no permitida" }, 403);
+  const body = await readJson<{ phone?: string; message?: string }>(c);
+
+  const phone = (body.phone ?? "").trim();
+  if (!phone) {
+    return c.json({ error: "Ingresa un número de celular de prueba" }, 400);
+  }
+
+  const config = await loadWhatsAppConfig(pool);
+  if (!config.serverUrl || !config.apiKey) {
+    return c.json(
+      { error: "Primero debes configurar la URL del servidor y la API Key de Open-WA" },
+      400,
+    );
+  }
+
+  const customText = body.message?.trim();
+  const message =
+    customText ||
+    templateTestMessage({
+      adminName: `${user.firstName} ${user.lastName}`.trim(),
+      timestamp: new Date().toLocaleString("es-PE", { timeZone: "America/Lima" }),
+    });
+
+  // Forzamos enabled = true para la prueba explícita
+  const res = await sendWhatsAppText({ ...config, enabled: true }, phone, message);
+  await logWhatsAppDelivery(
+    pool,
+    phone,
+    "mensaje_prueba_admin",
+    res.ok ? "sent" : res.skipped ? "skipped" : "failed",
+    res.error,
+  );
+
+  if (!res.ok) {
+    return c.json(
+      { error: res.error || "No se pudo entregar el mensaje de prueba a WhatsApp" },
+      500,
+    );
+  }
+
+  return c.json({ ok: true, message: "Mensaje de prueba enviado con éxito" });
 }

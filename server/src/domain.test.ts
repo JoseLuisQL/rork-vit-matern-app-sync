@@ -173,6 +173,19 @@ describe("Server Domain — Clinical Calculations & Patient View", () => {
       environment: "demo",
       updatedAtISO: new Date().toISOString(),
     },
+    whatsappConfig: {
+      enabled: true,
+      serverUrl: "https://openwa.qware.me",
+      apiKey: "test_key",
+      sessionId: "vitmaterna",
+      notifyAppointments: true,
+      notifySupplements: true,
+      remindAppointments: true,
+      remindSupplements: true,
+      chatOfflineFallback: true,
+      sosOfflineAlerts: true,
+      updatedAtISO: new Date().toISOString(),
+    },
   };
 
   it("computes patient clinical metrics accurately", () => {
@@ -310,6 +323,19 @@ describe("Server Domain — Role-based Snapshot Filtering & MINSA Reports", () =
       environment: "demo",
       updatedAtISO: new Date().toISOString(),
     },
+    whatsappConfig: {
+      enabled: true,
+      serverUrl: "https://openwa.qware.me",
+      apiKey: "test_key",
+      sessionId: "vitmaterna",
+      notifyAppointments: true,
+      notifySupplements: true,
+      remindAppointments: true,
+      remindSupplements: true,
+      chatOfflineFallback: true,
+      sosOfflineAlerts: true,
+      updatedAtISO: new Date().toISOString(),
+    },
   };
 
   it("snapshotFor strictly filters data for gestante role and includes obstetrician", () => {
@@ -320,6 +346,7 @@ describe("Server Domain — Role-based Snapshot Filtering & MINSA Reports", () =
     expect(snap.appointments[0]?.id).toBe("a-ana");
     expect(snap.users).toBeUndefined();
     expect(snap.reports).toBeUndefined();
+    expect(snap.whatsappConfig).toBeUndefined();
     expect(snap.obstetrician).toBeDefined();
     expect(snap.obstetrician?.firstName).toBe("Carmen");
     expect(snap.obstetrician?.phone).toBe("983222333");
@@ -332,6 +359,8 @@ describe("Server Domain — Role-based Snapshot Filtering & MINSA Reports", () =
     expect(snap.users?.length).toBe(3);
     expect(snap.reports).toBeDefined();
     expect(snap.reports?.d30).toBeDefined();
+    expect(snap.whatsappConfig).toBeDefined();
+    expect(snap.whatsappConfig?.apiKey).toBe("test_key");
   });
 
   it("buildReport generates aggregated population metrics", () => {

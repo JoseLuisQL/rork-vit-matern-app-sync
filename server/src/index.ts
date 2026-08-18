@@ -16,6 +16,9 @@ import { Hono } from "hono";
 import { migrate, pool, waitForDb } from "./db";
 import {
   handleAdminConfig,
+  handleAdminWhatsAppConfig,
+  handleAdminWhatsAppSendTest,
+  handleAdminWhatsAppTestConnection,
   handleAvatarImage,
   handleCreateUser,
   handleLogin,
@@ -30,6 +33,7 @@ import {
 import type { AppEnv } from "./handlers";
 import { presence } from "./presence";
 import { getUserByToken, loadConfig } from "./rows";
+import { startScheduler } from "./scheduler";
 import { DEFAULT_MAINTENANCE_MESSAGE, ensureSeeded } from "./seed";
 
 const CORS_HEADERS: Record<string, string> = {
@@ -108,6 +112,9 @@ app.post("/api/admin/create-user", handleCreateUser);
 app.post("/api/admin/set-active", handleSetActive);
 app.post("/api/admin/config", handleAdminConfig);
 app.post("/api/admin/reset", handleReset);
+app.post("/api/admin/whatsapp/config", handleAdminWhatsAppConfig);
+app.post("/api/admin/whatsapp/test-connection", handleAdminWhatsAppTestConnection);
+app.post("/api/admin/whatsapp/send-test", handleAdminWhatsAppSendTest);
 app.all("/api/*", (c) => c.json({ error: "Ruta no encontrada" }, 404));
 
 app.notFound((c) => c.json({ error: "not found" }, 404));
@@ -117,6 +124,7 @@ const port = Number(process.env.PORT ?? 8080);
 await waitForDb();
 await migrate();
 await ensureSeeded();
+startScheduler();
 console.log(`[server] VitMaterna escuchando en el puerto ${port} (PostgreSQL listo)`);
 
 export default {

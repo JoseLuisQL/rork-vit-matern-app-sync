@@ -6,9 +6,18 @@
  */
 import type { PoolClient } from "pg";
 import { isValidDayKey, peruDayKey } from "./clinical";
-import { isActiveState, sanitizeSupplementFields } from "./domain";
+import { computePatient, isActiveState, sanitizeSupplementFields } from "./domain";
+import { presence } from "./presence";
+import { loadWhatsAppConfig, mapPatient, mapUser } from "./rows";
+import type { PatientRow, UserRow } from "./rows";
 import { insertMessageRow } from "./seed";
 import type { AppointmentStatus, ClientAction, Message, UserRecord } from "./types";
+import {
+  dispatchAlarmSignsNotification,
+  dispatchChatFallbackNotification,
+  dispatchSosEmergencyNotification,
+  dispatchSupplementNotification,
+} from "./whatsapp/dispatcher";
 
 /** ISO válido del cliente o el instante actual si viene malformado. */
 export function safeISO(value: string | undefined | null): string {
@@ -155,6 +164,23 @@ export async function applyAction(
           peruDayKey(),
         ],
       );
+
+      // Notificación por WhatsApp
+      const patRes = await client.query<PatientRow>("SELECT * FROM patients WHERE id = $1", [
+        action.patientId,
+      ]);
+      const pRow = patRes.rows[0];
+      if (pRow) {
+        const waConfig = await loadWhatsAppConfig(client);
+        void dispatchSupplementNotification(client, waConfig, mapPatient(pRow), {
+          id: `s-${action.id}`,
+          patientId: action.patientId,
+          name: fields.name,
+          dose: fields.dose,
+          schedule: fields.schedule,
+          timesPerDay: fields.timesPerDay,
+        });
+      }
       return null;
     }
     case "update_supplement": {
@@ -166,6 +192,26 @@ export async function applyAction(
         [action.supplementId, fields.name, fields.dose, fields.schedule, fields.timesPerDay],
       );
       if ((res.rowCount ?? 0) === 0) return "El medicamento ya no existe";
+
+      // Notificación por WhatsApp
+      const suppRef = await getSupplementRef(client, action.supplementId);
+      if (suppRef) {
+        const patRes = await client.query<PatientRow>("SELECT * FROM patients WHERE id = $1", [
+          suppRef.patientId,
+        ]);
+        const pRow = patRes.rows[0];
+        if (pRow) {
+          const waConfig = await loadWhatsAppConfig(client);
+          void dispatchSupplementNotification(client, waConfig, mapPatient(pRow), {
+            id: action.supplementId,
+            patientId: suppRef.patientId,
+            name: fields.name,
+            dose: fields.dose,
+            schedule: fields.schedule,
+            timesPerDay: fields.timesPerDay,
+          });
+        }
+      }
       return null;
     }
     case "remove_supplement": {
@@ -194,6 +240,18 @@ export async function applyAction(
         readByGestante: user.role === "gestante",
         readByObstetra: user.role === "obstetra",
       });
+
+      // Fallback a WhatsApp si el obstetra escribe y la gestante está offline en la app
+      if (user.role === "obstetra") {
+        const patRes = await client.query<PatientRow>("SELECT * FROM patients WHERE id = $1", [
+          convId,
+        ]);
+        const pRow = patRes.rows[0];
+        if (pRow && !presence.isOnline(pRow.dni)) {
+          const waConfig = await loadWhatsAppConfig(client);
+          void dispatchChatFallbackNotification(client, waConfig, user, mapPatient(pRow), text);
+        }
+      }
       return null;
     }
     case "mark_read": {
@@ -241,6 +299,32 @@ export async function applyAction(
         lat: action.lat ?? null,
         lng: action.lng ?? null,
       });
+
+      // Si los obstetras están offline, notificar alerta por WhatsApp
+      const obsRes = await client.query<UserRow>(
+        "SELECT * FROM users WHERE role = 'obstetra' AND active = TRUE",
+      );
+      const obstetras = obsRes.rows.map(mapUser);
+      const anyObstetraOnline = presence.areAnyOnline(obstetras.map((o) => o.dni));
+      if (!anyObstetraOnline && obstetras.length > 0) {
+        const patRes = await client.query<PatientRow>("SELECT * FROM patients WHERE id = $1", [
+          ownPatientId,
+        ]);
+        const pRow = patRes.rows[0];
+        if (pRow) {
+          const waConfig = await loadWhatsAppConfig(client);
+          void dispatchAlarmSignsNotification(
+            client,
+            waConfig,
+            mapPatient(pRow),
+            obstetras,
+            signs,
+            note,
+            action.lat ?? null,
+            action.lng ?? null,
+          );
+        }
+      }
       return null;
     }
     case "panic": {
@@ -274,6 +358,30 @@ export async function applyAction(
         lat: action.lat,
         lng: action.lng,
       });
+
+      // Si los obstetras están offline, notificar emergencia urgente por WhatsApp
+      const obsRes = await client.query<UserRow>(
+        "SELECT * FROM users WHERE role = 'obstetra' AND active = TRUE",
+      );
+      const obstetras = obsRes.rows.map(mapUser);
+      const anyObstetraOnline = presence.areAnyOnline(obstetras.map((o) => o.dni));
+      if (!anyObstetraOnline && obstetras.length > 0) {
+        const patRes = await client.query<PatientRow>("SELECT * FROM patients WHERE id = $1", [
+          ownPatientId,
+        ]);
+        const pRow = patRes.rows[0];
+        if (pRow) {
+          const waConfig = await loadWhatsAppConfig(client);
+          void dispatchSosEmergencyNotification(
+            client,
+            waConfig,
+            mapPatient(pRow),
+            obstetras,
+            action.lat,
+            action.lng,
+          );
+        }
+      }
       return null;
     }
     case "attend_alert": {

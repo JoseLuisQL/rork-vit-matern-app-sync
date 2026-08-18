@@ -75,6 +75,18 @@ class PresenceTracker {
     return { online, lastSeenISO, typing };
   }
 
+  /** Verifica si un usuario con DNI dado está en línea (sincronizó hace <15s). */
+  isOnline(dni: string): boolean {
+    const rec = this.records.get(dni);
+    if (!rec) return false;
+    return Date.now() - Date.parse(rec.lastSeenISO) <= ONLINE_WINDOW_MS;
+  }
+
+  /** Verifica si alguno de los DNI dados está en línea. */
+  areAnyOnline(dnis: string[]): boolean {
+    return dnis.some((dni) => this.isOnline(dni));
+  }
+
   /**
    * Presencia visible por rol: la gestante ve al equipo obstétrico bajo la
    * clave "obstetra"; la obstetra (y admin) ve a cada gestante por el id de

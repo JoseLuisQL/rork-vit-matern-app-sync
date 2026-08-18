@@ -215,6 +215,7 @@ export function snapshotFor(
       d30: buildReport(data, todayKey, 30),
       total: buildReport(data, todayKey, 100000),
     };
+    snapshot.whatsappConfig = data.whatsappConfig;
   }
   return snapshot;
 }

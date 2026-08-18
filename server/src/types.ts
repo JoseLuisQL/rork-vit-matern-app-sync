@@ -19,6 +19,21 @@ export interface SystemConfig {
   updatedAtISO: string;
 }
 
+/** Configuración de integración con WhatsApp vía Open-WA (openwa.qware.me). */
+export interface WhatsAppConfig {
+  enabled: boolean;
+  serverUrl: string;
+  apiKey: string;
+  sessionId: string;
+  notifyAppointments: boolean;
+  notifySupplements: boolean;
+  remindAppointments: boolean;
+  remindSupplements: boolean;
+  chatOfflineFallback: boolean;
+  sosOfflineAlerts: boolean;
+  updatedAtISO: string;
+}
+
 /** Acceso de demostración visible en el login (solo en entorno demo). */
 export interface DemoAccount {
   dni: string;
@@ -268,6 +283,8 @@ export interface Snapshot {
   reports?: { d30: ReportBlock; total: ReportBlock };
   /** Configuración global (mantenimiento + entorno) visible por todos los roles. */
   config: SystemConfig;
+  /** Configuración de integración con WhatsApp (solo visible para administración). */
+  whatsappConfig?: WhatsAppConfig;
 }
 
 /** Campos de un medicamento asignado por la obstetra. */
@@ -369,6 +386,7 @@ export interface ActionResult {
 export interface AppData {
   seedVersion: number;
   config: SystemConfig;
+  whatsappConfig: WhatsAppConfig;
   users: UserRecord[];
   patients: Patient[];
   appointments: Appointment[];

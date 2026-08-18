@@ -35,6 +35,7 @@ import type {
   SyncResponse,
   SystemConfig,
   User,
+  WhatsAppConfig,
 } from "@/types";
 
 const SESSION_KEY = "vm_session_v3";
@@ -368,6 +369,44 @@ export const [AppProvider, useApp] = createContextHook(() => {
     [runOnline],
   );
 
+  /** Configuración de WhatsApp con Open-WA (solo admin). */
+  const adminSetWhatsAppConfig = useCallback(
+    (config: Partial<WhatsAppConfig>) => runOnline("/api/admin/whatsapp/config", config),
+    [runOnline],
+  );
+
+  /** Prueba de conexión con el servidor Open-WA (solo admin). */
+  const adminTestWhatsAppConnection = useCallback(
+    async (
+      config?: Partial<WhatsAppConfig>,
+    ): Promise<{
+      ok: boolean;
+      status: string;
+      battery?: number | null;
+      serverUrl?: string;
+      details?: string;
+      error?: string;
+    }> => {
+      const s = sessionRef.current;
+      if (!s) throw new ApiError("Sin sesión", 0);
+      return api("/api/admin/whatsapp/test-connection", { token: s.token, body: config ?? {} });
+    },
+    [],
+  );
+
+  /** Envío de mensaje de prueba a un número de WhatsApp (solo admin). */
+  const adminSendTestWhatsApp = useCallback(
+    async (
+      phone: string,
+      message?: string,
+    ): Promise<{ ok: boolean; message?: string; error?: string }> => {
+      const s = sessionRef.current;
+      if (!s) throw new ApiError("Sin sesión", 0);
+      return api("/api/admin/whatsapp/send-test", { token: s.token, body: { phone, message } });
+    },
+    [],
+  );
+
   // ---------- Vista optimista ----------
 
   const view = useMemo(() => {
@@ -381,6 +420,8 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const lastSyncISO = cached?.serverTimeISO ?? null;
   /** Configuración global del sistema (mantenimiento + entorno), en tiempo real. */
   const systemConfig: SystemConfig | null = cached?.config ?? null;
+  /** Configuración de WhatsApp (solo visible por administración). */
+  const whatsappConfig: WhatsAppConfig | null = cached?.whatsappConfig ?? null;
 
   // Permiso de notificaciones nativas al tener sesión (banner del teléfono).
   useEffect(() => {
@@ -448,6 +489,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       online,
       lastSyncISO,
       systemConfig,
+      whatsappConfig,
       pendingCount: outbox.length,
       authNotice,
       clearAuthNotice,
@@ -459,6 +501,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
       adminSetActive,
       adminReset,
       adminSetConfig,
+      adminSetWhatsAppConfig,
+      adminTestWhatsAppConnection,
+      adminSendTestWhatsApp,
       setAvatar,
       setAutoControls,
       setChatPresence,
@@ -478,6 +523,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       online,
       lastSyncISO,
       systemConfig,
+      whatsappConfig,
       outbox.length,
       authNotice,
       clearAuthNotice,
@@ -489,6 +535,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
       adminSetActive,
       adminReset,
       adminSetConfig,
+      adminSetWhatsAppConfig,
+      adminTestWhatsAppConnection,
+      adminSendTestWhatsApp,
       setAvatar,
       setAutoControls,
       setChatPresence,

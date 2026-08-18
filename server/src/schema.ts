@@ -181,4 +181,47 @@ CREATE TABLE IF NOT EXISTS avatars (
 ALTER TABLE users ADD COLUMN IF NOT EXISTS auto_controls BOOLEAN NOT NULL DEFAULT TRUE;
 `,
   },
+  {
+    id: 3,
+    name: "add-whatsapp-integration",
+    sql: `
+CREATE TABLE IF NOT EXISTS whatsapp_config (
+  id SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  server_url TEXT NOT NULL DEFAULT 'https://openwa.qware.me',
+  api_key TEXT NOT NULL DEFAULT '',
+  session_id TEXT NOT NULL DEFAULT 'vitmaterna',
+  notify_appointments BOOLEAN NOT NULL DEFAULT TRUE,
+  notify_supplements BOOLEAN NOT NULL DEFAULT TRUE,
+  remind_appointments BOOLEAN NOT NULL DEFAULT TRUE,
+  remind_supplements BOOLEAN NOT NULL DEFAULT TRUE,
+  chat_offline_fallback BOOLEAN NOT NULL DEFAULT TRUE,
+  sos_offline_alerts BOOLEAN NOT NULL DEFAULT TRUE,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+INSERT INTO whatsapp_config (id, enabled, server_url, api_key, session_id)
+VALUES (1, FALSE, 'https://openwa.qware.me', '', 'vitmaterna')
+ON CONFLICT (id) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS sent_reminders (
+  id TEXT PRIMARY KEY,
+  patient_id TEXT NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,
+  sent_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_sent_reminders_patient ON sent_reminders (patient_id);
+
+CREATE TABLE IF NOT EXISTS whatsapp_logs (
+  seq BIGINT GENERATED ALWAYS AS IDENTITY UNIQUE,
+  id TEXT PRIMARY KEY,
+  phone TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  status TEXT NOT NULL,
+  error TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_logs_created ON whatsapp_logs (created_at DESC);
+`,
+  },
 ];

@@ -22,6 +22,7 @@ import type {
   UserRecord,
   Visit,
   VisitStatus,
+  WhatsAppConfig,
 } from "./types";
 
 export interface ConfigRow {
@@ -251,6 +252,76 @@ export function mapVisit(r: VisitRow): Visit {
   };
 }
 
+export interface WhatsAppConfigRow {
+  id: number;
+  enabled: boolean;
+  server_url: string;
+  api_key: string;
+  session_id: string;
+  notify_appointments: boolean;
+  notify_supplements: boolean;
+  remind_appointments: boolean;
+  remind_supplements: boolean;
+  chat_offline_fallback: boolean;
+  sos_offline_alerts: boolean;
+  updated_at: string;
+}
+
+export function mapWhatsAppConfig(r: WhatsAppConfigRow): WhatsAppConfig {
+  return {
+    enabled: r.enabled,
+    serverUrl: r.server_url,
+    apiKey: r.api_key,
+    sessionId: r.session_id,
+    notifyAppointments: r.notify_appointments,
+    notifySupplements: r.notify_supplements,
+    remindAppointments: r.remind_appointments,
+    remindSupplements: r.remind_supplements,
+    chatOfflineFallback: r.chat_offline_fallback,
+    sosOfflineAlerts: r.sos_offline_alerts,
+    updatedAtISO: r.updated_at,
+  };
+}
+
+/** Configuración de WhatsApp (fila única de whatsapp_config). */
+export async function loadWhatsAppConfig(db: Queryable): Promise<WhatsAppConfig> {
+  try {
+    const res = await db.query<WhatsAppConfigRow>("SELECT * FROM whatsapp_config WHERE id = 1");
+    const row = res.rows[0];
+    if (!row) {
+      return {
+        enabled: false,
+        serverUrl: "https://openwa.qware.me",
+        apiKey: "",
+        sessionId: "vitmaterna",
+        notifyAppointments: true,
+        notifySupplements: true,
+        remindAppointments: true,
+        remindSupplements: true,
+        chatOfflineFallback: true,
+        sosOfflineAlerts: true,
+        updatedAtISO: new Date().toISOString(),
+      };
+    }
+    return mapWhatsAppConfig(row);
+  } catch {
+    // Si la tabla aún no se ha migrado (durante bootstrap)
+    return {
+      enabled: false,
+      serverUrl: "https://openwa.qware.me",
+      apiKey: "",
+      sessionId: "vitmaterna",
+      notifyAppointments: true,
+      notifySupplements: true,
+      remindAppointments: true,
+      remindSupplements: true,
+      chatOfflineFallback: true,
+      sosOfflineAlerts: true,
+      updatedAtISO: new Date().toISOString(),
+    };
+  }
+}
+
 /** Configuración global (fila única de app_config). */
 export async function loadConfig(
   db: Queryable,
@@ -295,6 +366,7 @@ export async function getUserByToken(db: Queryable, token: string): Promise<User
 /** Carga el estado completo (para cálculos, alertas automáticas y snapshot). */
 export async function loadAppData(db: Queryable): Promise<AppData> {
   const cfg = await loadConfig(db);
+  const whatsappConfig = await loadWhatsAppConfig(db);
   const users = await db.query<UserRow>("SELECT * FROM users ORDER BY seq");
   const patients = await db.query<PatientRow>("SELECT * FROM patients ORDER BY seq");
   const appointments = await db.query<AppointmentRow>("SELECT * FROM appointments ORDER BY seq");
@@ -314,6 +386,7 @@ export async function loadAppData(db: Queryable): Promise<AppData> {
   return {
     seedVersion: cfg.seedVersion,
     config: cfg.config,
+    whatsappConfig,
     users: users.rows.map(mapUser),
     patients: patients.rows.map(mapPatient),
     appointments: appointments.rows.map(mapAppointment),
