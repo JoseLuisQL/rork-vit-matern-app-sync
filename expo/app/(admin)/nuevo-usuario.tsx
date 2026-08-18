@@ -21,6 +21,7 @@ import { useApp } from "@/providers/AppProvider";
 import type { Role } from "@/types";
 import { AppButton } from "@/components/AppButton";
 import { Card } from "@/components/Card";
+import { DatePickerField } from "@/components/DatePickerField";
 import { Field } from "@/components/Field";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SectionHeader } from "@/components/SectionHeader";
@@ -218,14 +219,13 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
             <>
               <SectionHeader title="Ficha clínica inicial" />
               <Card style={styles.formCard}>
-                <Field
+                <DatePickerField
                   label="Última menstruación (FUM)"
                   value={fumKey}
-                  onChangeText={setFumKey}
-                  placeholder="AAAA-MM-DD"
-                  keyboardType="numbers-and-punctuation"
-                  maxLength={10}
+                  onChangeDate={setFumKey}
+                  placeholder="Seleccionar FUM en el calendario"
                   accent={accent.main}
+                  isFum={true}
                   hint="Con la FUM se calculan la edad gestacional, la FPP y los 8 controles."
                   testID="nuevo-fum"
                 />

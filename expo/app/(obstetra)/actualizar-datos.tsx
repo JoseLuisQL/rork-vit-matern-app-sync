@@ -17,6 +17,7 @@ import { useApp, usePatient } from "@/providers/AppProvider";
 import type { PatientUpdateFields } from "@/types";
 import { AppButton } from "@/components/AppButton";
 import { Card } from "@/components/Card";
+import { DatePickerField } from "@/components/DatePickerField";
 import { EmptyState } from "@/components/EmptyState";
 import { Field } from "@/components/Field";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -32,8 +33,6 @@ function parseNum(value: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-const pad2 = (n: number): string => `${n}`.padStart(2, "0");
-
 export default function ActualizarDatosScreen(): React.ReactElement {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -46,9 +45,7 @@ export default function ActualizarDatosScreen(): React.ReactElement {
   const [sys, setSys] = useState<string>("");
   const [dia, setDia] = useState<string>("");
   const [imc, setImc] = useState<string>("");
-  const [fumD, setFumD] = useState<string>("");
-  const [fumM, setFumM] = useState<string>("");
-  const [fumY, setFumY] = useState<string>("");
+  const [fumKey, setFumKey] = useState<string>("");
   const [gestas, setGestas] = useState<number>(1);
   const [cesareas, setCesareas] = useState<number>(0);
   const [abortos, setAbortos] = useState<number>(0);
@@ -65,10 +62,7 @@ export default function ActualizarDatosScreen(): React.ReactElement {
     setSys(`${patient.bpSys}`);
     setDia(`${patient.bpDia}`);
     setImc(`${patient.imc}`);
-    const fum = dateFromKey(patient.fumKey);
-    setFumD(`${fum.getDate()}`);
-    setFumM(`${fum.getMonth() + 1}`);
-    setFumY(`${fum.getFullYear()}`);
+    setFumKey(patient.fumKey);
     setGestas(patient.gestas);
     setCesareas(patient.cesareas);
     setAbortos(patient.abortos);
@@ -76,18 +70,6 @@ export default function ActualizarDatosScreen(): React.ReactElement {
     setPhone(patient.phone);
     setCommunity(patient.community);
   }, [patient, loadedId]);
-
-  /** Clave YYYY-MM-DD solo si día/mes/año forman una fecha real. */
-  const fumKey = useMemo(() => {
-    const d = parseInt(fumD, 10);
-    const m = parseInt(fumM, 10);
-    const y = parseInt(fumY, 10);
-    if (!d || !m || !y || `${y}`.length !== 4) return null;
-    const key = `${y}-${pad2(m)}-${pad2(d)}`;
-    const dt = dateFromKey(key);
-    if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) return null;
-    return key;
-  }, [fumD, fumM, fumY]);
 
   const preview = useMemo(() => {
     if (!fumKey || fumKey > todayKey) return null;
@@ -236,49 +218,16 @@ export default function ActualizarDatosScreen(): React.ReactElement {
 
         <SectionHeader title="Embarazo" />
         <Card style={styles.formCard}>
-          <Text style={styles.groupLabel}>Fecha de última menstruación (FUM)</Text>
-          <View style={styles.row3}>
-            <Field
-              label="Día"
-              value={fumD}
-              onChangeText={setFumD}
-              keyboardType="number-pad"
-              maxLength={2}
-              accent={accent.main}
-              style={styles.flex}
-              testID="campo-fum-dia"
-            />
-            <Field
-              label="Mes"
-              value={fumM}
-              onChangeText={setFumM}
-              keyboardType="number-pad"
-              maxLength={2}
-              accent={accent.main}
-              style={styles.flex}
-            />
-            <Field
-              label="Año"
-              value={fumY}
-              onChangeText={setFumY}
-              keyboardType="number-pad"
-              maxLength={4}
-              accent={accent.main}
-              style={styles.flex}
-            />
-          </View>
-          {preview ? (
-            <View style={styles.previewBox}>
-              <Sparkles size={15} color={gwarm.tealDeep} />
-              <Text style={styles.previewText}>
-                Semana {preview.weeks} · nacería el {fechaCompleta(preview.fpp)}
-              </Text>
-            </View>
-          ) : (
-            <Text style={styles.previewHint}>
-              Con esta fecha se calculan la semana de embarazo y la fecha probable de parto.
-            </Text>
-          )}
+          <DatePickerField
+            label="Fecha de última menstruación (FUM)"
+            value={fumKey}
+            onChangeDate={setFumKey}
+            placeholder="Seleccionar FUM en el calendario"
+            accent={accent.main}
+            isFum={true}
+            hint="Con esta fecha se calculan la semana de embarazo y la fecha probable de parto."
+            testID="campo-fum"
+          />
         </Card>
 
         <SectionHeader title="Su historia" />

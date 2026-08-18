@@ -20,6 +20,7 @@ import { showNotice } from "@/lib/confirm";
 import { useApp } from "@/providers/AppProvider";
 import { AppButton } from "@/components/AppButton";
 import { Card } from "@/components/Card";
+import { DatePickerField } from "@/components/DatePickerField";
 import { Field } from "@/components/Field";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SectionHeader } from "@/components/SectionHeader";
@@ -184,14 +185,13 @@ export default function NuevaGestanteScreen(): React.ReactElement {
 
           <SectionHeader title="Ficha clínica" />
           <Card style={styles.formCard}>
-            <Field
+            <DatePickerField
               label="Última menstruación (FUM)"
               value={fumKey}
-              onChangeText={setFumKey}
-              placeholder="AAAA-MM-DD"
-              keyboardType="numbers-and-punctuation"
-              maxLength={10}
+              onChangeDate={setFumKey}
+              placeholder="Seleccionar FUM en el calendario"
               accent={accent.main}
+              isFum={true}
               hint={
                 user?.autoControls === false
                   ? "Con la FUM se calculan la edad gestacional y la FPP (los controles los registrarás manualmente)."
