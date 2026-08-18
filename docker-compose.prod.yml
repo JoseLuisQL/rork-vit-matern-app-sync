@@ -1,0 +1,148 @@
+# ============================================================
+#  VITMATERNA — Orquestación de PRODUCCIÓN (VPS con Traefik)
+#
+#  Servicios:
+#    db   → PostgreSQL 17 (privado, sin puertos al host)
+#    api  → Bun + Hono (detrás de Traefik, migra y siembra al iniciar)
+#    web  → Expo Web / Nginx estático (detrás de Traefik)
+#
+#  Arranque:  ./deploy.sh
+#  Red proxy: sivac_net (Traefik del VPS)
+# ============================================================
+name: vitmaterna
+
+services:
+
+  # ──────────────────────────────────────────
+  #  BASE DE DATOS — privada, solo red interna
+  # ──────────────────────────────────────────
+  db:
+    image: postgres:17-alpine
+    container_name: vitmaterna-db
+    restart: unless-stopped
+    env_file:
+      - .env.prod
+    environment:
+      POSTGRES_DB:       ${POSTGRES_DB:-vitmaterna}
+      POSTGRES_USER:     ${POSTGRES_USER:-vitmaterna_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD en .env.prod}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vitmaterna_user} -d ${POSTGRES_DB:-vitmaterna}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks:
+      - internal
+    logging:
+      driver: "json-file"
+      options: { max-size: "10m", max-file: "3" }
+
+  # ──────────────────────────────────────────
+  #  BACKEND / API — Bun + Hono
+  #  Sin puerto público; Traefik enruta /api/*, /health, /ping
+  # ──────────────────────────────────────────
+  api:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: vitmaterna-api
+    restart: unless-stopped
+    env_file:
+      - .env.prod
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      DATABASE_URL: postgres://${POSTGRES_USER:-vitmaterna_user}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-vitmaterna}
+      SEED_MODE: ${SEED_MODE:-demo}
+      ADMIN_DNI: ${ADMIN_DNI:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_FIRST_NAME: ${ADMIN_FIRST_NAME:-}
+      ADMIN_LAST_NAME: ${ADMIN_LAST_NAME:-}
+    expose:
+      - "8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "bun -e \"fetch('http://localhost:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - internal
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=sivac_net
+      # ── Redirect HTTP → HTTPS ──
+      - traefik.http.middlewares.vitmaterna-api-https-redirect.redirectscheme.scheme=https
+      - traefik.http.routers.vitmaterna-api-http.rule=Host(`${APP_DOMAIN:-vitmaterna.qware.me}`) && (PathPrefix(`/api`) || PathPrefix(`/health`) || PathPrefix(`/ping`))
+      - traefik.http.routers.vitmaterna-api-http.entrypoints=web
+      - traefik.http.routers.vitmaterna-api-http.middlewares=vitmaterna-api-https-redirect
+      - traefik.http.routers.vitmaterna-api-http.service=noop@internal
+      # ── HTTPS ──
+      - traefik.http.routers.vitmaterna-api.rule=Host(`${APP_DOMAIN:-vitmaterna.qware.me}`) && (PathPrefix(`/api`) || PathPrefix(`/health`) || PathPrefix(`/ping`))
+      - traefik.http.routers.vitmaterna-api.entrypoints=websecure
+      - traefik.http.routers.vitmaterna-api.tls=true
+      - traefik.http.routers.vitmaterna-api.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}
+      - traefik.http.routers.vitmaterna-api.priority=100
+      - traefik.http.services.vitmaterna-api.loadbalancer.server.port=8080
+    logging:
+      driver: "json-file"
+      options: { max-size: "20m", max-file: "5" }
+
+  # ──────────────────────────────────────────
+  #  FRONTEND — Expo Web (Nginx estático)
+  #  Sin puerto público; Traefik enruta /*
+  # ──────────────────────────────────────────
+  web:
+    build:
+      context: ./expo
+      dockerfile: Dockerfile.web
+      args:
+        EXPO_PUBLIC_API_URL: https://${APP_DOMAIN:-vitmaterna.qware.me}
+    container_name: vitmaterna-web
+    restart: unless-stopped
+    expose:
+      - "80"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - internal
+      - proxy
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=sivac_net
+      # ── Redirect HTTP → HTTPS ──
+      - traefik.http.middlewares.vitmaterna-web-https-redirect.redirectscheme.scheme=https
+      - traefik.http.routers.vitmaterna-web-http.rule=Host(`${APP_DOMAIN:-vitmaterna.qware.me}`)
+      - traefik.http.routers.vitmaterna-web-http.entrypoints=web
+      - traefik.http.routers.vitmaterna-web-http.middlewares=vitmaterna-web-https-redirect
+      - traefik.http.routers.vitmaterna-web-http.service=noop@internal
+      # ── HTTPS ──
+      - traefik.http.routers.vitmaterna-web.rule=Host(`${APP_DOMAIN:-vitmaterna.qware.me}`)
+      - traefik.http.routers.vitmaterna-web.entrypoints=websecure
+      - traefik.http.routers.vitmaterna-web.tls=true
+      - traefik.http.routers.vitmaterna-web.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}
+      - traefik.http.routers.vitmaterna-web.priority=10
+      - traefik.http.services.vitmaterna-web.loadbalancer.server.port=80
+    logging:
+      driver: "json-file"
+      options: { max-size: "10m", max-file: "3" }
+
+volumes:
+  db_data:
+
+networks:
+  # Red privada interna para VitMaterna
+  internal:
+    driver: bridge
+  # Red externa de Traefik en el VPS
+  proxy:
+    external: true
+    name: sivac_net
