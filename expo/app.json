@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "VitMaterna",
-    "slug": "ztb4shx7jxkj17tpuz62u",
+    "slug": "vitmaterna",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -22,7 +22,11 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#E7F4F2"
       },
-      "package": "app.rork.ztb4shx7jxkj17tpuz62u"
+      "package": "app.rork.ztb4shx7jxkj17tpuz62u",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "web": {
       "favicon": "./assets/images/favicon.png",
@@ -58,6 +62,11 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": "https://rork.com/"
+      }
     }
   }
 }
