@@ -66,7 +66,11 @@
     "extra": {
       "router": {
         "origin": "https://rork.com/"
+      },
+      "eas": {
+        "projectId": "9c570af3-937c-4d13-a87e-391294f3c3c2"
       }
-    }
+    },
+    "owner": "luisdkbbb"
   }
 }
