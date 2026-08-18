@@ -28,4 +28,4 @@ docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build --r
 echo "=================================================="
 echo "  ✅ VitMaterna desplegado correctamente"
 echo "=================================================="
-docker compose -f docker-compose.prod.yml ps
+docker compose -f docker-compose.prod.yml --env-file .env.prod ps
