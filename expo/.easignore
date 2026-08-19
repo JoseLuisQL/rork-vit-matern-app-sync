@@ -1,0 +1,34 @@
+# EAS Ignore configuration
+# EAS Build uses this file instead of .gitignore when packaging the build archive.
+# google-services.json is deliberately NOT ignored here so EAS can package it,
+# while .gitignore keeps it out of the public git repository.
+
+node_modules/
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native folders (managed workflow)
+ios/
+android/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Firebase Admin SDK (private server keys - never upload to client builds)
+*firebase-adminsdk*.json
+*service-account*.json
+
+# Debug & temporary
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+.DS_Store
+*.pem
+*.tsbuildinfo
+.vercel
+.rork
