@@ -10,6 +10,7 @@
  */
 import Constants, { ExecutionEnvironment } from "expo-constants";
 import { Platform } from "react-native";
+import { api } from "@/lib/api";
 import { dateFromKey, fechaLarga } from "@/lib/format";
 import { areSoundsEnabled } from "@/lib/sounds";
 import type { Message, Snapshot } from "@/types";
@@ -28,6 +29,8 @@ export const DEFAULT_REMINDERS: ReminderSettings = { tomas: false, hora: 8, cita
 export const REMINDER_HOURS = [7, 8, 12, 18, 20] as const;
 
 const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+let cachedPushToken: string | null = null;
 
 /**
  * Disponibilidad de recordatorios locales en este entorno.
@@ -145,6 +148,103 @@ export async function requestNotificationPermission(): Promise<boolean> {
   if (current.granted) return true;
   const asked = await notifications.requestPermissionsAsync();
   return asked.granted;
+}
+
+/**
+ * Registra el dispositivo en Expo Push Notifications y envía el token al backend.
+ * Permite recibir notificaciones con la app cerrada / segundo plano.
+ */
+export async function registerForPushNotificationsAsync(
+  authToken: string,
+): Promise<string | null> {
+  const notifications = getNotifications();
+  if (!notifications || Platform.OS === "web" || isExpoGo) return null;
+
+  try {
+    const permission = await notifications.getPermissionsAsync();
+    let finalStatus = permission.status;
+    if (permission.status !== "granted") {
+      const asked = await notifications.requestPermissionsAsync();
+      finalStatus = asked.status;
+    }
+
+    if (finalStatus !== "granted") {
+      console.log("[VitMaterna] Permiso de notificaciones denegado");
+      return null;
+    }
+
+    const projectId =
+      Constants.expoConfig?.extra?.eas?.projectId ??
+      Constants.easConfig?.projectId ??
+      "9c570af3-937c-4d13-a87e-391294f3c3c2";
+
+    const pushTokenData = await notifications.getExpoPushTokenAsync({
+      projectId,
+    });
+
+    const token = pushTokenData.data;
+    cachedPushToken = token;
+
+    // Enviar el token al backend asociado al usuario autenticado
+    await api("/api/push-token", {
+      token: authToken,
+      body: { pushToken: token, platform: Platform.OS },
+    });
+
+    console.log("[VitMaterna] Push token registrado en servidor:", token);
+    return token;
+  } catch (error) {
+    console.warn("[VitMaterna] Error registrando push token:", error);
+    return null;
+  }
+}
+
+/**
+ * Desvincula el Push Token del backend al cerrar sesión.
+ */
+export async function unregisterPushTokenAsync(authToken: string): Promise<void> {
+  if (Platform.OS === "web" || isExpoGo) return;
+  try {
+    await api("/api/push-token/delete", {
+      token: authToken,
+      body: { pushToken: cachedPushToken },
+    });
+    cachedPushToken = null;
+  } catch (error) {
+    console.warn("[VitMaterna] Error desregistrando push token:", error);
+  }
+}
+
+/**
+ * Escucha cuando el usuario pulsa sobre una notificación nativa
+ * recibida en segundo plano para llevarlo a la pantalla correcta.
+ */
+export function setupNotificationListeners(
+  onNavigate: (route: string) => void,
+): () => void {
+  const notifications = getNotifications();
+  if (!notifications || Platform.OS === "web") return () => {};
+
+  const subscription = notifications.addNotificationResponseReceivedListener((response) => {
+    const data = response.notification.request.content.data as
+      | Record<string, unknown>
+      | undefined;
+    if (!data) return;
+
+    if (data.kind === "mensaje" && typeof data.convId === "string") {
+      onNavigate(`/(obstetra)/chat/${data.convId}`);
+    } else if (data.kind === "sos" || data.kind === "alarma") {
+      onNavigate("/(obstetra)/(tabs)/alertas");
+    } else if (data.kind === "medicamento") {
+      onNavigate("/(gestante)/(tabs)/tratamiento");
+    } else if (data.kind === "cita") {
+      onNavigate("/(obstetra)/(tabs)/agenda");
+    }
+  });
+
+  return () => {
+    subscription.remove();
+  };
 }
 
 export async function cancelAllReminders(): Promise<void> {

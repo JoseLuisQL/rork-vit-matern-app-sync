@@ -7,6 +7,7 @@
 import type { PoolClient } from "pg";
 import { isValidDayKey, peruDayKey } from "./clinical";
 import { computePatient, isActiveState, sanitizeSupplementFields } from "./domain";
+import { notifyActiveObstetras, notifyPatientByPatientId, notifyUserByDni } from "./push";
 import { presence } from "./presence";
 import { loadWhatsAppConfig, mapPatient, mapUser } from "./rows";
 import type { PatientRow, UserRow } from "./rows";
@@ -86,15 +87,42 @@ export async function applyAction(
         action.appointmentId,
         action.type === "confirm_appointment" ? "confirmada" : "solicitud_reprogramacion",
       ]);
+      if (action.type === "request_reschedule") {
+        const patRes = await client.query<{ first_name: string; last_name: string }>(
+          "SELECT first_name, last_name FROM patients WHERE id = $1",
+          [appt.patient_id],
+        );
+        const p = patRes.rows[0];
+        const name = p ? `${p.first_name} ${p.last_name}`.trim() : "Una gestante";
+        void notifyActiveObstetras(client, {
+          title: "Solicitud de reprogramación",
+          body: `${name} solicitó reprogramar su cita prenatal.`,
+          channelId: "avisos",
+          sound: "aviso.wav",
+          priority: "high",
+          data: { kind: "cita", appointmentId: action.appointmentId },
+        });
+      }
       return null;
     }
     case "set_appointment_status": {
       if (user.role === "gestante") return "Acción no permitida";
-      const res = await client.query("UPDATE appointments SET estado = $2 WHERE id = $1", [
-        action.appointmentId,
-        action.estado,
-      ]);
+      const res = await client.query<{ patient_id: string; date_key: string; time: string }>(
+        "UPDATE appointments SET estado = $2 WHERE id = $1 RETURNING patient_id, date_key, time",
+        [action.appointmentId, action.estado],
+      );
       if ((res.rowCount ?? 0) === 0) return "La cita ya no existe";
+      const apptRow = res.rows[0];
+      if (apptRow) {
+        void notifyPatientByPatientId(client, apptRow.patient_id, {
+          title: "Actualización de tu cita prenatal",
+          body: `Tu cita ahora figura como: ${action.estado.replace("_", " ")}.`,
+          channelId: "avisos",
+          sound: "aviso.wav",
+          priority: "high",
+          data: { kind: "cita", appointmentId: action.appointmentId },
+        });
+      }
       return null;
     }
     case "toggle_intake": {
@@ -181,6 +209,17 @@ export async function applyAction(
           timesPerDay: fields.timesPerDay,
         });
       }
+
+      // Notificación Push a la gestante
+      void notifyPatientByPatientId(client, action.patientId, {
+        title: "Nuevo medicamento asignado",
+        body: `Tu obstetra te asignó ${fields.name} (${fields.dose}). Revisa tu horario en Pastillas.`,
+        channelId: "avisos",
+        sound: "aviso.wav",
+        priority: "high",
+        data: { kind: "medicamento" },
+      });
+
       return null;
     }
     case "update_supplement": {
@@ -211,6 +250,16 @@ export async function applyAction(
             timesPerDay: fields.timesPerDay,
           });
         }
+
+        // Notificación Push a la gestante
+        void notifyPatientByPatientId(client, suppRef.patientId, {
+          title: "Actualización de medicamento",
+          body: `Se actualizó la dosis de ${fields.name} (${fields.dose}). Revisa tus tomas en VitMaterna.`,
+          channelId: "avisos",
+          sound: "aviso.wav",
+          priority: "high",
+          data: { kind: "medicamento" },
+        });
       }
       return null;
     }
@@ -241,8 +290,18 @@ export async function applyAction(
         readByObstetra: user.role === "obstetra",
       });
 
-      // Fallback a WhatsApp si el obstetra escribe y la gestante está offline en la app
+      // Notificación Push inmediata al destinatario (despierta el teléfono con app cerrada)
       if (user.role === "obstetra") {
+        void notifyPatientByPatientId(client, convId, {
+          title: `Mensaje de tu obstetra (${user.firstName})`,
+          body: text.length > 140 ? text.slice(0, 137) + "..." : text,
+          channelId: "mensajes",
+          sound: "mensaje.wav",
+          priority: "high",
+          data: { kind: "mensaje", convId },
+        });
+
+        // Fallback a WhatsApp si el obstetra escribe y la gestante está offline en la app
         const patRes = await client.query<PatientRow>("SELECT * FROM patients WHERE id = $1", [
           convId,
         ]);
@@ -251,6 +310,20 @@ export async function applyAction(
           const waConfig = await loadWhatsAppConfig(client);
           void dispatchChatFallbackNotification(client, waConfig, user, mapPatient(pRow), text);
         }
+      } else {
+        const patRes = await client.query<PatientRow>("SELECT * FROM patients WHERE id = $1", [
+          convId,
+        ]);
+        const pRow = patRes.rows[0];
+        const patientName = pRow ? `${pRow.first_name} ${pRow.last_name}`.trim() : "Gestante";
+        void notifyActiveObstetras(client, {
+          title: `Mensaje de ${patientName}`,
+          body: text.length > 140 ? text.slice(0, 137) + "..." : text,
+          channelId: "mensajes",
+          sound: "mensaje.wav",
+          priority: "high",
+          data: { kind: "mensaje", convId },
+        });
       }
       return null;
     }
@@ -298,6 +371,24 @@ export async function applyAction(
         readByObstetra: false,
         lat: action.lat ?? null,
         lng: action.lng ?? null,
+      });
+
+      // Notificación Push inmediata a todos los obstetras
+      const alarmPatRes = await client.query<PatientRow>(
+        "SELECT * FROM patients WHERE id = $1",
+        [ownPatientId],
+      );
+      const alarmPRow = alarmPatRes.rows[0];
+      const alarmPatientName = alarmPRow
+        ? `${alarmPRow.first_name} ${alarmPRow.last_name}`.trim()
+        : "Gestante";
+      void notifyActiveObstetras(client, {
+        title: `⚠️ Signos de alarma · ${alarmPatientName}`,
+        body: `${signsText}${note ? `. Nota: ${note}` : ""}`,
+        channelId: "emergencias",
+        sound: "sos.wav",
+        priority: "high",
+        data: { kind: "alarma", patientId: ownPatientId, alertId: `al-alarma-${action.id}` },
       });
 
       // Si los obstetras están offline, notificar alerta por WhatsApp
@@ -357,6 +448,27 @@ export async function applyAction(
         readByObstetra: false,
         lat: action.lat,
         lng: action.lng,
+      });
+
+      // Notificación Push inmediata con máxima urgencia a todos los obstetras
+      const panicPatRes = await client.query<PatientRow>(
+        "SELECT * FROM patients WHERE id = $1",
+        [ownPatientId],
+      );
+      const panicPRow = panicPatRes.rows[0];
+      const panicPatientName = panicPRow
+        ? `${panicPRow.first_name} ${panicPRow.last_name}`.trim()
+        : "Gestante";
+      void notifyActiveObstetras(client, {
+        title: `🚨 EMERGENCIA SOS · ${panicPatientName}`,
+        body:
+          action.lat != null && action.lng != null
+            ? "¡Emergencia activada con ubicación GPS! Toca para ver en el mapa."
+            : "¡Emergencia activada! Requiere atención urgente.",
+        channelId: "emergencias",
+        sound: "sos.wav",
+        priority: "high",
+        data: { kind: "sos", patientId: ownPatientId, alertId: `al-sos-${action.id}` },
       });
 
       // Si los obstetras están offline, notificar emergencia urgente por WhatsApp

@@ -10,12 +10,12 @@ import {
 } from "@expo-google-fonts/inter";
 import { PatrickHand_400Regular } from "@expo-google-fonts/patrick-hand";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { initNotifications } from "@/lib/notifications";
+import { initNotifications, setupNotificationListeners } from "@/lib/notifications";
 import { MaintenanceGate } from "@/components/MaintenanceGate";
 import { ToastHost, ToastProvider } from "@/components/Toast";
 import { AppProvider } from "@/providers/AppProvider";
@@ -25,6 +25,20 @@ SplashScreen.preventAutoHideAsync();
 const queryClient = new QueryClient();
 
 initNotifications();
+
+function NotificationResponder() {
+  const router = useRouter();
+  useEffect(() => {
+    return setupNotificationListeners((route) => {
+      try {
+        router.push(route as any);
+      } catch (e) {
+        console.warn("[VitMaterna] No se pudo navegar a la ruta de la notificación:", e);
+      }
+    });
+  }, [router]);
+  return null;
+}
 
 function RootLayoutNav() {
   return (
@@ -62,6 +76,7 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
         <AppProvider>
+          <NotificationResponder />
           <GestureHandlerRootView style={{ flex: 1 }}>
             <StatusBar style="dark" />
             <RootLayoutNav />

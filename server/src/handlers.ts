@@ -18,6 +18,7 @@ import {
 import { pool, withTx } from "./db";
 import type { Queryable } from "./db";
 import { publicUser, regenerateAutoAlerts, snapshotFor } from "./domain";
+import { notifyPatientByPatientId } from "./push";
 import { presence } from "./presence";
 import type { PresenceInput } from "./presence";
 import { loadAppData, loadConfig, loadWhatsAppConfig, mapAppointment, mapPatient, mapUser } from "./rows";
@@ -280,6 +281,16 @@ export async function handleSchedule(c: AppContext): Promise<Response> {
           true,
           user,
         );
+
+        // Notificación Push a la gestante
+        void notifyPatientByPatientId(client, apptRow.patient_id, {
+          title: "Tu cita prenatal ha sido reprogramada",
+          body: `Tu cita ahora es el ${dateKey} a las ${time}.`,
+          channelId: "avisos",
+          sound: "aviso.wav",
+          priority: "high",
+          data: { kind: "cita", appointmentId: apptId },
+        });
       }
     } else if (body.mode === "cita") {
       const res = await client.query<PatientRow>(
@@ -317,6 +328,16 @@ export async function handleSchedule(c: AppContext): Promise<Response> {
       // Notificación WhatsApp de nueva cita
       const waConfig = await loadWhatsAppConfig(client);
       void dispatchAppointmentNotification(client, waConfig, mapPatient(pRow), newAppt, false, user);
+
+      // Notificación Push a la gestante
+      void notifyPatientByPatientId(client, body.patientId as string, {
+        title: "Tienes una nueva cita prenatal",
+        body: `Cita programada para el ${dateKey} a las ${time} (${newAppt.motivo}).`,
+        channelId: "avisos",
+        sound: "aviso.wav",
+        priority: "high",
+        data: { kind: "cita", appointmentId: newAppt.id },
+      });
     } else if (body.mode === "visita") {
       const res = await client.query("SELECT 1 FROM patients WHERE id = $1", [body.patientId ?? ""]);
       if ((res.rowCount ?? 0) === 0) return { kind: "notFound", error: "Paciente no encontrada" };
@@ -905,4 +926,44 @@ export async function handleAdminWhatsAppSendTest(c: AppContext): Promise<Respon
   }
 
   return c.json({ ok: true, message: "Mensaje de prueba enviado con éxito" });
+}
+
+/**
+ * Registra o actualiza el Push Token (Expo/FCM) del usuario conectado.
+ */
+export async function handleRegisterPushToken(c: AppContext): Promise<Response> {
+  const user = c.get("user");
+  const body = await readJson<{ pushToken?: string; platform?: string }>(c);
+  const token = (body.pushToken ?? "").trim();
+  const platform = (body.platform ?? "android").toLowerCase().trim();
+
+  if (!token) {
+    return c.json({ error: "Push token requerido" }, 400);
+  }
+
+  await pool.query(
+    `INSERT INTO push_tokens (dni, token, platform, updated_at)
+     VALUES ($1, $2, $3, now())
+     ON CONFLICT (dni, token) DO UPDATE SET updated_at = EXCLUDED.updated_at, platform = EXCLUDED.platform`,
+    [user.dni, token, platform],
+  );
+
+  return c.json({ ok: true });
+}
+
+/**
+ * Elimina un Push Token cuando el usuario cierra sesión.
+ */
+export async function handleDeletePushToken(c: AppContext): Promise<Response> {
+  const user = c.get("user");
+  const body = await readJson<{ pushToken?: string }>(c);
+  const token = (body.pushToken ?? "").trim();
+
+  if (token) {
+    await pool.query("DELETE FROM push_tokens WHERE dni = $1 AND token = $2", [user.dni, token]);
+  } else {
+    await pool.query("DELETE FROM push_tokens WHERE dni = $1", [user.dni]);
+  }
+
+  return c.json({ ok: true });
 }

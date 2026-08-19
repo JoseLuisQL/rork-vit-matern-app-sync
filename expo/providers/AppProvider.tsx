@@ -17,9 +17,11 @@ import {
   cancelAllReminders,
   DEFAULT_REMINDERS,
   notifySnapshotDelta,
+  registerForPushNotificationsAsync,
   ReminderSettings,
   requestNotificationPermission,
   syncReminders,
+  unregisterPushTokenAsync,
 } from "@/lib/notifications";
 import { playSnapshotSounds, setSoundsPreference } from "@/lib/sounds";
 import { useToast } from "@/components/Toast";
@@ -191,7 +193,11 @@ export const [AppProvider, useApp] = createContextHook(() => {
   // ---------- Sesión ----------
 
   const performLogout = useCallback((notice?: string) => {
-    const dni = sessionRef.current?.user.dni;
+    const s = sessionRef.current;
+    if (s?.token) {
+      unregisterPushTokenAsync(s.token).catch(() => {});
+    }
+    const dni = s?.user.dni;
     sessionRef.current = null;
     outboxRef.current = [];
     cachedRef.current = null;
@@ -220,6 +226,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
     setOutboxState([]);
     setAuthNotice(null);
     setSyncOk(true);
+    registerForPushNotificationsAsync(res.token).catch((e) =>
+      console.log("[VitMaterna] Error registrando push token en login:", e),
+    );
     await AsyncStorage.multiSet([
       [SESSION_KEY, JSON.stringify(s)],
       [snapKey(res.user.dni), JSON.stringify(res.snapshot)],
@@ -227,6 +236,15 @@ export const [AppProvider, useApp] = createContextHook(() => {
     ]).catch(() => {});
     return res.user;
   }, []);
+
+  // Registrar push token al hidratar la sesión existente
+  useEffect(() => {
+    if (session?.token) {
+      registerForPushNotificationsAsync(session.token).catch((e) =>
+        console.log("[VitMaterna] Error registrando push token con sesión existente:", e),
+      );
+    }
+  }, [session?.token]);
 
   // ---------- Sincronización (cola offline + tiempo casi real) ----------
 

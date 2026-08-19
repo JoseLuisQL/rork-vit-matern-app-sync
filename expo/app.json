@@ -23,9 +23,14 @@
         "backgroundColor": "#E7F4F2"
       },
       "package": "app.rork.ztb4shx7jxkj17tpuz62u",
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.VIBRATE",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.WAKE_LOCK"
       ]
     },
     "web": {
@@ -52,6 +57,8 @@
       [
         "expo-notifications",
         {
+          "icon": "./assets/images/icon.png",
+          "color": "#0D9488",
           "sounds": [
             "./assets/sounds/mensaje.wav",
             "./assets/sounds/aviso.wav",

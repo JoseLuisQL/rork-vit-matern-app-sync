@@ -224,4 +224,18 @@ CREATE TABLE IF NOT EXISTS whatsapp_logs (
 CREATE INDEX IF NOT EXISTS idx_whatsapp_logs_created ON whatsapp_logs (created_at DESC);
 `,
   },
+  {
+    id: 4,
+    name: "add-push-tokens",
+    sql: `
+CREATE TABLE IF NOT EXISTS push_tokens (
+  dni TEXT NOT NULL REFERENCES users(dni) ON DELETE CASCADE,
+  token TEXT NOT NULL,
+  platform TEXT NOT NULL DEFAULT 'android',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (dni, token)
+);
+CREATE INDEX IF NOT EXISTS idx_push_tokens_dni ON push_tokens (dni);
+`,
+  },
 ];

@@ -21,8 +21,10 @@ import {
   handleAdminWhatsAppTestConnection,
   handleAvatarImage,
   handleCreateUser,
+  handleDeletePushToken,
   handleLogin,
   handlePublicConfig,
+  handleRegisterPushToken,
   handleReset,
   handleSchedule,
   handleSetActive,
@@ -106,6 +108,8 @@ app.use("/api/*", async (c, next) => {
 
 app.post("/api/sync", handleSync);
 app.post("/api/schedule", handleSchedule);
+app.post("/api/push-token", handleRegisterPushToken);
+app.post("/api/push-token/delete", handleDeletePushToken);
 app.post("/api/user/avatar", handleSetAvatar);
 app.post("/api/user/auto-controls", handleSetAutoControls);
 app.post("/api/admin/create-user", handleCreateUser);
