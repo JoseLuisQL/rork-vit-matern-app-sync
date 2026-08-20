@@ -252,7 +252,7 @@ export default function PerfilGestante(): React.ReactElement {
                   <Illustration source={GICON.campana} width={26} height={26} />
                 </View>
                 <View style={styles.flex}>
-                  <Text style={styles.switchTitle}>Aviso para tus pastillas</Text>
+                  <Text style={styles.switchTitle}>Aviso para tus medicamentos</Text>
                   <Text style={styles.switchText}>Todos los días, funciona sin señal</Text>
                 </View>
                 <Switch
@@ -317,7 +317,7 @@ export default function PerfilGestante(): React.ReactElement {
                 </View>
                 <View style={styles.flex}>
                   <Text style={styles.switchTitle}>Sonidos de los avisos</Text>
-                  <Text style={styles.switchText}>Al llegar mensajes, citas o pastillas nuevas</Text>
+                  <Text style={styles.switchText}>Al llegar mensajes, citas o medicamentos nuevos</Text>
                 </View>
                 <Switch
                   value={soundsEnabled}

@@ -6,13 +6,13 @@
 import { useRouter } from "expo-router";
 import { Search, UserPlus, Users } from "lucide-react-native";
 import React, { useCallback, useMemo, useState } from "react";
-import { Alert, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
+import { ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { gfonts, gShadow, gwarm, warmAccent, warmPlum } from "@/constants/theme";
 import { ROLE_LABEL } from "@/constants/labels";
 import { GICON } from "@/constants/illustrations";
 import { useResponsive } from "@/hooks/useResponsive";
 import { ApiError, avatarUri } from "@/lib/api";
-import { confirmAction } from "@/lib/confirm";
+import { confirmAction, showNotice } from "@/lib/confirm";
 import { useApp } from "@/providers/AppProvider";
 import type { Role, User } from "@/types";
 import { AppButton } from "@/components/AppButton";
@@ -49,7 +49,7 @@ export default function UsuariosScreen(): React.ReactElement {
   const toggleActive = useCallback(
     async (target: User, value: boolean) => {
       if (!online) {
-        Alert.alert("Sin conexión", "Necesitas conexión para cambiar el estado de una cuenta.");
+        showNotice("Sin conexión", "Necesitas conexión para cambiar el estado de una cuenta.");
         return;
       }
       const ok = await confirmAction({
@@ -65,8 +65,8 @@ export default function UsuariosScreen(): React.ReactElement {
       try {
         await adminSetActive(target.dni, value);
       } catch (e) {
-        Alert.alert(
-          "No se pudo cambiar",
+        showNotice(
+          "No se pudo cambiar el estado",
           e instanceof ApiError && e.status === 0
             ? "Sin conexión con el servidor."
             : e instanceof Error

@@ -166,7 +166,7 @@ export default function MedicamentoScreen(): React.ReactElement {
     if (!editing) return;
     const ok = await confirmAction({
       title: "Quitar medicamento",
-      message: `${editing.name} dejará de aparecer en las pastillas de ${patient.firstName}.`,
+      message: `${editing.name} dejará de aparecer en los medicamentos de ${patient.firstName}.`,
       confirmText: "Sí, quitar",
       destructive: true,
     });

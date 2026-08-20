@@ -74,7 +74,7 @@ export default function PastillasGestante(): React.ReactElement {
         <View style={styles.headRow}>
           <View style={styles.headInfo}>
             <Text style={styles.question}>
-              {supplements.length > 0 ? "¿Ya tomaste tus pastillas?" : "Tus pastillas"}
+              {supplements.length > 0 ? "¿Ya tomaste tus medicamentos?" : "Tus medicamentos"}
             </Text>
             <Text style={styles.dateText}>{capitalize(fechaLarga(todayKey))}</Text>
           </View>
@@ -83,7 +83,7 @@ export default function PastillasGestante(): React.ReactElement {
         {supplements.length === 0 ? (
           <View style={styles.emptyWrap}>
             <Text style={styles.emptyText}>
-              Aún no tienes pastillas asignadas. Tu obstetra te indicará y recetará tus suplementos en tu próximo control.
+              Aún no tienes medicamentos asignados. Tu obstetra te indicará y recetará tus suplementos en tu próximo control.
             </Text>
           </View>
         ) : (
@@ -156,7 +156,7 @@ export default function PastillasGestante(): React.ReactElement {
           })}
         </View>
         <Text style={styles.progressText}>
-          Tomaste tus pastillas{" "}
+          Tomaste tus medicamentos{" "}
           <Text style={styles.progressStrong}>{daysTaken} de los últimos 30 días</Text>.
         </Text>
         {patient.streak > 1 ? (
@@ -195,7 +195,7 @@ export default function PastillasGestante(): React.ReactElement {
   return (
     <View style={styles.container}>
       <WebContainer size="dashboard">
-        <GHeader title="Mis pastillas" />
+        <GHeader title="Mis medicamentos" />
       </WebContainer>
       <ScrollView
         style={styles.flex}

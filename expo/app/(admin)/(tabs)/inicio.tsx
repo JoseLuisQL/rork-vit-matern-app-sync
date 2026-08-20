@@ -154,7 +154,7 @@ export default function InicioAdmin(): React.ReactElement {
           {
             key: "adherencia",
             value: `${reports.adherenciaPromedio}%`,
-            label: "Toman pastillas",
+            label: "Toman medicamentos",
             color:
               reports.adherenciaPromedio >= 75
                 ? gwarm.teal

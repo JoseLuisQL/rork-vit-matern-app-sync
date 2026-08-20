@@ -190,9 +190,9 @@ export default function ReportesScreen(): React.ReactElement {
             detail={`${report.controlesOportunos.asistidos} de ${report.controlesOportunos.esperados} controles esperados`}
           />
           <IndicatorCard
-            title="Toman bien sus pastillas"
+            title="Toman bien sus medicamentos"
             pct={report.coberturaSuplementacion}
-            detail="Gestantes que cumplen su tratamiento de hierro"
+            detail="Gestantes que cumplen su tratamiento de hierro y suplementos"
           />
           <IndicatorCard
             title="Adherencia promedio"

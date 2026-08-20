@@ -147,14 +147,14 @@ export default function InicioGestante(): React.ReactElement {
       <SoftCard style={styles.pillsCard}>
         <BlockTitle
           illu={GICON.pastillas}
-          title={supplements.length > 0 ? "Mis pastillas de hoy" : "Mis pastillas"}
+          title={supplements.length > 0 ? "Mis medicamentos de hoy" : "Mis medicamentos"}
           color={gwarm.terracotta}
           soft={gwarm.terracottaSoft}
         />
         {supplements.length === 0 ? (
           <View style={styles.emptyPillsBox}>
             <Text style={styles.emptyPillsText}>
-              Aún no tienes pastillas asignadas. Tu obstetra te las indicará en tu próximo control prenatal.
+              Aún no tienes medicamentos asignados. Tu obstetra te los indicará en tu próximo control prenatal.
             </Text>
           </View>
         ) : (

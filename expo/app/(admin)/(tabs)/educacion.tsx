@@ -16,7 +16,6 @@ import {
 } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
 import {
-  Alert,
   Platform,
   Pressable,
   ScrollView,
@@ -29,6 +28,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CATEGORY_ILU, GICON } from "@/constants/illustrations";
 import { gShadow, gfonts, gwarm, semantic, warmPlum, withAlpha } from "@/constants/theme";
 import { useResponsive } from "@/hooks/useResponsive";
+import { confirmAction } from "@/lib/confirm";
 import { useApp, useArticles } from "@/providers/AppProvider";
 import type { Article } from "@/types";
 import { AppButton } from "@/components/AppButton";
@@ -101,38 +101,26 @@ export default function AdminEducacionScreen(): React.ReactElement {
     }
   };
 
-  const handleDelete = (art: Article) => {
+  const handleDelete = async (art: Article) => {
     if (!online) {
       showToast("Conéctate a internet para eliminar contenidos", "error");
       return;
     }
 
-    const doDelete = async () => {
-      try {
-        await adminDeleteArticle(art.id);
-        showToast("Contenido educativo eliminado", "success");
-      } catch (e) {
-        showToast("Error al eliminar el artículo", "error");
-      }
-    };
+    const ok = await confirmAction({
+      title: "Eliminar contenido educativo",
+      message: `¿Estás seguro de eliminar el artículo "${art.title}"? Esta acción no se puede deshacer y se retirará de las gestantes asignadas.`,
+      confirmText: "Eliminar",
+      destructive: true,
+    });
 
-    if (Platform.OS === "web") {
-      if (
-        window.confirm(
-          `¿Estás seguro de eliminar el artículo "${art.title}"? Esta acción no se puede deshacer.`
-        )
-      ) {
-        void doDelete();
-      }
-    } else {
-      Alert.alert(
-        "Eliminar contenido",
-        `¿Estás seguro de eliminar "${art.title}"?`,
-        [
-          { text: "Cancelar", style: "cancel" },
-          { text: "Eliminar", style: "destructive", onPress: () => void doDelete() },
-        ]
-      );
+    if (!ok) return;
+
+    try {
+      await adminDeleteArticle(art.id);
+      showToast("Contenido educativo eliminado", "success");
+    } catch (e) {
+      showToast("Error al eliminar el artículo", "error");
     }
   };
 

@@ -293,7 +293,7 @@ export default function FichaGestante(): React.ReactElement {
     <View style={styles.colSection}>
       <PopIn delay={180}>
         <SectionHeader
-          title="Sus pastillas"
+          title="Sus medicamentos"
           action={{ label: "Asignar", onPress: () => goMedicamento(), color: accent.main }}
         />
         <Card style={styles.treatCard}>

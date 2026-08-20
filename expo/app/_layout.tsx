@@ -18,6 +18,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { initNotifications, setupNotificationListeners } from "@/lib/notifications";
 import { MaintenanceGate } from "@/components/MaintenanceGate";
 import { ToastHost, ToastProvider } from "@/components/Toast";
+import { ConfirmHost, ConfirmProvider } from "@/components/ConfirmDialog";
 import { AppProvider } from "@/providers/AppProvider";
 
 SplashScreen.preventAutoHideAsync();
@@ -75,15 +76,18 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
-        <AppProvider>
-          <NotificationResponder />
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            <StatusBar style="dark" />
-            <RootLayoutNav />
-            <MaintenanceGate />
-            <ToastHost />
-          </GestureHandlerRootView>
-        </AppProvider>
+        <ConfirmProvider>
+          <AppProvider>
+            <NotificationResponder />
+            <GestureHandlerRootView style={{ flex: 1 }}>
+              <StatusBar style="dark" />
+              <RootLayoutNav />
+              <MaintenanceGate />
+              <ToastHost />
+              <ConfirmHost />
+            </GestureHandlerRootView>
+          </AppProvider>
+        </ConfirmProvider>
       </ToastProvider>
     </QueryClientProvider>
   );

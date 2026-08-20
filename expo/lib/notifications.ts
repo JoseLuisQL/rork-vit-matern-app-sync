@@ -351,7 +351,7 @@ export async function notifySnapshotDelta(
         "Tienes un medicamento nuevo",
         `Tu obstetra te asignó ${supp.name}: ${
           times === 1 ? "1 vez al día" : `${times} veces al día`
-        }. Márcalo cada día en Pastillas.`,
+        }. Márcalo cada día en Medicamentos.`,
       );
     }
 
@@ -398,7 +398,7 @@ export async function syncReminders(
   if (settings.tomas) {
     await notifications.scheduleNotificationAsync({
       content: {
-        title: "Tus pastillas de hoy",
+        title: "Tus medicamentos de hoy",
         body: "¿Ya marcaste todas tus tomas de hoy? Ábrelo en VitMaterna.",
         sound: nativeSound("aviso"),
         data: { reminder: true },

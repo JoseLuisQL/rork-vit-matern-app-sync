@@ -49,7 +49,7 @@ export default function GestanteTabsLayout(): React.ReactElement {
       },
       {
         key: "tratamiento",
-        label: "Pastillas",
+        label: "Medicamentos",
         route: "/(gestante)/(tabs)/tratamiento",
         iconUri: GICON.pastillas,
       },
@@ -101,7 +101,7 @@ export default function GestanteTabsLayout(): React.ReactElement {
         <Tabs.Screen
           name="tratamiento"
           options={{
-            title: "Pastillas",
+            title: "Medicamentos",
             tabBarIcon: ({ focused }) => <TabIcon uri={GICON.pastillas} focused={focused} />,
           }}
         />

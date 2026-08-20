@@ -1,47 +1,80 @@
-/** Confirmación y avisos multiplataforma (Alert nativo / window en web). */
-import { Alert, Platform } from "react-native";
+/**
+ * Confirmación y avisos multiplataforma con diseño clínico cálido consistente.
+ * Totalmente desacoplado de las alertas nativas del navegador / sistema operativo.
+ */
+import React from "react";
 
-/** Aviso simple con botón OK que también funciona en web. */
-export function showNotice(title: string, message: string): void {
-  if (Platform.OS === "web") {
-    if (typeof window !== "undefined") window.alert(`${title}\n\n${message}`);
-    return;
-  }
-  Alert.alert(title, message);
-}
+export type ConfirmVariant =
+  | "danger"
+  | "warning"
+  | "info"
+  | "success"
+  | "default";
 
 export interface ConfirmOptions {
   title: string;
-  message: string;
+  message?: string;
   confirmText?: string;
   cancelText?: string;
   destructive?: boolean;
+  variant?: ConfirmVariant;
+  badge?: string;
+  accentColor?: string;
+  singleButton?: boolean;
+  icon?: React.ComponentType<{ size: number; color: string }>;
 }
 
-export function confirmAction(options: ConfirmOptions): Promise<boolean> {
-  const {
-    title,
-    message,
-    confirmText = "Confirmar",
-    cancelText = "Cancelar",
-    destructive = false,
-  } = options;
+export type ConfirmHandler = (options: ConfirmOptions) => Promise<boolean>;
 
-  if (Platform.OS === "web") {
-    const ok =
-      typeof window !== "undefined" &&
-      window.confirm(`${title}\n\n${message}`);
+let globalConfirmHandler: ConfirmHandler | null = null;
+
+export function registerConfirmHandler(handler: ConfirmHandler | null): void {
+  globalConfirmHandler = handler;
+}
+
+/**
+ * Abre el diálogo de confirmación personalizado de VitMaterna.
+ * Retorna una promesa que resuelve en `true` si el usuario aceptó o `false` si canceló.
+ */
+export function confirmAction(options: ConfirmOptions): Promise<boolean> {
+  if (globalConfirmHandler) {
+    return globalConfirmHandler(options);
+  }
+  // En caso de ejecutarse antes del montaje del host o en pruebas unitarias:
+  if (typeof window !== "undefined" && typeof window.confirm === "function") {
+    const ok = window.confirm(
+      `${options.title}${options.message ? `\n\n${options.message}` : ""}`
+    );
     return Promise.resolve(!!ok);
   }
+  return Promise.resolve(true);
+}
 
-  return new Promise((resolve) => {
-    Alert.alert(title, message, [
-      { text: cancelText, style: "cancel", onPress: () => resolve(false) },
-      {
-        text: confirmText,
-        style: destructive ? "destructive" : "default",
-        onPress: () => resolve(true),
-      },
-    ]);
+/**
+ * Muestra un aviso informativo o de advertencia con un solo botón de aceptación.
+ */
+export function showNotice(
+  title: string,
+  message: string,
+  options?: Partial<ConfirmOptions>
+): Promise<boolean> {
+  return confirmAction({
+    title,
+    message,
+    confirmText: options?.confirmText || "Entendido",
+    singleButton: true,
+    variant:
+      options?.variant || (options?.destructive ? "danger" : "info"),
+    ...options,
   });
+}
+
+/**
+ * Hook para invocar diálogos de confirmación en componentes funcionales.
+ */
+export function useConfirm() {
+  return {
+    confirm: confirmAction,
+    notice: showNotice,
+  };
 }

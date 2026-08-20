@@ -685,7 +685,7 @@ export default function SistemaScreen(): React.ReactElement {
             <View style={styles.subSwitchRow}>
               <Pill size={18} color={gwarm.ink} />
               <View style={styles.subSwitchInfo}>
-                <Text style={styles.subSwitchTitle}>Recordatorios de pastillas de hoy</Text>
+                <Text style={styles.subSwitchTitle}>Recordatorios de medicamentos de hoy</Text>
                 <Text style={styles.subSwitchText}>
                   Aviso matutino para gestantes que no registraron su toma diaria.
                 </Text>
