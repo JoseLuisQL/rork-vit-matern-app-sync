@@ -7,6 +7,7 @@
  */
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
+  BookOpen,
   CalendarPlus,
   HousePlus,
   MessageCircle,
@@ -16,7 +17,7 @@ import {
   UserRound,
   type LucideIcon,
 } from "lucide-react-native";
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Linking, ScrollView, StyleSheet, Text, View } from "react-native";
 import { gfonts, gShadow, gwarm, risk, warmBlue } from "@/constants/theme";
 import { ANEMIA_LABEL } from "@/constants/labels";
@@ -40,6 +41,7 @@ import { Illustration } from "@/components/gestante/Illustration";
 import { PopIn } from "@/components/gestante/PopIn";
 import { WebCol, WebRow } from "@/components/web/WebGrid";
 import { WebContainer } from "@/components/web/WebContainer";
+import { AssignArticlesModal } from "@/components/obstetra/AssignArticlesModal";
 
 const accent = warmBlue;
 
@@ -145,6 +147,8 @@ export default function FichaGestante(): React.ReactElement {
   const riskPalette = risk[patient.riskLevel];
   const anemiaAlert = patient.anemia !== "normal";
 
+  const [assignModalVisible, setAssignModalVisible] = useState<boolean>(false);
+
   const goUpdate = () =>
     router.push({ pathname: "/(obstetra)/actualizar-datos", params: { id: patient.id } });
 
@@ -193,6 +197,14 @@ export default function FichaGestante(): React.ReactElement {
                 params: { mode: "visita", patientId: patient.id },
               })
             }
+          />
+          <ActionTile
+            icon={BookOpen}
+            label="Educación"
+            color={gwarm.teal}
+            soft={gwarm.tealSoft}
+            onPress={() => setAssignModalVisible(true)}
+            testID="accion-asignar-educacion"
           />
         </View>
       </PopIn>
@@ -495,6 +507,13 @@ export default function FichaGestante(): React.ReactElement {
           )}
         </WebContainer>
       </ScrollView>
+
+      <AssignArticlesModal
+        visible={assignModalVisible}
+        patientId={patient.id}
+        patientName={`${patient.firstName} ${patient.lastName}`}
+        onClose={() => setAssignModalVisible(false)}
+      />
     </View>
   );
 }

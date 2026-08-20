@@ -1,17 +1,18 @@
 /**
- * Consejos para el embarazo: cada lectura con su dibujo a crayola por tema
- * (comida, urgencias, pastillas…), disponibles siempre, incluso sin señal.
+ * Consejos para el embarazo: cada lectura asignada por la obstetra con su dibujo
+ * a crayola por tema o imagen ilustrada, disponibles siempre, incluso sin señal.
  * Adaptado con arquitectura responsiva Web (cuadrícula responsiva en escritorio).
  */
+import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { CheckCircle2, ChevronRight } from "lucide-react-native";
+import { BookOpen, CheckCircle2, ChevronRight } from "lucide-react-native";
 import React from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { ARTICLES } from "@/constants/content";
-import { gfonts, gwarm, spacing } from "@/constants/theme";
 import { CATEGORY_ILU, GICON } from "@/constants/illustrations";
-import { useApp } from "@/providers/AppProvider";
+import { gfonts, gwarm, spacing } from "@/constants/theme";
 import { useResponsive } from "@/hooks/useResponsive";
+import { useApp, useArticles } from "@/providers/AppProvider";
+import { EmptyState } from "@/components/EmptyState";
 import { GHeader } from "@/components/gestante/GHeader";
 import { Illustration } from "@/components/gestante/Illustration";
 import { PopIn } from "@/components/gestante/PopIn";
@@ -32,6 +33,7 @@ export default function EducacionGestante(): React.ReactElement {
   const router = useRouter();
   const { isDesktop } = useResponsive();
   const { readArticles } = useApp();
+  const articles = useArticles();
 
   return (
     <View style={styles.container}>
@@ -49,54 +51,73 @@ export default function EducacionGestante(): React.ReactElement {
               <Illustration source={GICON.libro} width={84} height={84} />
               <View style={styles.flex}>
                 <Text style={styles.heroTitle}>Aprende para ti y tu bebé</Text>
-                <Text style={styles.heroText}>Se leen aunque no tengas señal.</Text>
+                <Text style={styles.heroText}>
+                  Lecturas recomendadas por tu obstetra. Se leen incluso sin señal.
+                </Text>
               </View>
             </View>
           </PopIn>
 
-          <View style={isDesktop ? styles.desktopGrid : styles.mobileList}>
-            {ARTICLES.map((article, index) => {
-              const read = readArticles.includes(article.id);
-              const illu = CATEGORY_ILU[article.category] ?? GICON.libro;
-              const soft = CATEGORY_SOFT[article.category] ?? gwarm.tealSoft;
-              return (
-                <View key={article.id} style={isDesktop ? styles.gridItem : undefined}>
-                  <PopIn delay={70 + index * 40} style={styles.flex}>
-                    <SoftCard
-                      onPress={() =>
-                        router.push({
-                          pathname: "/(gestante)/educacion/[id]",
-                          params: { id: article.id },
-                        })
-                      }
-                      style={styles.card}
-                      testID={`article-${article.id}`}
-                    >
-                      <View style={[styles.icon, { backgroundColor: soft }]}>
-                        <Illustration source={illu} width={44} height={44} />
-                      </View>
-                      <View style={styles.flex}>
-                        <Text style={styles.title} numberOfLines={2}>
-                          {article.title}
-                        </Text>
-                        <View style={styles.metaRow}>
-                          {read ? (
-                            <>
-                              <CheckCircle2 size={15} color={gwarm.teal} />
-                              <Text style={[styles.meta, { color: gwarm.teal }]}>Ya lo leíste</Text>
-                            </>
+          {articles.length === 0 ? (
+            <EmptyState
+              icon={BookOpen}
+              illu={GICON.libro}
+              title="Aún no tienes lecturas asignadas"
+              text="Tu obstetra te asignará lecturas y recomendaciones personalizadas según tus semanas de gestación."
+            />
+          ) : (
+            <View style={isDesktop ? styles.desktopGrid : styles.mobileList}>
+              {articles.map((article, index) => {
+                const read = readArticles.includes(article.id);
+                const illu = CATEGORY_ILU[article.category] ?? GICON.libro;
+                const soft = CATEGORY_SOFT[article.category] ?? gwarm.tealSoft;
+                return (
+                  <View key={article.id} style={isDesktop ? styles.gridItem : undefined}>
+                    <PopIn delay={70 + index * 40} style={styles.flex}>
+                      <SoftCard
+                        onPress={() =>
+                          router.push({
+                            pathname: "/(gestante)/educacion/[id]",
+                            params: { id: article.id },
+                          })
+                        }
+                        style={styles.card}
+                        testID={`article-${article.id}`}
+                      >
+                        <View style={[styles.icon, { backgroundColor: soft }]}>
+                          {article.imageUrl ? (
+                            <Image
+                              source={{ uri: article.imageUrl }}
+                              style={styles.cardImage}
+                              contentFit="cover"
+                            />
                           ) : (
-                            <Text style={styles.meta}>{article.minutes} min de lectura</Text>
+                            <Illustration source={illu} width={44} height={44} />
                           )}
                         </View>
-                      </View>
-                      <ChevronRight size={22} color={gwarm.inkFaint} />
-                    </SoftCard>
-                  </PopIn>
-                </View>
-              );
-            })}
-          </View>
+                        <View style={styles.flex}>
+                          <Text style={styles.title} numberOfLines={2}>
+                            {article.title}
+                          </Text>
+                          <View style={styles.metaRow}>
+                            {read ? (
+                              <>
+                                <CheckCircle2 size={15} color={gwarm.teal} />
+                                <Text style={[styles.meta, { color: gwarm.teal }]}>Ya lo leíste</Text>
+                              </>
+                            ) : (
+                              <Text style={styles.meta}>{article.minutes || 3} min de lectura</Text>
+                            )}
+                          </View>
+                        </View>
+                        <ChevronRight size={22} color={gwarm.inkFaint} />
+                      </SoftCard>
+                    </PopIn>
+                  </View>
+                );
+              })}
+            </View>
+          )}
         </WebContainer>
       </ScrollView>
     </View>
@@ -156,6 +177,11 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
+  },
+  cardImage: {
+    width: "100%",
+    height: "100%",
   },
   title: {
     fontFamily: gfonts.hand,

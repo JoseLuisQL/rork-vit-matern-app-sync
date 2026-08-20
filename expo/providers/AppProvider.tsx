@@ -29,6 +29,9 @@ import { todayKeyLocal } from "@/lib/format";
 import type {
   ActionInput,
   AppEnvironment,
+  Article,
+  ArticleAssignment,
+  ArticleLink,
   ClientAction,
   LoginResponse,
   PatientView,
@@ -388,6 +391,40 @@ export const [AppProvider, useApp] = createContextHook(() => {
     [runOnline],
   );
 
+  /** Guarda (crea o edita) un contenido educativo (solo admin). */
+  const adminSaveArticle = useCallback(
+    (article: Partial<Article>) => runOnline("/api/admin/article/save", article),
+    [runOnline],
+  );
+
+  /** Activa o desactiva un contenido educativo (solo admin). */
+  const adminToggleArticleActive = useCallback(
+    (id: string, active: boolean) => runOnline("/api/admin/article/toggle-active", { id, active }),
+    [runOnline],
+  );
+
+  /** Elimina un contenido educativo (solo admin). */
+  const adminDeleteArticle = useCallback(
+    (id: string) => runOnline("/api/admin/article/delete", { id }),
+    [runOnline],
+  );
+
+  /** Asigna o quita una lectura a una paciente (optimista offline-first). */
+  const assignArticle = useCallback(
+    (patientId: string, articleId: string, assigned: boolean) => {
+      dispatch({ type: "assign_article", patientId, articleId, assigned });
+    },
+    [dispatch],
+  );
+
+  /** Asigna o quita todas las lecturas activas a una paciente. */
+  const assignAllArticles = useCallback(
+    (patientId: string, assigned: boolean) => {
+      dispatch({ type: "assign_all_articles", patientId, assigned });
+    },
+    [dispatch],
+  );
+
   /** Sube (o quita con null) la foto de perfil del usuario actual. */
   const setAvatar = useCallback(
     (dataUrl: string | null) => runOnline("/api/user/avatar", { dataUrl }),
@@ -541,6 +578,13 @@ export const [AppProvider, useApp] = createContextHook(() => {
       adminSetWhatsAppConfig,
       adminTestWhatsAppConnection,
       adminSendTestWhatsApp,
+      articles: view?.articles ?? [],
+      articleAssignments: view?.articleAssignments ?? [],
+      adminSaveArticle,
+      adminToggleArticleActive,
+      adminDeleteArticle,
+      assignArticle,
+      assignAllArticles,
       setAvatar,
       updateProfile,
       setAutoControls,
@@ -573,6 +617,11 @@ export const [AppProvider, useApp] = createContextHook(() => {
       adminSetActive,
       adminReset,
       adminSetConfig,
+      adminSaveArticle,
+      adminToggleArticleActive,
+      adminDeleteArticle,
+      assignArticle,
+      assignAllArticles,
       adminSetWhatsAppConfig,
       adminTestWhatsAppConnection,
       adminSendTestWhatsApp,
@@ -591,6 +640,18 @@ export const [AppProvider, useApp] = createContextHook(() => {
 });
 
 // ---------- Hooks derivados ----------
+
+/** Lista de artículos educativos disponibles para el rol actual. */
+export function useArticles(): Article[] {
+  const { view } = useApp();
+  return view?.articles ?? [];
+}
+
+/** Asignaciones de artículos por paciente. */
+export function useArticleAssignments(): ArticleAssignment[] {
+  const { view } = useApp();
+  return view?.articleAssignments ?? [];
+}
 
 /** Todas las fichas visibles (la gestante solo ve la suya). */
 export function usePatients(): PatientView[] {

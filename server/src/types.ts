@@ -260,6 +260,32 @@ export interface ReportBlock {
   asistenciaSemanal: WeeklyAttendance[];
 }
 
+export interface ArticleLink {
+  label: string;
+  url: string;
+}
+
+export interface Article {
+  id: string;
+  category: string;
+  title: string;
+  summary: string;
+  body: string[];
+  minutes: number;
+  active: boolean;
+  imageUrl?: string | null;
+  links: ArticleLink[];
+  createdAtISO: string;
+  updatedAtISO: string;
+}
+
+export interface ArticleAssignment {
+  patientId: string;
+  articleId: string;
+  assignedByDni?: string;
+  assignedAtISO: string;
+}
+
 export interface Snapshot {
   serverTimeISO: string;
   todayKey: string;
@@ -272,6 +298,8 @@ export interface Snapshot {
   messages: Message[];
   alerts: Alert[];
   visits: Visit[];
+  articles?: Article[];
+  articleAssignments?: ArticleAssignment[];
   /**
    * Presencia por interlocutor: la gestante ve la clave "obstetra" y la
    * obstetra ve una clave por cada id de paciente (su conversación).
@@ -374,6 +402,21 @@ export type ClientAction =
       type: "update_patient";
       patientId: string;
       fields: PatientUpdateFields;
+    }
+  | {
+      id: string;
+      atISO: string;
+      type: "assign_article";
+      patientId: string;
+      articleId: string;
+      assigned: boolean;
+    }
+  | {
+      id: string;
+      atISO: string;
+      type: "assign_all_articles";
+      patientId: string;
+      assigned: boolean;
     };
 
 export interface ActionResult {
@@ -395,4 +438,6 @@ export interface AppData {
   messages: Message[];
   alerts: Alert[];
   visits: Visit[];
+  articles: Article[];
+  articleAssignments: ArticleAssignment[];
 }

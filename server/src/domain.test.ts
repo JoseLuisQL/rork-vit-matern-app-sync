@@ -166,6 +166,8 @@ describe("Server Domain — Clinical Calculations & Patient View", () => {
     messages: [],
     alerts: [],
     visits: [],
+    articles: [],
+    articleAssignments: [],
     seedVersion: 1,
     config: {
       maintenance: false,
@@ -316,6 +318,61 @@ describe("Server Domain — Role-based Snapshot Filtering & MINSA Reports", () =
     messages: [],
     alerts: [],
     visits: [],
+    articles: [
+      {
+        id: "art-1",
+        category: "Nutrición",
+        title: "Alimentación",
+        summary: "Resumen",
+        body: ["Párrafo 1"],
+        minutes: 3,
+        active: true,
+        links: [],
+        createdAtISO: new Date().toISOString(),
+        updatedAtISO: new Date().toISOString(),
+      },
+      {
+        id: "art-2",
+        category: "Urgencias",
+        title: "Signos",
+        summary: "Resumen 2",
+        body: ["Párrafo 2"],
+        minutes: 2,
+        active: true,
+        links: [],
+        createdAtISO: new Date().toISOString(),
+        updatedAtISO: new Date().toISOString(),
+      },
+      {
+        id: "art-3",
+        category: "Tratamiento",
+        title: "Deshabilitado",
+        summary: "Resumen 3",
+        body: ["Párrafo 3"],
+        minutes: 2,
+        active: false,
+        links: [],
+        createdAtISO: new Date().toISOString(),
+        updatedAtISO: new Date().toISOString(),
+      },
+    ],
+    articleAssignments: [
+      {
+        patientId: "p-ana",
+        articleId: "art-1",
+        assignedAtISO: new Date().toISOString(),
+      },
+      {
+        patientId: "p-ana",
+        articleId: "art-3", // Inactive
+        assignedAtISO: new Date().toISOString(),
+      },
+      {
+        patientId: "p-lucia",
+        articleId: "art-2",
+        assignedAtISO: new Date().toISOString(),
+      },
+    ],
     seedVersion: 1,
     config: {
       maintenance: false,
@@ -350,6 +407,10 @@ describe("Server Domain — Role-based Snapshot Filtering & MINSA Reports", () =
     expect(snap.obstetrician).toBeDefined();
     expect(snap.obstetrician?.firstName).toBe("Carmen");
     expect(snap.obstetrician?.phone).toBe("983222333");
+    // Gestante only gets active articles assigned to her
+    expect(snap.articles?.length).toBe(1);
+    expect(snap.articles?.[0]?.id).toBe("art-1");
+    expect(snap.articleAssignments?.length).toBe(2);
   });
 
   it("snapshotFor includes users and population MINSA reports for admin role", () => {
@@ -361,6 +422,9 @@ describe("Server Domain — Role-based Snapshot Filtering & MINSA Reports", () =
     expect(snap.reports?.d30).toBeDefined();
     expect(snap.whatsappConfig).toBeDefined();
     expect(snap.whatsappConfig?.apiKey).toBe("test_key");
+    // Admin gets all articles (active and inactive) and assignments
+    expect(snap.articles?.length).toBe(3);
+    expect(snap.articleAssignments?.length).toBe(3);
   });
 
   it("buildReport generates aggregated population metrics", () => {

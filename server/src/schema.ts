@@ -238,4 +238,36 @@ CREATE TABLE IF NOT EXISTS push_tokens (
 CREATE INDEX IF NOT EXISTS idx_push_tokens_dni ON push_tokens (dni);
 `,
   },
+  {
+    id: 5,
+    name: "add-education-articles-and-assignments",
+    sql: `
+CREATE TABLE IF NOT EXISTS articles (
+  seq BIGINT GENERATED ALWAYS AS IDENTITY UNIQUE,
+  id TEXT PRIMARY KEY,
+  category TEXT NOT NULL,
+  title TEXT NOT NULL,
+  summary TEXT NOT NULL,
+  body TEXT[] NOT NULL,
+  minutes INTEGER NOT NULL DEFAULT 3,
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  image_url TEXT,
+  links JSONB NOT NULL DEFAULT '[]',
+  created_at_iso TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at_iso TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_articles_category ON articles (category);
+CREATE INDEX IF NOT EXISTS idx_articles_active ON articles (active);
+
+CREATE TABLE IF NOT EXISTS article_assignments (
+  patient_id TEXT NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  article_id TEXT NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+  assigned_by_dni TEXT REFERENCES users(dni) ON DELETE SET NULL,
+  assigned_at_iso TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (patient_id, article_id)
+);
+CREATE INDEX IF NOT EXISTS idx_article_assignments_patient ON article_assignments (patient_id);
+CREATE INDEX IF NOT EXISTS idx_article_assignments_article ON article_assignments (article_id);
+`,
+  },
 ];

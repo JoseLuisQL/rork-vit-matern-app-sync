@@ -46,6 +46,12 @@ export default function AdminTabsLayout(): React.ReactElement {
         iconUri: GICON.usuarios,
       },
       {
+        key: "educacion",
+        label: "Educación",
+        route: "/(admin)/(tabs)/educacion",
+        iconUri: GICON.libro,
+      },
+      {
         key: "reportes",
         label: "Reportes",
         route: "/(admin)/(tabs)/reportes",
@@ -99,6 +105,13 @@ export default function AdminTabsLayout(): React.ReactElement {
           options={{
             title: "Usuarios",
             tabBarIcon: ({ focused }) => <TabIcon uri={GICON.usuarios} focused={focused} />,
+          }}
+        />
+        <Tabs.Screen
+          name="educacion"
+          options={{
+            title: "Educación",
+            tabBarIcon: ({ focused }) => <TabIcon uri={GICON.libro} focused={focused} />,
           }}
         />
         <Tabs.Screen

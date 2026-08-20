@@ -30,6 +30,7 @@ import {
   HEALTH_CENTER,
   hashPassword,
   insertAppointment,
+  insertArticle,
   insertPatient,
   insertSeedState,
   insertSupplement,
@@ -41,6 +42,8 @@ import type {
   ActionResult,
   AppEnvironment,
   Appointment,
+  Article,
+  ArticleLink,
   ClientAction,
   DemoAccount,
   Patient,
@@ -493,7 +496,7 @@ export async function handleUpdateProfile(c: AppContext): Promise<Response> {
       ...user,
       firstName,
       lastName,
-      phone: phone || undefined,
+      phone: phone || null,
       passwordHash: newHash ?? user.passwordHash,
     };
     return buildSnapshot(client, updatedUser, { regenerate: false });
@@ -839,6 +842,8 @@ export async function handleReset(c: AppContext): Promise<Response> {
   return c.json({ snapshot });
 }
 
+export const handleAdminReset = handleReset;
+
 // ---------- Configuración de WhatsApp (Open-WA) ----------
 
 /**
@@ -1029,4 +1034,155 @@ export async function handleDeletePushToken(c: AppContext): Promise<Response> {
   }
 
   return c.json({ ok: true });
+}
+
+// ---------- Educación y Artículos ----------
+
+/** Crea o actualiza un artículo educativo (solo admin). */
+export async function handleAdminSaveArticle(c: AppContext): Promise<Response> {
+  const user = c.get("user");
+  if (user.role !== "admin") return c.json({ error: "Acción no permitida" }, 403);
+
+  const body = await readJson<{
+    id?: string;
+    category?: string;
+    title?: string;
+    summary?: string;
+    body?: string[];
+    minutes?: number;
+    active?: boolean;
+    imageUrl?: string | null;
+    links?: ArticleLink[];
+  }>(c);
+
+  const title = (body.title ?? "").trim();
+  const category = (body.category ?? "").trim();
+  const summary = (body.summary ?? "").trim();
+  const articleBody = Array.isArray(body.body) ? body.body.map((p) => p.trim()).filter((p) => p.length > 0) : [];
+  const minutes = Math.max(1, Math.min(60, Math.round(body.minutes ?? 3)));
+  const active = body.active !== false;
+  const imageUrl = body.imageUrl ? body.imageUrl.trim() : null;
+  const links = Array.isArray(body.links)
+    ? body.links
+        .map((l) => ({ label: (l.label ?? "").trim(), url: (l.url ?? "").trim() }))
+        .filter((l) => l.label.length > 0 && l.url.length > 0)
+    : [];
+
+  if (!title) return c.json({ error: "El título es obligatorio" }, 400);
+  if (!category) return c.json({ error: "La categoría es obligatoria" }, 400);
+  if (!summary) return c.json({ error: "El resumen es obligatorio" }, 400);
+  if (articleBody.length === 0) return c.json({ error: "Agrega al menos un párrafo de contenido" }, 400);
+
+  const id = body.id?.trim() || `art-${crypto.randomUUID().slice(0, 8)}`;
+
+  const snapshot = await withTx(async (client) => {
+    const article: Article = {
+      id,
+      category,
+      title,
+      summary,
+      body: articleBody,
+      minutes,
+      active,
+      imageUrl,
+      links,
+      createdAtISO: new Date().toISOString(),
+      updatedAtISO: new Date().toISOString(),
+    };
+    await insertArticle(client, article);
+    return buildSnapshot(client, user, { regenerate: false });
+  });
+
+  return c.json({ snapshot });
+}
+
+/** Deshabilita o habilita un artículo educativo (solo admin). */
+export async function handleAdminToggleArticleActive(c: AppContext): Promise<Response> {
+  const user = c.get("user");
+  if (user.role !== "admin") return c.json({ error: "Acción no permitida" }, 403);
+
+  const body = await readJson<{ id?: string; active?: boolean }>(c);
+  const id = (body.id ?? "").trim();
+  if (!id) return c.json({ error: "ID de artículo requerido" }, 400);
+
+  const snapshot = await withTx(async (client) => {
+    await client.query(
+      "UPDATE articles SET active = $2, updated_at_iso = now() WHERE id = $1",
+      [id, body.active === true],
+    );
+    return buildSnapshot(client, user, { regenerate: false });
+  });
+
+  return c.json({ snapshot });
+}
+
+/** Elimina un artículo educativo (solo admin). */
+export async function handleAdminDeleteArticle(c: AppContext): Promise<Response> {
+  const user = c.get("user");
+  if (user.role !== "admin") return c.json({ error: "Acción no permitida" }, 403);
+
+  const body = await readJson<{ id?: string }>(c);
+  const id = (body.id ?? "").trim();
+  if (!id) return c.json({ error: "ID de artículo requerido" }, 400);
+
+  const snapshot = await withTx(async (client) => {
+    await client.query("DELETE FROM articles WHERE id = $1", [id]);
+    return buildSnapshot(client, user, { regenerate: false });
+  });
+
+  return c.json({ snapshot });
+}
+
+/** Asigna o desasigna un artículo educativo a una o varias gestantes (obstetra / admin). */
+export async function handleObstetraAssignArticle(c: AppContext): Promise<Response> {
+  const user = c.get("user");
+  if (user.role !== "obstetra" && user.role !== "admin") {
+    return c.json({ error: "Acción no permitida" }, 403);
+  }
+
+  const body = await readJson<{
+    patientId?: string;
+    patientIds?: string[];
+    articleId?: string;
+    assigned?: boolean;
+  }>(c);
+
+  const articleId = (body.articleId ?? "").trim();
+  if (!articleId) return c.json({ error: "ID de artículo requerido" }, 400);
+
+  const patientIds: string[] = [];
+  if (body.patientId) patientIds.push(body.patientId.trim());
+  if (Array.isArray(body.patientIds)) {
+    for (const pid of body.patientIds) {
+      const clean = (pid ?? "").trim();
+      if (clean && !patientIds.includes(clean)) patientIds.push(clean);
+    }
+  }
+
+  if (patientIds.length === 0) {
+    return c.json({ error: "Selecciona al menos una paciente" }, 400);
+  }
+
+  const assigned = body.assigned !== false;
+
+  const snapshot = await withTx(async (client) => {
+    for (const pid of patientIds) {
+      if (assigned) {
+        await client.query(
+          `INSERT INTO article_assignments (patient_id, article_id, assigned_by_dni, assigned_at_iso)
+           VALUES ($1, $2, $3, now())
+           ON CONFLICT (patient_id, article_id) DO NOTHING`,
+          [pid, articleId, user.dni],
+        );
+      } else {
+        await client.query(
+          "DELETE FROM article_assignments WHERE patient_id = $1 AND article_id = $2",
+          [pid, articleId],
+        );
+      }
+    }
+    return buildSnapshot(client, user, { regenerate: false });
+  });
+
+  return c.json({ snapshot });
 }

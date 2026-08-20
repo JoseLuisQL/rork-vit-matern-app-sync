@@ -17,6 +17,10 @@ function cloneForMutation(snapshot: Snapshot): Snapshot {
     messages: snapshot.messages.map((m) => ({ ...m })),
     alerts: snapshot.alerts.map((a) => ({ ...a })),
     visits: snapshot.visits.map((v) => ({ ...v })),
+    articles: snapshot.articles ? snapshot.articles.map((art) => ({ ...art })) : [],
+    articleAssignments: snapshot.articleAssignments
+      ? snapshot.articleAssignments.map((asg) => ({ ...asg }))
+      : [],
     intakes: Object.fromEntries(
       Object.entries(snapshot.intakes).map(([pid, days]) => [
         pid,
@@ -231,6 +235,45 @@ export function applyOutbox(snapshot: Snapshot, actions: ClientAction[], user: U
           p.fumKey = f.fumKey;
           p.weeks = weeksLocal(f.fumKey, s.todayKey);
           p.fppKey = fppKeyLocal(f.fumKey);
+        }
+        break;
+      }
+      case "assign_article": {
+        if (user.role === "gestante") break;
+        s.articleAssignments = s.articleAssignments ?? [];
+        if (action.assigned) {
+          if (!s.articleAssignments.some((a) => a.patientId === action.patientId && a.articleId === action.articleId)) {
+            s.articleAssignments.push({
+              patientId: action.patientId,
+              articleId: action.articleId,
+              assignedByDni: user.dni,
+              assignedAtISO: action.atISO,
+            });
+          }
+        } else {
+          s.articleAssignments = s.articleAssignments.filter(
+            (a) => !(a.patientId === action.patientId && a.articleId === action.articleId),
+          );
+        }
+        break;
+      }
+      case "assign_all_articles": {
+        if (user.role === "gestante") break;
+        s.articleAssignments = s.articleAssignments ?? [];
+        if (action.assigned) {
+          const activeArticles = (s.articles ?? []).filter((a) => a.active !== false);
+          for (const art of activeArticles) {
+            if (!s.articleAssignments.some((a) => a.patientId === action.patientId && a.articleId === art.id)) {
+              s.articleAssignments.push({
+                patientId: action.patientId,
+                articleId: art.id,
+                assignedByDni: user.dni,
+                assignedAtISO: action.atISO,
+              });
+            }
+          }
+        } else {
+          s.articleAssignments = s.articleAssignments.filter((a) => a.patientId !== action.patientId);
         }
         break;
       }

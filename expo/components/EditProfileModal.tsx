@@ -368,7 +368,7 @@ const styles = StyleSheet.create({
     color: gwarm.inkFaint,
   },
   errorBox: {
-    backgroundColor: semantic.dangerSoft,
+    backgroundColor: semantic.dangerLight,
     borderWidth: 1,
     borderColor: withAlpha(semantic.danger, 0.3),
     borderRadius: 12,

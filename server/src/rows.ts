@@ -12,6 +12,9 @@ import type {
   AppEnvironment,
   Appointment,
   AppointmentStatus,
+  Article,
+  ArticleAssignment,
+  ArticleLink,
   IntakeMap,
   Message,
   MessageKind,
@@ -363,6 +366,62 @@ export async function getUserByToken(db: Queryable, token: string): Promise<User
   return mapUser(row);
 }
 
+export interface ArticleRow {
+  id: string;
+  category: string;
+  title: string;
+  summary: string;
+  body: string[];
+  minutes: number;
+  active: boolean;
+  image_url: string | null;
+  links: string | ArticleLink[];
+  created_at_iso: string;
+  updated_at_iso: string;
+}
+
+export interface ArticleAssignmentRow {
+  patient_id: string;
+  article_id: string;
+  assigned_by_dni: string | null;
+  assigned_at_iso: string;
+}
+
+export function mapArticle(r: ArticleRow): Article {
+  let links: ArticleLink[] = [];
+  if (typeof r.links === "string") {
+    try {
+      links = JSON.parse(r.links);
+    } catch {
+      links = [];
+    }
+  } else if (Array.isArray(r.links)) {
+    links = r.links;
+  }
+  return {
+    id: r.id,
+    category: r.category,
+    title: r.title,
+    summary: r.summary,
+    body: Array.isArray(r.body) ? r.body : [],
+    minutes: Number(r.minutes) || 3,
+    active: r.active !== false,
+    imageUrl: r.image_url ?? null,
+    links,
+    createdAtISO: r.created_at_iso,
+    updatedAtISO: r.updated_at_iso,
+  };
+}
+
+export function mapArticleAssignment(r: ArticleAssignmentRow): ArticleAssignment {
+  return {
+    patientId: r.patient_id,
+    articleId: r.article_id,
+    assignedByDni: r.assigned_by_dni ?? undefined,
+    assignedAtISO: r.assigned_at_iso,
+  };
+}
+
 /** Carga el estado completo (para cálculos, alertas automáticas y snapshot). */
 export async function loadAppData(db: Queryable): Promise<AppData> {
   const cfg = await loadConfig(db);
@@ -375,6 +434,8 @@ export async function loadAppData(db: Queryable): Promise<AppData> {
   const messages = await db.query<MessageRow>("SELECT * FROM messages ORDER BY seq");
   const alerts = await db.query<AlertRow>("SELECT * FROM alerts ORDER BY seq");
   const visits = await db.query<VisitRow>("SELECT * FROM visits ORDER BY seq");
+  const articles = await db.query<ArticleRow>("SELECT * FROM articles ORDER BY seq");
+  const articleAssignments = await db.query<ArticleAssignmentRow>("SELECT * FROM article_assignments");
 
   const intakeMap: IntakeMap = {};
   for (const r of intakes.rows) {
@@ -395,5 +456,7 @@ export async function loadAppData(db: Queryable): Promise<AppData> {
     messages: messages.rows.map(mapMessage),
     alerts: alerts.rows.map(mapAlert),
     visits: visits.rows.map(mapVisit),
+    articles: articles.rows.map(mapArticle),
+    articleAssignments: articleAssignments.rows.map(mapArticleAssignment),
   };
 }

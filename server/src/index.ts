@@ -16,6 +16,9 @@ import { Hono } from "hono";
 import { migrate, pool, waitForDb } from "./db";
 import {
   handleAdminConfig,
+  handleAdminDeleteArticle,
+  handleAdminSaveArticle,
+  handleAdminToggleArticleActive,
   handleAdminWhatsAppConfig,
   handleAdminWhatsAppSendTest,
   handleAdminWhatsAppTestConnection,
@@ -23,6 +26,7 @@ import {
   handleCreateUser,
   handleDeletePushToken,
   handleLogin,
+  handleObstetraAssignArticle,
   handlePublicConfig,
   handleRegisterPushToken,
   handleReset,
@@ -121,6 +125,10 @@ app.post("/api/admin/reset", handleReset);
 app.post("/api/admin/whatsapp/config", handleAdminWhatsAppConfig);
 app.post("/api/admin/whatsapp/test-connection", handleAdminWhatsAppTestConnection);
 app.post("/api/admin/whatsapp/send-test", handleAdminWhatsAppSendTest);
+app.post("/api/admin/article/save", handleAdminSaveArticle);
+app.post("/api/admin/article/toggle-active", handleAdminToggleArticleActive);
+app.post("/api/admin/article/delete", handleAdminDeleteArticle);
+app.post("/api/obstetra/assign-article", handleObstetraAssignArticle);
 app.all("/api/*", (c) => c.json({ error: "Ruta no encontrada" }, 404));
 
 app.notFound((c) => c.json({ error: "not found" }, 404));

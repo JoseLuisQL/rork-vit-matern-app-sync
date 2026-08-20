@@ -551,6 +551,46 @@ export async function applyAction(
       }
       return null;
     }
+    case "assign_article": {
+      if (user.role !== "obstetra" && user.role !== "admin") {
+        return "Solo el personal de salud puede asignar lecturas";
+      }
+      if (!(await patientExists(client, action.patientId))) return "Paciente no encontrada";
+      if (action.assigned) {
+        await client.query(
+          `INSERT INTO article_assignments (patient_id, article_id, assigned_by_dni, assigned_at_iso)
+           VALUES ($1, $2, $3, now())
+           ON CONFLICT (patient_id, article_id) DO NOTHING`,
+          [action.patientId, action.articleId, user.dni],
+        );
+      } else {
+        await client.query(
+          `DELETE FROM article_assignments WHERE patient_id = $1 AND article_id = $2`,
+          [action.patientId, action.articleId],
+        );
+      }
+      return null;
+    }
+    case "assign_all_articles": {
+      if (user.role !== "obstetra" && user.role !== "admin") {
+        return "Solo el personal de salud puede asignar lecturas";
+      }
+      if (!(await patientExists(client, action.patientId))) return "Paciente no encontrada";
+      if (action.assigned) {
+        const activeRes = await client.query<{ id: string }>("SELECT id FROM articles WHERE active = TRUE");
+        for (const row of activeRes.rows) {
+          await client.query(
+            `INSERT INTO article_assignments (patient_id, article_id, assigned_by_dni, assigned_at_iso)
+             VALUES ($1, $2, $3, now())
+             ON CONFLICT (patient_id, article_id) DO NOTHING`,
+            [action.patientId, row.id, user.dni],
+          );
+        }
+      } else {
+        await client.query("DELETE FROM article_assignments WHERE patient_id = $1", [action.patientId]);
+      }
+      return null;
+    }
     default:
       return "Acción desconocida";
   }

@@ -212,6 +212,14 @@ export class VitmaternaStore extends DurableObject {
           return await this.handleAdminConfig(request, db, user);
         case "/api/admin/reset":
           return await this.handleReset(db, user);
+        case "/api/admin/article/save":
+          return await this.handleAdminSaveArticle(request, db, user);
+        case "/api/admin/article/toggle-active":
+          return await this.handleAdminToggleArticleActive(request, db, user);
+        case "/api/admin/article/delete":
+          return await this.handleAdminDeleteArticle(request, db, user);
+        case "/api/obstetra/assign-article":
+          return await this.handleObstetraAssignArticle(request, db, user);
         default:
           return json({ error: "Ruta no encontrada" }, 404);
       }
@@ -520,6 +528,51 @@ export class VitmaternaStore extends DurableObject {
           patient.community = f.community.trim().slice(0, 60);
         }
         if (f.phone !== undefined) patient.phone = f.phone.trim().slice(0, 20);
+        return null;
+      }
+      case "assign_article": {
+        if (user.role !== "obstetra" && user.role !== "admin") {
+          return "Solo el personal de salud puede asignar lecturas";
+        }
+        if (!db.patients.some((p) => p.id === action.patientId)) return "Paciente no encontrada";
+        db.articleAssignments = db.articleAssignments ?? [];
+        if (action.assigned) {
+          if (!db.articleAssignments.some((a) => a.patientId === action.patientId && a.articleId === action.articleId)) {
+            db.articleAssignments.push({
+              patientId: action.patientId,
+              articleId: action.articleId,
+              assignedByDni: user.dni,
+              assignedAtISO: new Date().toISOString(),
+            });
+          }
+        } else {
+          db.articleAssignments = db.articleAssignments.filter(
+            (a) => !(a.patientId === action.patientId && a.articleId === action.articleId),
+          );
+        }
+        return null;
+      }
+      case "assign_all_articles": {
+        if (user.role !== "obstetra" && user.role !== "admin") {
+          return "Solo el personal de salud puede asignar lecturas";
+        }
+        if (!db.patients.some((p) => p.id === action.patientId)) return "Paciente no encontrada";
+        db.articleAssignments = db.articleAssignments ?? [];
+        if (action.assigned) {
+          const activeArticles = (db.articles ?? []).filter((a) => a.active);
+          for (const art of activeArticles) {
+            if (!db.articleAssignments.some((a) => a.patientId === action.patientId && a.articleId === art.id)) {
+              db.articleAssignments.push({
+                patientId: action.patientId,
+                articleId: art.id,
+                assignedByDni: user.dni,
+                assignedAtISO: new Date().toISOString(),
+              });
+            }
+          }
+        } else {
+          db.articleAssignments = db.articleAssignments.filter((a) => a.patientId !== action.patientId);
+        }
         return null;
       }
       default:
@@ -1034,6 +1087,146 @@ export class VitmaternaStore extends DurableObject {
     return json({ snapshot: this.snapshotFor(freshUser, fresh) });
   }
 
+  // ---------- Educación y Artículos ----------
+
+  private async handleAdminSaveArticle(request: Request, db: DBState, user: StoredUser): Promise<Response> {
+    if (user.role !== "admin") return json({ error: "Acción no permitida" }, 403);
+    const body = (await request.json()) as {
+      id?: string;
+      category?: string;
+      title?: string;
+      summary?: string;
+      body?: string[];
+      minutes?: number;
+      active?: boolean;
+      imageUrl?: string | null;
+      links?: { label: string; url: string }[];
+    };
+    const title = (body.title ?? "").trim();
+    const category = (body.category ?? "").trim();
+    const summary = (body.summary ?? "").trim();
+    const articleBody = Array.isArray(body.body) ? body.body.map((p) => p.trim()).filter((p) => p.length > 0) : [];
+    const minutes = Math.max(1, Math.min(60, Math.round(body.minutes ?? 3)));
+    const active = body.active !== false;
+    const imageUrl = body.imageUrl ? body.imageUrl.trim() : null;
+    const links = Array.isArray(body.links)
+      ? body.links
+          .map((l) => ({ label: (l.label ?? "").trim(), url: (l.url ?? "").trim() }))
+          .filter((l) => l.label.length > 0 && l.url.length > 0)
+      : [];
+
+    if (!title) return json({ error: "El título es obligatorio" }, 400);
+    if (!category) return json({ error: "La categoría es obligatoria" }, 400);
+    if (!summary) return json({ error: "El resumen es obligatorio" }, 400);
+    if (articleBody.length === 0) return json({ error: "Agrega al menos un párrafo de contenido" }, 400);
+
+    const id = body.id?.trim() || `art-${crypto.randomUUID().slice(0, 8)}`;
+    db.articles = db.articles ?? [];
+    const existingIndex = db.articles.findIndex((a) => a.id === id);
+    const now = new Date().toISOString();
+    const article = {
+      id,
+      category,
+      title,
+      summary,
+      body: articleBody,
+      minutes,
+      active,
+      imageUrl,
+      links,
+      createdAtISO: existingIndex >= 0 ? db.articles[existingIndex].createdAtISO : now,
+      updatedAtISO: now,
+    };
+
+    if (existingIndex >= 0) {
+      db.articles[existingIndex] = article;
+    } else {
+      db.articles.push(article);
+    }
+
+    await this.save();
+    return json({ snapshot: this.snapshotFor(user, db) });
+  }
+
+  private async handleAdminToggleArticleActive(request: Request, db: DBState, user: StoredUser): Promise<Response> {
+    if (user.role !== "admin") return json({ error: "Acción no permitida" }, 403);
+    const body = (await request.json()) as { id?: string; active?: boolean };
+    const id = (body.id ?? "").trim();
+    if (!id) return json({ error: "ID de artículo requerido" }, 400);
+
+    db.articles = db.articles ?? [];
+    const art = db.articles.find((a) => a.id === id);
+    if (!art) return json({ error: "Artículo no encontrado" }, 404);
+    art.active = body.active === true;
+    art.updatedAtISO = new Date().toISOString();
+
+    await this.save();
+    return json({ snapshot: this.snapshotFor(user, db) });
+  }
+
+  private async handleAdminDeleteArticle(request: Request, db: DBState, user: StoredUser): Promise<Response> {
+    if (user.role !== "admin") return json({ error: "Acción no permitida" }, 403);
+    const body = (await request.json()) as { id?: string };
+    const id = (body.id ?? "").trim();
+    if (!id) return json({ error: "ID de artículo requerido" }, 400);
+
+    db.articles = (db.articles ?? []).filter((a) => a.id !== id);
+    db.articleAssignments = (db.articleAssignments ?? []).filter((a) => a.articleId !== id);
+
+    await this.save();
+    return json({ snapshot: this.snapshotFor(user, db) });
+  }
+
+  private async handleObstetraAssignArticle(request: Request, db: DBState, user: StoredUser): Promise<Response> {
+    if (user.role !== "obstetra" && user.role !== "admin") {
+      return json({ error: "Acción no permitida" }, 403);
+    }
+    const body = (await request.json()) as {
+      patientId?: string;
+      patientIds?: string[];
+      articleId?: string;
+      assigned?: boolean;
+    };
+    const articleId = (body.articleId ?? "").trim();
+    if (!articleId) return json({ error: "ID de artículo requerido" }, 400);
+
+    const patientIds: string[] = [];
+    if (body.patientId) patientIds.push(body.patientId.trim());
+    if (Array.isArray(body.patientIds)) {
+      for (const pid of body.patientIds) {
+        const clean = (pid ?? "").trim();
+        if (clean && !patientIds.includes(clean)) patientIds.push(clean);
+      }
+    }
+
+    if (patientIds.length === 0) {
+      return json({ error: "Selecciona al menos una paciente" }, 400);
+    }
+
+    const assigned = body.assigned !== false;
+    db.articleAssignments = db.articleAssignments ?? [];
+
+    for (const pid of patientIds) {
+      if (assigned) {
+        if (!db.articleAssignments.some((a) => a.patientId === pid && a.articleId === articleId)) {
+          db.articleAssignments.push({
+            patientId: pid,
+            articleId,
+            assignedByDni: user.dni,
+            assignedAtISO: new Date().toISOString(),
+          });
+        }
+      } else {
+        db.articleAssignments = db.articleAssignments.filter(
+          (a) => !(a.patientId === pid && a.articleId === articleId),
+        );
+      }
+    }
+
+    await this.save();
+    return json({ snapshot: this.snapshotFor(user, db) });
+  }
+
   // ---------- Alertas tempranas automáticas ----------
 
   private regenerateAutoAlerts(db: DBState): void {
@@ -1199,6 +1392,20 @@ export class VitmaternaStore extends DurableObject {
     const obstetraUser = db.users.find((u) => u.role === "obstetra" && u.active);
     const obstetrician = isGestante && obstetraUser ? publicUser(obstetraUser) : undefined;
 
+    const allArticles = db.articles ?? [];
+    const allAssignments = db.articleAssignments ?? [];
+    let scopedArticles = allArticles;
+    let scopedAssignments = allAssignments;
+    if (isGestante) {
+      const assignedIds = new Set(
+        allAssignments
+          .filter((a) => a.patientId === pid)
+          .map((a) => a.articleId),
+      );
+      scopedArticles = allArticles.filter((a) => a.active && assignedIds.has(a.id));
+      scopedAssignments = allAssignments.filter((a) => a.patientId === pid);
+    }
+
     const snapshot: Snapshot = {
       serverTimeISO: new Date().toISOString(),
       todayKey,
@@ -1211,6 +1418,8 @@ export class VitmaternaStore extends DurableObject {
       messages: isGestante ? db.messages.filter((m) => m.convId === pid) : db.messages,
       alerts: scopeById(db.alerts),
       visits: scopeById(db.visits),
+      articles: scopedArticles,
+      articleAssignments: scopedAssignments,
       presence: this.presenceFor(user, db),
       obstetrician,
       config: db.config,

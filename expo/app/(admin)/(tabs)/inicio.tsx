@@ -5,7 +5,7 @@
  * Adaptado con arquitectura responsiva Web (2 columnas en escritorio).
  */
 import { useRouter } from "expo-router";
-import { ChartBar, UserPlus, Users } from "lucide-react-native";
+import { BookOpen, ChartBar, UserPlus, Users } from "lucide-react-native";
 import React, { useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { gfonts, gwarm, risk, warmBlue, warmPlum, warmTeal } from "@/constants/theme";
@@ -98,6 +98,15 @@ export default function InicioAdmin(): React.ReactElement {
         color: warmBlue.main,
         onPress: () => router.push("/(admin)/(tabs)/usuarios"),
         testID: "mod-usuarios",
+      },
+      {
+        key: "educacion",
+        label: "Educación",
+        icon: BookOpen,
+        illu: GICON.libro,
+        color: warmPlum.main,
+        onPress: () => router.push("/(admin)/(tabs)/educacion"),
+        testID: "mod-educacion",
       },
       {
         key: "reportes",

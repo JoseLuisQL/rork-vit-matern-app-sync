@@ -192,6 +192,20 @@ export function snapshotFor(
   const obstetraUser = data.users.find((u) => u.role === "obstetra" && u.active);
   const obstetrician = isGestante && obstetraUser ? publicUser(obstetraUser) : undefined;
 
+  const allArticles = data.articles ?? [];
+  const allAssignments = data.articleAssignments ?? [];
+  let scopedArticles = allArticles;
+  let scopedAssignments = allAssignments;
+  if (isGestante) {
+    const assignedIds = new Set(
+      allAssignments
+        .filter((a) => a.patientId === pid)
+        .map((a) => a.articleId),
+    );
+    scopedArticles = allArticles.filter((a) => a.active && assignedIds.has(a.id));
+    scopedAssignments = allAssignments.filter((a) => a.patientId === pid);
+  }
+
   const snapshot: Snapshot = {
     serverTimeISO: new Date().toISOString(),
     todayKey,
@@ -204,6 +218,8 @@ export function snapshotFor(
     messages: isGestante ? data.messages.filter((m) => m.convId === pid) : data.messages,
     alerts: scopeById(data.alerts),
     visits: scopeById(data.visits),
+    articles: scopedArticles,
+    articleAssignments: scopedAssignments,
     presence: presenceViews,
     obstetrician,
     config: data.config,
