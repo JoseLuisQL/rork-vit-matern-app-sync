@@ -2,19 +2,22 @@
  * Perfil de administración ("cuaderno"): foto, datos y cierre de sesión.
  * La restauración de demostración y el mantenimiento viven en la pestaña
  * Sistema.
+ * Adaptado con arquitectura responsiva Web (contenedor centrado en escritorio).
  */
 import { useRouter } from "expo-router";
 import { LogOut } from "lucide-react-native";
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { gfonts, gwarm, warmPlum } from "@/constants/theme";
 import { confirmAction } from "@/lib/confirm";
 import { useApp } from "@/providers/AppProvider";
 import { AppButton } from "@/components/AppButton";
 import { Card } from "@/components/Card";
+import { EditProfileModal } from "@/components/EditProfileModal";
 import { ProfilePhoto } from "@/components/ProfilePhoto";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SectionHeader } from "@/components/SectionHeader";
+import { WebContainer } from "@/components/web/WebContainer";
 
 function InfoRow({ label, value }: { label: string; value: string }): React.ReactElement {
   return (
@@ -28,6 +31,7 @@ function InfoRow({ label, value }: { label: string; value: string }): React.Reac
 export default function PerfilAdmin(): React.ReactElement {
   const router = useRouter();
   const { user, view, logout } = useApp();
+  const [editModalOpen, setEditModalOpen] = useState<boolean>(false);
 
   const handleLogout = useCallback(async () => {
     const ok = await confirmAction({
@@ -46,43 +50,63 @@ export default function PerfilAdmin(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Perfil" />
+      <WebContainer size="form">
+        <ScreenHeader title="Perfil" />
+      </WebContainer>
       <ScrollView
         style={styles.flex}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <Card style={styles.headerCard}>
-          <ProfilePhoto
-            accentColor={warmPlum.main}
-            accentBackground={warmPlum.soft}
-          />
-          <Text style={styles.name}>
-            {user.firstName} {user.lastName}
-          </Text>
-          <Text style={styles.meta}>Administración · {view.center.name}</Text>
-        </Card>
+        <WebContainer size="form">
+          <View style={styles.formStack}>
+            <Card style={styles.headerCard}>
+              <ProfilePhoto
+                accentColor={warmPlum.main}
+                accentBackground={warmPlum.soft}
+              />
+              <Text style={styles.name}>
+                {user.firstName} {user.lastName}
+              </Text>
+              <Text style={styles.meta}>Administración · {view.center.name}</Text>
+            </Card>
 
-        <SectionHeader title="Tus datos" />
-        <Card style={styles.card}>
-          <InfoRow label="DNI" value={user.dni} />
-          <InfoRow label="Rol" value="Administración" />
-          <InfoRow label="Centro" value={`${view.center.name} (${view.center.altitudeMsnm} msnm)`} />
-        </Card>
+            <SectionHeader
+              title="Tus datos"
+              action={{
+                label: "Editar",
+                onPress: () => setEditModalOpen(true),
+                color: warmPlum.main,
+              }}
+            />
+            <Card style={styles.card}>
+              <InfoRow label="DNI" value={user.dni} />
+              <InfoRow label="Rol" value="Administración" />
+              <InfoRow label="Teléfono" value={user.phone ?? "—"} />
+              <InfoRow label="Centro" value={`${view.center.name} (${view.center.altitudeMsnm} msnm)`} />
+            </Card>
 
-        <SectionHeader title="Cuenta" />
-        <AppButton
-          title="Cerrar sesión"
-          onPress={() => void handleLogout()}
-          variant="outline"
-          color={gwarm.rose}
-          icon={LogOut}
-        />
+            <SectionHeader title="Cuenta" />
+            <AppButton
+              title="Cerrar sesión"
+              onPress={() => void handleLogout()}
+              variant="outline"
+              color={gwarm.rose}
+              icon={LogOut}
+            />
 
-        <Text style={styles.about}>
-          VitMaterna · plataforma de salud prenatal{"\n"}Cálculos clínicos y alertas en el servidor.
-        </Text>
+            <Text style={styles.about}>
+              VitMaterna · plataforma de salud prenatal{"\n"}Cálculos clínicos y alertas en el servidor.
+            </Text>
+          </View>
+        </WebContainer>
       </ScrollView>
+
+      <EditProfileModal
+        visible={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        accentColor={warmPlum.main}
+      />
     </View>
   );
 }
@@ -93,6 +117,8 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 48,
+  },
+  formStack: {
     gap: 12,
   },
   headerCard: {

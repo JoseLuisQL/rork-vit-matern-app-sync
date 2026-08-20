@@ -3,6 +3,7 @@
  * reconocerlo sin necesidad de leer. El botón SOS late suavemente y siempre
  * está visible abajo. Todo funciona sin señal (queda en cola y se envía solo)
  * e incluye la ubicación GPS si está disponible.
+ * Adaptado con arquitectura responsiva Web (contenedor centrado en escritorio).
  */
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
@@ -42,6 +43,7 @@ import { PressableScale } from "@/components/PressableScale";
 import { BigCheckRow } from "@/components/gestante/BigCheckRow";
 import { GHeader } from "@/components/gestante/GHeader";
 import { Illustration } from "@/components/gestante/Illustration";
+import { WebContainer } from "@/components/web/WebContainer";
 
 type SentKind = "alarma" | "sos" | null;
 
@@ -189,39 +191,41 @@ export default function AlarmasScreen(): React.ReactElement {
   if (sent) {
     return (
       <View style={styles.container}>
-        <GHeader title={sent === "sos" ? "SOS enviado" : "Aviso enviado"} back />
-        <View style={styles.successWrap}>
-          <Illustration source={sent === "sos" ? ILU.sos : ILU.sintomas} width={132} height={132} />
-          <View style={styles.successBadge}>
-            {online ? (
-              <CheckCircle2 size={22} color={semantic.success} />
-            ) : (
-              <CloudUpload size={22} color={semantic.warning} />
-            )}
-            <Text
-              style={[
-                styles.successBadgeText,
-                { color: online ? semantic.success : semantic.warning },
-              ]}
-            >
-              {online ? "Tu obstetra ya fue avisada" : "Guardado en tu teléfono"}
+        <WebContainer size="form">
+          <GHeader title={sent === "sos" ? "SOS enviado" : "Aviso enviado"} back />
+          <View style={styles.successWrap}>
+            <Illustration source={sent === "sos" ? ILU.sos : ILU.sintomas} width={132} height={132} />
+            <View style={styles.successBadge}>
+              {online ? (
+                <CheckCircle2 size={22} color={semantic.success} />
+              ) : (
+                <CloudUpload size={22} color={semantic.warning} />
+              )}
+              <Text
+                style={[
+                  styles.successBadgeText,
+                  { color: online ? semantic.success : semantic.warning },
+                ]}
+              >
+                {online ? "Tu obstetra ya fue avisada" : "Guardado en tu teléfono"}
+              </Text>
+            </View>
+            <Text style={styles.successText}>
+              {online
+                ? "Mantén la calma. Si puedes movilizarte, acude al centro de salud mientras te contactan."
+                : "No hay señal ahora. Tu aviso se enviará solo apenas vuelva la conexión. Si puedes, acude al centro de salud o pide apoyo a tu promotor de salud."}
             </Text>
+            <Illustration source={ILU.flores} width={150} height={44} />
+            <AppButton
+              title="Volver al inicio"
+              onPress={() => router.back()}
+              color={gwarm.teal}
+              large
+              hand
+              style={styles.successButton}
+            />
           </View>
-          <Text style={styles.successText}>
-            {online
-              ? "Mantén la calma. Si puedes movilizarte, acude al centro de salud mientras te contactan."
-              : "No hay señal ahora. Tu aviso se enviará solo apenas vuelva la conexión. Si puedes, acude al centro de salud o pide apoyo a tu promotor de salud."}
-          </Text>
-          <Illustration source={ILU.flores} width={150} height={44} />
-          <AppButton
-            title="Volver al inicio"
-            onPress={() => router.back()}
-            color={gwarm.teal}
-            large
-            hand
-            style={styles.successButton}
-          />
-        </View>
+        </WebContainer>
       </View>
     );
   }
@@ -232,71 +236,79 @@ export default function AlarmasScreen(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <GHeader title="Pedir ayuda" back />
+      <WebContainer size="form">
+        <GHeader title="Pedir ayuda" back />
+      </WebContainer>
       <ScrollView
         style={styles.flex}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.introRow}>
-          <Illustration source={ILU.sintomas} width={74} height={74} />
-          <View style={styles.flex}>
-            <Text style={styles.question}>¿Qué sientes?</Text>
-            <Text style={styles.hint}>Marca todo lo que te pasa.</Text>
-          </View>
-        </View>
+        <WebContainer size="form">
+          <View style={styles.formStack}>
+            <View style={styles.introRow}>
+              <Illustration source={ILU.sintomas} width={74} height={74} />
+              <View style={styles.flex}>
+                <Text style={styles.question}>¿Qué sientes?</Text>
+                <Text style={styles.hint}>Marca todo lo que te pasa.</Text>
+              </View>
+            </View>
 
-        <View style={styles.signsList}>
-          {ALARM_SIGNS.map((sign) => (
-            <BigCheckRow
-              key={sign.id}
-              checked={selected.includes(sign.id)}
-              label={sign.label}
-              sublabel={sign.detail}
-              icon={SIGN_ICONS[sign.id]}
-              color={semantic.danger}
-              softColor={gwarm.redSoft}
-              onToggle={() => toggleSign(sign.id)}
-              testID={`sign-${sign.id}`}
+            <View style={styles.signsList}>
+              {ALARM_SIGNS.map((sign) => (
+                <BigCheckRow
+                  key={sign.id}
+                  checked={selected.includes(sign.id)}
+                  label={sign.label}
+                  sublabel={sign.detail}
+                  icon={SIGN_ICONS[sign.id]}
+                  color={semantic.danger}
+                  softColor={gwarm.redSoft}
+                  onToggle={() => toggleSign(sign.id)}
+                  testID={`sign-${sign.id}`}
+                />
+              ))}
+            </View>
+
+            <Field
+              label="¿Algo más? (opcional)"
+              value={note}
+              onChangeText={setNote}
+              placeholder="Desde cuándo, qué tan fuerte…"
+              multiline
+              hand
+              accent={semantic.danger}
+              maxLength={280}
             />
-          ))}
-        </View>
 
-        <Field
-          label="¿Algo más? (opcional)"
-          value={note}
-          onChangeText={setNote}
-          placeholder="Desde cuándo, qué tan fuerte…"
-          multiline
-          hand
-          accent={semantic.danger}
-          maxLength={280}
-        />
-
-        <AppButton
-          title="Avisar a mi obstetra"
-          onPress={() => void sendReport()}
-          variant="danger"
-          large
-          hand
-          disabled={selectedLabels.length === 0}
-          loading={sending}
-          testID="btn-enviar-reporte"
-        />
-        <Text style={styles.reportHint}>
-          {selectedLabels.length === 0
-            ? "Primero marca lo que sientes."
-            : `Vas a avisar ${selectedLabels.length === 1 ? "1 síntoma" : `${selectedLabels.length} síntomas`}.`}
-        </Text>
+            <AppButton
+              title="Avisar a mi obstetra"
+              onPress={() => void sendReport()}
+              variant="danger"
+              large
+              hand
+              disabled={selectedLabels.length === 0}
+              loading={sending}
+              testID="btn-enviar-reporte"
+            />
+            <Text style={styles.reportHint}>
+              {selectedLabels.length === 0
+                ? "Primero marca lo que sientes."
+                : `Vas a avisar ${selectedLabels.length === 1 ? "1 síntoma" : `${selectedLabels.length} síntomas`}.`}
+            </Text>
+          </View>
+        </WebContainer>
       </ScrollView>
 
       <View style={[styles.sosBar, { paddingBottom: Math.max(insets.bottom, spacing.sm2) }]}>
-        <View style={styles.sosBarRow}>
-          <Illustration source={ILU.sos} width={52} height={52} />
-          <Text style={styles.sosBarText}>¿Es una emergencia?</Text>
-        </View>
-        <SOSButton onPress={() => void sendSOS()} disabled={sending} />
+        <WebContainer size="form">
+          <View style={styles.sosBarRow}>
+            <Illustration source={ILU.sos} width={52} height={52} />
+            <Text style={styles.sosBarText}>¿Es una emergencia?</Text>
+          </View>
+          <SOSButton onPress={() => void sendSOS()} disabled={sending} />
+        </WebContainer>
       </View>
     </View>
   );
@@ -308,6 +320,8 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.md,
     paddingBottom: spacing.lg,
+  },
+  formStack: {
     gap: spacing.sm2,
   },
   introRow: {
@@ -342,13 +356,13 @@ const styles = StyleSheet.create({
     borderTopColor: gwarm.border,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm2,
-    gap: spacing.sm,
   },
   sosBarRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.sm2,
+    marginBottom: spacing.xs,
   },
   sosBarText: {
     fontFamily: gfonts.hand,

@@ -50,8 +50,8 @@ export function isOfflineError(e: unknown): boolean {
  * URL de la foto de perfil de un usuario. La versión rompe el caché al
  * cambiar la foto; sin versión no hay foto y se muestra el icono por defecto.
  */
-export function avatarUri(dni: string | undefined, version: number | undefined): string | undefined {
-  if (!dni || !version) return undefined;
+export function avatarUri(dni: string | undefined, version: number | undefined | null): string | undefined {
+  if (!dni || version === undefined || version === null) return undefined;
   return `${BASE_URL}/api/avatar/${dni}?v=${version}`;
 }
 

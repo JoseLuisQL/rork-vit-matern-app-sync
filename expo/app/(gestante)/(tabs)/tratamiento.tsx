@@ -2,6 +2,7 @@
  * Pastillas: pregunta directa con casillas gigantes de un toque (funciona sin
  * señal), tu semana en circulitos, tu avance en frases simples y el
  * recordatorio diario. Al completar el día aparece el sol andino celebrando.
+ * Adaptado con arquitectura responsiva Web (cuadrícula 2 columnas en escritorio).
  */
 import { useRouter } from "expo-router";
 import { Check, ChevronRight, Flame } from "lucide-react-native";
@@ -13,6 +14,7 @@ import { countDoses, dayDoseTotals, doseName, timesPerDayOf } from "@/lib/doses"
 import { addDaysToKey, capitalize, fechaLarga } from "@/lib/format";
 import { medIllustration } from "@/lib/medIllustration";
 import { useApp, useMyPatient } from "@/providers/AppProvider";
+import { useResponsive } from "@/hooks/useResponsive";
 import { BigCheckRow } from "@/components/gestante/BigCheckRow";
 import { BlockTitle } from "@/components/gestante/BlockTitle";
 import { Celebration } from "@/components/gestante/Celebration";
@@ -20,12 +22,15 @@ import { GHeader } from "@/components/gestante/GHeader";
 import { Illustration } from "@/components/gestante/Illustration";
 import { PopIn } from "@/components/gestante/PopIn";
 import { SoftCard } from "@/components/gestante/SoftCard";
+import { WebContainer } from "@/components/web/WebContainer";
+import { WebCol, WebRow } from "@/components/web/WebGrid";
 
 const DAY_LETTERS = ["D", "L", "M", "M", "J", "V", "S"] as const;
 
 export default function PastillasGestante(): React.ReactElement {
   const router = useRouter();
   const { view, todayKey, dispatch, reminders } = useApp();
+  const { isDesktop } = useResponsive();
   const patient = useMyPatient();
 
   const supplements = view?.supplements ?? [];
@@ -63,133 +68,159 @@ export default function PastillasGestante(): React.ReactElement {
 
   const daysTaken = Math.round((patient.adherence30 / 100) * 30);
 
+  const pillsBlockNode = (
+    <PopIn delay={0}>
+      <SoftCard style={styles.block}>
+        <View style={styles.headRow}>
+          <View style={styles.headInfo}>
+            <Text style={styles.question}>
+              {supplements.length > 0 ? "¿Ya tomaste tus pastillas?" : "Tus pastillas"}
+            </Text>
+            <Text style={styles.dateText}>{capitalize(fechaLarga(todayKey))}</Text>
+          </View>
+          <Illustration source={ILU.pastillas} width={92} height={92} />
+        </View>
+        {supplements.length === 0 ? (
+          <View style={styles.emptyWrap}>
+            <Text style={styles.emptyText}>
+              Aún no tienes pastillas asignadas. Tu obstetra te indicará y recetará tus suplementos en tu próximo control.
+            </Text>
+          </View>
+        ) : (
+          <>
+            <View style={styles.pillsList}>
+              {supplements.map((s) => {
+                const times = timesPerDayOf(s);
+                const count = countDoses(todayIntakes, s.id);
+                return Array.from({ length: times }, (_, dose) => (
+                  <BigCheckRow
+                    key={`${s.id}-${dose}`}
+                    checked={dose < count}
+                    label={s.name}
+                    illustration={medIllustration(s.name)}
+                    sublabel={times > 1 ? doseName(dose, times) : s.schedule}
+                    onToggle={() =>
+                      dispatch({
+                        type: "set_intake_count",
+                        patientId: patient.id,
+                        supplementId: s.id,
+                        dayKey: todayKey,
+                        count: dose < count ? dose : dose + 1,
+                      })
+                    }
+                    testID={`trat-toggle-${s.id}-${dose}`}
+                  />
+                ));
+              })}
+            </View>
+            {allTaken ? (
+              <Celebration title="¡Muy bien!" text="Ya tomaste todo lo de hoy." />
+            ) : null}
+          </>
+        )}
+      </SoftCard>
+    </PopIn>
+  );
+
+  const weekProgressNode = supplements.length > 0 ? (
+    <PopIn delay={100}>
+      <SoftCard style={styles.block}>
+        <BlockTitle
+          illu={GICON.citas}
+          title="Tu semana"
+          color={gwarm.teal}
+          soft={gwarm.tealSoft}
+        />
+        <View style={styles.weekRow}>
+          {week.map((d) => {
+            const isToday = d.key === todayKey;
+            return (
+              <View key={d.key} style={styles.weekDay}>
+                <View
+                  style={[
+                    styles.weekDot,
+                    d.status === "full" && styles.weekDotFull,
+                    d.status === "partial" && styles.weekDotPartial,
+                    isToday && d.status === "none" && { borderColor: gwarm.teal },
+                  ]}
+                >
+                  {d.status === "full" ? (
+                    <Check size={17} color="#FFFFFF" strokeWidth={3} />
+                  ) : null}
+                </View>
+                <Text style={[styles.weekLetter, isToday && styles.weekLetterToday]}>
+                  {d.letter}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+        <Text style={styles.progressText}>
+          Tomaste tus pastillas{" "}
+          <Text style={styles.progressStrong}>{daysTaken} de los últimos 30 días</Text>.
+        </Text>
+        {patient.streak > 1 ? (
+          <View style={styles.streakRow}>
+            <Flame size={19} color={gwarm.amber} />
+            <Text style={styles.streakText}>¡Llevas {patient.streak} días seguidos!</Text>
+          </View>
+        ) : null}
+      </SoftCard>
+    </PopIn>
+  ) : null;
+
+  const reminderNode = (
+    <PopIn delay={200}>
+      <SoftCard
+        onPress={() => router.push("/(gestante)/perfil")}
+        style={styles.reminderCard}
+        testID="card-recordatorio"
+      >
+        <View style={styles.reminderIcon}>
+          <Illustration source={GICON.campana} width={30} height={30} />
+        </View>
+        <View style={styles.flex}>
+          <Text style={styles.reminderTitle}>Recordatorio diario</Text>
+          <Text style={styles.reminderText}>
+            {reminders.tomas
+              ? `Activado, a las ${`${reminders.hora}`.padStart(2, "0")}:00`
+              : "Apagado. Tócalo para activarlo."}
+          </Text>
+        </View>
+        <ChevronRight size={22} color={gwarm.inkFaint} />
+      </SoftCard>
+    </PopIn>
+  );
+
   return (
     <View style={styles.container}>
-      <GHeader title="Mis pastillas" />
+      <WebContainer size="dashboard">
+        <GHeader title="Mis pastillas" />
+      </WebContainer>
       <ScrollView
         style={styles.flex}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <PopIn delay={0}>
-          <SoftCard style={styles.block}>
-            <View style={styles.headRow}>
-              <View style={styles.headInfo}>
-                <Text style={styles.question}>
-                  {supplements.length > 0 ? "¿Ya tomaste tus pastillas?" : "Tus pastillas"}
-                </Text>
-                <Text style={styles.dateText}>{capitalize(fechaLarga(todayKey))}</Text>
-              </View>
-              <Illustration source={ILU.pastillas} width={92} height={92} />
+        <WebContainer size="dashboard">
+          {isDesktop ? (
+            <WebRow gap={16}>
+              <WebCol flex={7} style={styles.colStack}>
+                {pillsBlockNode}
+              </WebCol>
+              <WebCol flex={5} style={styles.colStack}>
+                {weekProgressNode}
+                {reminderNode}
+              </WebCol>
+            </WebRow>
+          ) : (
+            <View style={styles.mobileStack}>
+              {pillsBlockNode}
+              {weekProgressNode}
+              {reminderNode}
             </View>
-            {supplements.length === 0 ? (
-              <View style={styles.emptyWrap}>
-                <Text style={styles.emptyText}>
-                  Aún no tienes pastillas asignadas. Tu obstetra te indicará y recetará tus suplementos en tu próximo control.
-                </Text>
-              </View>
-            ) : (
-              <>
-                <View style={styles.pillsList}>
-                  {supplements.map((s) => {
-                    const times = timesPerDayOf(s);
-                    const count = countDoses(todayIntakes, s.id);
-                    return Array.from({ length: times }, (_, dose) => (
-                      <BigCheckRow
-                        key={`${s.id}-${dose}`}
-                        checked={dose < count}
-                        label={s.name}
-                        illustration={medIllustration(s.name)}
-                        sublabel={times > 1 ? doseName(dose, times) : s.schedule}
-                        onToggle={() =>
-                          dispatch({
-                            type: "set_intake_count",
-                            patientId: patient.id,
-                            supplementId: s.id,
-                            dayKey: todayKey,
-                            count: dose < count ? dose : dose + 1,
-                          })
-                        }
-                        testID={`trat-toggle-${s.id}-${dose}`}
-                      />
-                    ));
-                  })}
-                </View>
-                {allTaken ? (
-                  <Celebration title="¡Muy bien!" text="Ya tomaste todo lo de hoy." />
-                ) : null}
-              </>
-            )}
-          </SoftCard>
-        </PopIn>
-
-        {supplements.length > 0 ? (
-          <PopIn delay={100}>
-            <SoftCard style={styles.block}>
-              <BlockTitle
-                illu={GICON.citas}
-                title="Tu semana"
-                color={gwarm.teal}
-                soft={gwarm.tealSoft}
-              />
-              <View style={styles.weekRow}>
-                {week.map((d) => {
-                  const isToday = d.key === todayKey;
-                  return (
-                    <View key={d.key} style={styles.weekDay}>
-                      <View
-                        style={[
-                          styles.weekDot,
-                          d.status === "full" && styles.weekDotFull,
-                          d.status === "partial" && styles.weekDotPartial,
-                          isToday && d.status === "none" && { borderColor: gwarm.teal },
-                        ]}
-                      >
-                        {d.status === "full" ? (
-                          <Check size={17} color="#FFFFFF" strokeWidth={3} />
-                        ) : null}
-                      </View>
-                      <Text style={[styles.weekLetter, isToday && styles.weekLetterToday]}>
-                        {d.letter}
-                      </Text>
-                    </View>
-                  );
-                })}
-              </View>
-              <Text style={styles.progressText}>
-                Tomaste tus pastillas{" "}
-                <Text style={styles.progressStrong}>{daysTaken} de los últimos 30 días</Text>.
-              </Text>
-              {patient.streak > 1 ? (
-                <View style={styles.streakRow}>
-                  <Flame size={19} color={gwarm.amber} />
-                  <Text style={styles.streakText}>¡Llevas {patient.streak} días seguidos!</Text>
-                </View>
-              ) : null}
-            </SoftCard>
-          </PopIn>
-        ) : null}
-
-        <PopIn delay={200}>
-          <SoftCard
-            onPress={() => router.push("/(gestante)/perfil")}
-            style={styles.reminderCard}
-            testID="card-recordatorio"
-          >
-            <View style={styles.reminderIcon}>
-              <Illustration source={GICON.campana} width={30} height={30} />
-            </View>
-            <View style={styles.flex}>
-              <Text style={styles.reminderTitle}>Recordatorio diario</Text>
-              <Text style={styles.reminderText}>
-                {reminders.tomas
-                  ? `Activado, a las ${`${reminders.hora}`.padStart(2, "0")}:00`
-                  : "Apagado. Tócalo para activarlo."}
-              </Text>
-            </View>
-            <ChevronRight size={22} color={gwarm.inkFaint} />
-          </SoftCard>
-        </PopIn>
+          )}
+        </WebContainer>
       </ScrollView>
     </View>
   );
@@ -201,6 +232,11 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.md,
     paddingBottom: spacing.xl,
+  },
+  mobileStack: {
+    gap: spacing.md,
+  },
+  colStack: {
     gap: spacing.md,
   },
   block: { gap: spacing.sm2 },
@@ -299,45 +335,5 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: gwarm.inkSoft,
     textAlign: "center",
-  },
-  manageRow: {
-    alignItems: "center",
-    marginTop: 6,
-  },
-  manageList: {
-    gap: 8,
-  },
-  manageItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: gwarm.border,
-  },
-  manageIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: gwarm.tealSoft,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  manageInfo: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  manageName: {
-    fontFamily: gfonts.hand,
-    fontSize: 16,
-    lineHeight: 21,
-    color: gwarm.ink,
-  },
-  manageMeta: {
-    fontFamily: gfonts.handBody,
-    fontSize: 13,
-    lineHeight: 17,
-    color: gwarm.inkSoft,
   },
 });

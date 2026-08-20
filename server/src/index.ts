@@ -31,6 +31,7 @@ import {
   handleSetAutoControls,
   handleSetAvatar,
   handleSync,
+  handleUpdateProfile,
 } from "./handlers";
 import type { AppEnv } from "./handlers";
 import { presence } from "./presence";
@@ -111,6 +112,7 @@ app.post("/api/schedule", handleSchedule);
 app.post("/api/push-token", handleRegisterPushToken);
 app.post("/api/push-token/delete", handleDeletePushToken);
 app.post("/api/user/avatar", handleSetAvatar);
+app.post("/api/user/profile", handleUpdateProfile);
 app.post("/api/user/auto-controls", handleSetAutoControls);
 app.post("/api/admin/create-user", handleCreateUser);
 app.post("/api/admin/set-active", handleSetActive);

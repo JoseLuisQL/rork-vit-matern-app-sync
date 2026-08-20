@@ -61,6 +61,13 @@ export interface ScheduleParams {
   motivo?: string;
 }
 
+export interface UpdateProfileParams {
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  password?: string;
+}
+
 export interface CreateUserParams {
   dni: string;
   password: string;
@@ -187,6 +194,12 @@ export const [AppProvider, useApp] = createContextHook(() => {
   const persistSnapshot = useCallback((dni: string, snapshot: Snapshot) => {
     cachedRef.current = snapshot;
     setCached(snapshot);
+    if (snapshot.me && sessionRef.current) {
+      const updatedSession: SessionState = { ...sessionRef.current, user: snapshot.me };
+      sessionRef.current = updatedSession;
+      setSession(updatedSession);
+      AsyncStorage.setItem(SESSION_KEY, JSON.stringify(updatedSession)).catch(() => {});
+    }
     AsyncStorage.setItem(snapKey(dni), JSON.stringify(snapshot)).catch(() => {});
   }, []);
 
@@ -381,6 +394,12 @@ export const [AppProvider, useApp] = createContextHook(() => {
     [runOnline],
   );
 
+  /** Actualiza datos de perfil del usuario actual (nombres, teléfono, contraseña opcional). */
+  const updateProfile = useCallback(
+    (params: UpdateProfileParams) => runOnline("/api/user/profile", params),
+    [runOnline],
+  );
+
   /** Configura si se crean los 8 controles automáticamente según FUM al registrar gestante. */
   const setAutoControls = useCallback(
     (enabled: boolean) => runOnline("/api/user/auto-controls", { autoControls: enabled }),
@@ -523,6 +542,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       adminTestWhatsAppConnection,
       adminSendTestWhatsApp,
       setAvatar,
+      updateProfile,
       setAutoControls,
       setChatPresence,
       readArticles,
@@ -557,6 +577,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       adminTestWhatsAppConnection,
       adminSendTestWhatsApp,
       setAvatar,
+      updateProfile,
       setAutoControls,
       setChatPresence,
       readArticles,

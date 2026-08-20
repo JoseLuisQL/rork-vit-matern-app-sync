@@ -2,6 +2,7 @@
  * Citas de la gestante: la próxima cita en grande con "Sí, iré" y debajo el
  * camino de controles — círculos unidos por una línea, como un sendero que
  * se va completando. Confirmar o pedir otra fecha funciona también sin señal.
+ * Adaptado con arquitectura responsiva Web (cuadrícula 2 columnas en escritorio).
  */
 import { Check } from "lucide-react-native";
 import React, { useCallback, useMemo } from "react";
@@ -11,6 +12,7 @@ import { GICON, ILU } from "@/constants/illustrations";
 import { confirmAction } from "@/lib/confirm";
 import { capitalize, fechaLarga, horaAmigable } from "@/lib/format";
 import { useApp, useMyPatient } from "@/providers/AppProvider";
+import { useResponsive } from "@/hooks/useResponsive";
 import type { Appointment } from "@/types";
 import { StatusWord } from "@/components/Badges";
 import { BlockTitle } from "@/components/gestante/BlockTitle";
@@ -19,9 +21,12 @@ import { GHeader } from "@/components/gestante/GHeader";
 import { Illustration } from "@/components/gestante/Illustration";
 import { PopIn } from "@/components/gestante/PopIn";
 import { SoftCard } from "@/components/gestante/SoftCard";
+import { WebContainer } from "@/components/web/WebContainer";
+import { WebCol, WebRow } from "@/components/web/WebGrid";
 
 export default function CitasGestante(): React.ReactElement {
   const { view, todayKey, dispatch } = useApp();
+  const { isDesktop } = useResponsive();
   const patient = useMyPatient();
 
   const nextAppt = useMemo(() => {
@@ -73,130 +78,158 @@ export default function CitasGestante(): React.ReactElement {
     [dispatch],
   );
 
+  const nextApptNode = (
+    <PopIn delay={0}>
+      {nextAppt ? (
+        <CitaProxima
+          appt={nextAppt}
+          todayKey={todayKey}
+          onConfirm={() => void handleConfirm(nextAppt)}
+          onReschedule={() => void handleReschedule(nextAppt)}
+        />
+      ) : (
+        <SoftCard style={styles.emptyCard}>
+          <Illustration source={ILU.obstetra} width={74} height={90} />
+          <View style={styles.flex}>
+            <Text style={styles.emptyTitle}>Sin citas pendientes</Text>
+            <Text style={styles.emptyText}>Tu obstetra te avisará tu próximo control.</Text>
+          </View>
+        </SoftCard>
+      )}
+    </PopIn>
+  );
+
+  const nextVisitNode = nextVisit ? (
+    <PopIn delay={70}>
+      <SoftCard style={styles.visitCard}>
+        <View style={styles.visitIcon}>
+          <Illustration source={GICON.casa} width={30} height={30} />
+        </View>
+        <View style={styles.flex}>
+          <Text style={styles.visitTitle}>Te visitarán en casa</Text>
+          <Text style={styles.visitText}>
+            {capitalize(fechaLarga(nextVisit.dateKey))} · {horaAmigable(nextVisit.time)}
+          </Text>
+        </View>
+      </SoftCard>
+    </PopIn>
+  ) : null;
+
+  const controlsNode = (
+    <PopIn delay={140}>
+      <SoftCard style={styles.pathCard}>
+        <BlockTitle
+          illu={GICON.citas}
+          title="Mis controles"
+          color={gwarm.teal}
+          soft={gwarm.tealSoft}
+        />
+        <View>
+          {controls.map((appt, index) => {
+            const done = appt.estado === "asistida";
+            const isNext = nextAppt?.id === appt.id;
+            return (
+              <View key={appt.id} style={styles.pathRow}>
+                <View style={styles.rail}>
+                  <View style={[styles.railLine, index === 0 && styles.railHidden]} />
+                  <View
+                    style={[
+                      styles.node,
+                      done && styles.nodeDone,
+                      !done && isNext && styles.nodeNext,
+                    ]}
+                  >
+                    {done ? (
+                      <Check size={19} color="#FFFFFF" strokeWidth={3} />
+                    ) : (
+                      <Text style={[styles.nodeNum, isNext && { color: gwarm.teal }]}>
+                        {appt.control}
+                      </Text>
+                    )}
+                  </View>
+                  <View
+                    style={[
+                      styles.railLine,
+                      index === controls.length - 1 && styles.railHidden,
+                    ]}
+                  />
+                </View>
+                <View style={styles.pathInfo}>
+                  <Text style={styles.pathTitle}>Control {appt.control}</Text>
+                  <Text style={styles.pathMeta}>
+                    {capitalize(fechaLarga(appt.dateKey))} · {appt.time}
+                  </Text>
+                </View>
+                <View style={styles.pathStatus}>
+                  <StatusWord estado={appt.estado} hand />
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      </SoftCard>
+    </PopIn>
+  );
+
+  const extrasNode = extras.length > 0 ? (
+    <PopIn delay={210}>
+      <SoftCard style={styles.pathCard}>
+        <BlockTitle
+          illu={ILU.obstetra}
+          title="Otras citas"
+          color={gwarm.amber}
+          soft={gwarm.amberSoft}
+        />
+        <View style={styles.extraList}>
+          {extras.map((appt, index) => (
+            <View key={appt.id} style={[styles.extraRow, index > 0 && styles.extraBorder]}>
+              <View style={styles.flex}>
+                <Text style={styles.pathTitle} numberOfLines={1}>
+                  {appt.motivo}
+                </Text>
+                <Text style={styles.pathMeta}>
+                  {capitalize(fechaLarga(appt.dateKey))} · {appt.time}
+                </Text>
+              </View>
+              <StatusWord estado={appt.estado} hand />
+            </View>
+          ))}
+        </View>
+      </SoftCard>
+    </PopIn>
+  ) : null;
+
   return (
     <View style={styles.container}>
-      <GHeader title="Mis citas" />
+      <WebContainer size="dashboard">
+        <GHeader title="Mis citas" />
+      </WebContainer>
       <ScrollView
         style={styles.flex}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <PopIn delay={0}>
-          {nextAppt ? (
-            <CitaProxima
-              appt={nextAppt}
-              todayKey={todayKey}
-              onConfirm={() => void handleConfirm(nextAppt)}
-              onReschedule={() => void handleReschedule(nextAppt)}
-            />
+        <WebContainer size="dashboard">
+          {isDesktop ? (
+            <WebRow gap={16}>
+              <WebCol flex={5} style={styles.colStack}>
+                {nextApptNode}
+                {nextVisitNode}
+              </WebCol>
+              <WebCol flex={7} style={styles.colStack}>
+                {controlsNode}
+                {extrasNode}
+              </WebCol>
+            </WebRow>
           ) : (
-            <SoftCard style={styles.emptyCard}>
-              <Illustration source={ILU.obstetra} width={74} height={90} />
-              <View style={styles.flex}>
-                <Text style={styles.emptyTitle}>Sin citas pendientes</Text>
-                <Text style={styles.emptyText}>Tu obstetra te avisará tu próximo control.</Text>
-              </View>
-            </SoftCard>
-          )}
-        </PopIn>
-
-        {nextVisit ? (
-          <PopIn delay={70}>
-            <SoftCard style={styles.visitCard}>
-              <View style={styles.visitIcon}>
-                <Illustration source={GICON.casa} width={30} height={30} />
-              </View>
-              <View style={styles.flex}>
-                <Text style={styles.visitTitle}>Te visitarán en casa</Text>
-                <Text style={styles.visitText}>
-                  {capitalize(fechaLarga(nextVisit.dateKey))} · {horaAmigable(nextVisit.time)}
-                </Text>
-              </View>
-            </SoftCard>
-          </PopIn>
-        ) : null}
-
-        <PopIn delay={140}>
-          <SoftCard style={styles.pathCard}>
-            <BlockTitle
-              illu={GICON.citas}
-              title="Mis controles"
-              color={gwarm.teal}
-              soft={gwarm.tealSoft}
-            />
-            <View>
-              {controls.map((appt, index) => {
-                const done = appt.estado === "asistida";
-                const isNext = nextAppt?.id === appt.id;
-                return (
-                  <View key={appt.id} style={styles.pathRow}>
-                    <View style={styles.rail}>
-                      <View style={[styles.railLine, index === 0 && styles.railHidden]} />
-                      <View
-                        style={[
-                          styles.node,
-                          done && styles.nodeDone,
-                          !done && isNext && styles.nodeNext,
-                        ]}
-                      >
-                        {done ? (
-                          <Check size={19} color="#FFFFFF" strokeWidth={3} />
-                        ) : (
-                          <Text style={[styles.nodeNum, isNext && { color: gwarm.teal }]}>
-                            {appt.control}
-                          </Text>
-                        )}
-                      </View>
-                      <View
-                        style={[
-                          styles.railLine,
-                          index === controls.length - 1 && styles.railHidden,
-                        ]}
-                      />
-                    </View>
-                    <View style={styles.pathInfo}>
-                      <Text style={styles.pathTitle}>Control {appt.control}</Text>
-                      <Text style={styles.pathMeta}>
-                        {capitalize(fechaLarga(appt.dateKey))} · {appt.time}
-                      </Text>
-                    </View>
-                    <View style={styles.pathStatus}>
-                      <StatusWord estado={appt.estado} hand />
-                    </View>
-                  </View>
-                );
-              })}
+            <View style={styles.mobileStack}>
+              {nextApptNode}
+              {nextVisitNode}
+              {controlsNode}
+              {extrasNode}
             </View>
-          </SoftCard>
-        </PopIn>
-
-        {extras.length > 0 ? (
-          <PopIn delay={210}>
-            <SoftCard style={styles.pathCard}>
-              <BlockTitle
-                illu={ILU.obstetra}
-                title="Otras citas"
-                color={gwarm.amber}
-                soft={gwarm.amberSoft}
-              />
-              <View style={styles.extraList}>
-                {extras.map((appt, index) => (
-                  <View key={appt.id} style={[styles.extraRow, index > 0 && styles.extraBorder]}>
-                    <View style={styles.flex}>
-                      <Text style={styles.pathTitle} numberOfLines={1}>
-                        {appt.motivo}
-                      </Text>
-                      <Text style={styles.pathMeta}>
-                        {capitalize(fechaLarga(appt.dateKey))} · {appt.time}
-                      </Text>
-                    </View>
-                    <StatusWord estado={appt.estado} hand />
-                  </View>
-                ))}
-              </View>
-            </SoftCard>
-          </PopIn>
-        ) : null}
+          )}
+        </WebContainer>
       </ScrollView>
     </View>
   );
@@ -208,6 +241,11 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.md,
     paddingBottom: spacing.xl,
+  },
+  mobileStack: {
+    gap: spacing.md,
+  },
+  colStack: {
     gap: spacing.md,
   },
   emptyCard: {

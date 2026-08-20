@@ -3,6 +3,7 @@
  * crayola, conteos y chips de avance), línea de tiempo con la hora en un
  * riel punteado, tarjetas con foto de la paciente y estado en una palabra,
  * y solicitudes de cambio agrupadas en una nota ámbar arriba.
+ * Adaptado con arquitectura responsiva Web (2 columnas en escritorio).
  */
 import { useRouter } from "expo-router";
 import {
@@ -18,6 +19,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { gfonts, gShadow, gwarm, risk, warmBlue } from "@/constants/theme";
 import { ILU } from "@/constants/illustrations";
+import { useResponsive } from "@/hooks/useResponsive";
 import { avatarUri } from "@/lib/api";
 import { addDaysToKey, capitalize, fechaCorta, fechaLarga } from "@/lib/format";
 import { useApp, usePatients } from "@/providers/AppProvider";
@@ -33,6 +35,8 @@ import { PressableScale } from "@/components/PressableScale";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { StatusWord } from "@/components/Badges";
 import { useToast } from "@/components/Toast";
+import { WebCol, WebRow } from "@/components/web/WebGrid";
+import { WebContainer } from "@/components/web/WebContainer";
 
 const accent = warmBlue;
 
@@ -46,6 +50,9 @@ export default function AgendaScreen(): React.ReactElement {
   const { view, todayKey, dispatch, online } = useApp();
   const patients = usePatients();
   const { show } = useToast();
+  const { isDesktop, isTablet } = useResponsive();
+  const isWide = isDesktop || isTablet;
+
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [showRequests, setShowRequests] = useState<boolean>(false);
   const [completingVisitId, setCompletingVisitId] = useState<string | null>(null);
@@ -181,288 +188,198 @@ export default function AgendaScreen(): React.ReactElement {
     );
   };
 
-  return (
-    <View style={styles.container}>
-      <ScreenHeader
-        title="Agenda"
-        right={
+  const renderLeftPanel = () => (
+    <View style={styles.leftStack}>
+      {rescheduleRequests.length > 0 ? (
+        <View style={styles.requestBlock}>
+          <PressableScale
+            onPress={() => setShowRequests((v) => !v)}
+            accessibilityLabel="Solicitudes de cambio de fecha"
+            style={styles.requestHeader}
+          >
+            <View style={styles.requestIconCircle}>
+              <CalendarClock size={17} color={gwarm.amber} strokeWidth={2.4} />
+            </View>
+            <Text style={styles.requestTitle}>
+              {rescheduleRequests.length === 1
+                ? "1 paciente pidió cambio de fecha"
+                : `${rescheduleRequests.length} pacientes pidieron cambio de fecha`}
+            </Text>
+            {showRequests ? (
+              <ChevronUp size={18} color={gwarm.amber} />
+            ) : (
+              <ChevronDown size={18} color={gwarm.amber} />
+            )}
+          </PressableScale>
+          {showRequests
+            ? rescheduleRequests.map((appt) => (
+                <View key={appt.id} style={styles.requestRow}>
+                  <View style={styles.cardInfo}>
+                    <Text style={styles.cardName} numberOfLines={1}>
+                      {patientName(appt.patientId)}
+                    </Text>
+                    <Text style={styles.cardMeta} numberOfLines={1}>
+                      Tenía el {fechaCorta(appt.dateKey)} · {appt.time}
+                    </Text>
+                  </View>
+                  <AppButton
+                    title="Cambiar"
+                    onPress={() =>
+                      router.push({
+                        pathname: "/(obstetra)/programar",
+                        params: { mode: "reprogramar", appointmentId: appt.id },
+                      })
+                    }
+                    color={gwarm.amber}
+                    variant="soft"
+                    small
+                  />
+                </View>
+              ))
+            : null}
+        </View>
+      ) : null}
+
+      <PopIn>
+        <View style={styles.heroCard}>
+          <View style={styles.heroInfo}>
+            <Text style={styles.heroOverline}>
+              {day === todayKey ? "Hoy" : "Tu día"}
+            </Text>
+            <Text style={styles.heroDate}>{capitalize(fechaLarga(day))}</Text>
+            <Text style={styles.heroCounts}>
+              {countLine.length > 0 ? countLine : "Sin citas ni visitas"}
+            </Text>
+            <View style={styles.heroChips}>
+              {summary.pendientes > 0 ? (
+                <View style={[styles.chip, { backgroundColor: accent.soft }]}>
+                  <Text style={[styles.chipText, { color: accent.deep }]}>
+                    {summary.pendientes} por atender
+                  </Text>
+                </View>
+              ) : null}
+              {summary.asistidas > 0 ? (
+                <View style={[styles.chip, { backgroundColor: gwarm.tealSoft }]}>
+                  <Text style={[styles.chipText, { color: gwarm.tealDeep }]}>
+                    {summary.asistidas} asistidas
+                  </Text>
+                </View>
+              ) : null}
+              {summary.faltaron > 0 ? (
+                <View style={[styles.chip, { backgroundColor: gwarm.roseSoft }]}>
+                  <Text style={[styles.chipText, { color: gwarm.rose }]}>
+                    {summary.faltaron} faltaron
+                  </Text>
+                </View>
+              ) : null}
+              {summary.visitasPend > 0 ? (
+                <View style={[styles.chip, { backgroundColor: gwarm.amberSoft }]}>
+                  <Text style={[styles.chipText, { color: gwarm.amber }]}>
+                    {summary.visitasPend} visita{summary.visitasPend > 1 ? "s" : ""} pendiente
+                    {summary.visitasPend > 1 ? "s" : ""}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          </View>
+          <Illustration source={ILU.agenda} width={100} height={100} />
+        </View>
+      </PopIn>
+
+      <AppButton
+        title="Programar visita a domicilio"
+        onPress={() =>
+          router.push({ pathname: "/(obstetra)/programar", params: { mode: "visita", date: day } })
+        }
+        color={accent.main}
+        variant="soft"
+        icon={HousePlus}
+        style={styles.bottomAction}
+      />
+    </View>
+  );
+
+  const renderTimeline = () => (
+    <View style={styles.timelineStack}>
+      {timeline.length === 0 ? (
+        <PopIn delay={60}>
+          <EmptyState
+            icon={CalendarPlus}
+            illu={ILU.calma}
+            title="Día tranquilo"
+            text="No hay citas ni visitas para este día."
+          />
           <AppButton
-            title="Nueva"
+            title="Programar cita este día"
             onPress={() =>
-              router.push({ pathname: "/(obstetra)/programar", params: { mode: "cita", date: day } })
+              router.push({
+                pathname: "/(obstetra)/programar",
+                params: { mode: "cita", date: day },
+              })
             }
             color={accent.main}
+            variant="soft"
             icon={CalendarPlus}
-            small
           />
-        }
-      />
-      <DayStrip
-        days={days}
-        selected={day}
-        onSelect={setSelectedDay}
-        todayKey={todayKey}
-        accent={accent.main}
-        accentLight={accent.soft}
-      />
-      <ScrollView
-        style={styles.flex}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {rescheduleRequests.length > 0 ? (
-          <View style={styles.requestBlock}>
-            <PressableScale
-              onPress={() => setShowRequests((v) => !v)}
-              accessibilityLabel="Solicitudes de cambio de fecha"
-              style={styles.requestHeader}
-            >
-              <View style={styles.requestIconCircle}>
-                <CalendarClock size={17} color={gwarm.amber} strokeWidth={2.4} />
-              </View>
-              <Text style={styles.requestTitle}>
-                {rescheduleRequests.length === 1
-                  ? "1 paciente pidió cambio de fecha"
-                  : `${rescheduleRequests.length} pacientes pidieron cambio de fecha`}
-              </Text>
-              {showRequests ? (
-                <ChevronUp size={18} color={gwarm.amber} />
-              ) : (
-                <ChevronDown size={18} color={gwarm.amber} />
-              )}
-            </PressableScale>
-            {showRequests
-              ? rescheduleRequests.map((appt) => (
-                  <View key={appt.id} style={styles.requestRow}>
-                    <View style={styles.cardInfo}>
-                      <Text style={styles.cardName} numberOfLines={1}>
-                        {patientName(appt.patientId)}
-                      </Text>
-                      <Text style={styles.cardMeta} numberOfLines={1}>
-                        Tenía el {fechaCorta(appt.dateKey)} · {appt.time}
-                      </Text>
-                    </View>
-                    <AppButton
-                      title="Cambiar"
-                      onPress={() =>
-                        router.push({
-                          pathname: "/(obstetra)/programar",
-                          params: { mode: "reprogramar", appointmentId: appt.id },
-                        })
-                      }
-                      color={gwarm.amber}
-                      variant="soft"
-                      small
-                    />
-                  </View>
-                ))
-              : null}
-          </View>
-        ) : null}
-
-        <PopIn>
-          <View style={styles.heroCard}>
-            <View style={styles.heroInfo}>
-              <Text style={styles.heroOverline}>
-                {day === todayKey ? "Hoy" : "Tu día"}
-              </Text>
-              <Text style={styles.heroDate}>{capitalize(fechaLarga(day))}</Text>
-              <Text style={styles.heroCounts}>
-                {countLine.length > 0 ? countLine : "Sin citas ni visitas"}
-              </Text>
-              <View style={styles.heroChips}>
-                {summary.pendientes > 0 ? (
-                  <View style={[styles.chip, { backgroundColor: accent.soft }]}>
-                    <Text style={[styles.chipText, { color: accent.deep }]}>
-                      {summary.pendientes} por atender
-                    </Text>
-                  </View>
-                ) : null}
-                {summary.asistidas > 0 ? (
-                  <View style={[styles.chip, { backgroundColor: gwarm.tealSoft }]}>
-                    <Text style={[styles.chipText, { color: gwarm.tealDeep }]}>
-                      {summary.asistidas} asistidas
-                    </Text>
-                  </View>
-                ) : null}
-                {summary.faltaron > 0 ? (
-                  <View style={[styles.chip, { backgroundColor: gwarm.roseSoft }]}>
-                    <Text style={[styles.chipText, { color: gwarm.rose }]}>
-                      {summary.faltaron} faltaron
-                    </Text>
-                  </View>
-                ) : null}
-                {summary.visitasPend > 0 ? (
-                  <View style={[styles.chip, { backgroundColor: gwarm.amberSoft }]}>
-                    <Text style={[styles.chipText, { color: gwarm.amber }]}>
-                      {summary.visitasPend} visita{summary.visitasPend > 1 ? "s" : ""} pendiente
-                      {summary.visitasPend > 1 ? "s" : ""}
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
-            </View>
-            <Illustration source={ILU.agenda} width={100} height={100} />
-          </View>
         </PopIn>
-
-        {timeline.length === 0 ? (
-          <PopIn delay={60}>
-            <EmptyState
-              icon={CalendarPlus}
-              illu={ILU.calma}
-              title="Día tranquilo"
-              text="No hay citas ni visitas para este día."
-            />
-            <AppButton
-              title="Programar cita este día"
-              onPress={() =>
-                router.push({
-                  pathname: "/(obstetra)/programar",
-                  params: { mode: "cita", date: day },
-                })
-              }
-              color={accent.main}
-              variant="soft"
-              icon={CalendarPlus}
-            />
-          </PopIn>
-        ) : (
-          <View style={styles.timeline}>
-            {timeline.map((item, index) => {
-              const isLast = index === timeline.length - 1;
-              if (item.kind === "cita") {
-                const appt = item.appt;
-                const canMark =
-                  day <= todayKey &&
-                  (appt.estado === "programada" ||
-                    appt.estado === "confirmada" ||
-                    appt.estado === "solicitud_reprogramacion");
-                const dotColor =
-                  appt.estado === "asistida"
-                    ? gwarm.teal
-                    : appt.estado === "no_asistida"
-                      ? gwarm.rose
-                      : accent.main;
-                return (
-                  <View key={appt.id} style={styles.tlRow}>
-                    <View style={styles.tlRail}>
-                      <Text style={styles.tlTime}>{appt.time}</Text>
-                      <View style={[styles.tlDot, { backgroundColor: dotColor }]} />
-                      {!isLast ? <View style={styles.tlLine} /> : null}
-                    </View>
-                    <View style={styles.tlCard}>
-                      {renderPatientRow(appt.patientId, appt.motivo, <StatusWord estado={appt.estado} />)}
-                      {canMark ? (
-                        <View style={styles.actionsRow}>
-                          <AppButton
-                            title="Asistió"
-                            onPress={() => markAttendance(appt.id, appt.patientId, "asistida")}
-                            color={gwarm.teal}
-                            variant="soft"
-                            icon={CheckCircle2}
-                            small
-                            style={styles.flex}
-                            testID={`asistio-${appt.id}`}
-                          />
-                          <AppButton
-                            title="Faltó"
-                            onPress={() => markAttendance(appt.id, appt.patientId, "no_asistida")}
-                            color={gwarm.rose}
-                            variant="soft"
-                            icon={XCircle}
-                            small
-                            style={styles.flex}
-                          />
-                        </View>
-                      ) : day > todayKey &&
-                        (appt.estado === "programada" || appt.estado === "confirmada") ? (
-                        <AppButton
-                          title="Reprogramar"
-                          onPress={() =>
-                            router.push({
-                              pathname: "/(obstetra)/programar",
-                              params: { mode: "reprogramar", appointmentId: appt.id },
-                            })
-                          }
-                          color={accent.main}
-                          variant="outline"
-                          small
-                        />
-                      ) : null}
-                    </View>
-                  </View>
-                );
-              }
-
-              const visit = item.visit;
-              const done = visit.estado === "realizada";
+      ) : (
+        <View style={styles.timeline}>
+          {timeline.map((item, index) => {
+            const isLast = index === timeline.length - 1;
+            if (item.kind === "cita") {
+              const appt = item.appt;
+              const canMark =
+                day <= todayKey &&
+                (appt.estado === "programada" ||
+                  appt.estado === "confirmada" ||
+                  appt.estado === "solicitud_reprogramacion");
+              const dotColor =
+                appt.estado === "asistida"
+                  ? gwarm.teal
+                  : appt.estado === "no_asistida"
+                    ? gwarm.rose
+                    : accent.main;
               return (
-                <View key={visit.id} style={styles.tlRow}>
+                <View key={appt.id} style={styles.tlRow}>
                   <View style={styles.tlRail}>
-                    <Text style={styles.tlTime}>{visit.time}</Text>
-                    <View
-                      style={[styles.tlDot, { backgroundColor: done ? gwarm.teal : gwarm.tealDeep }]}
-                    />
+                    <Text style={styles.tlTime}>{appt.time}</Text>
+                    <View style={[styles.tlDot, { backgroundColor: dotColor }]} />
                     {!isLast ? <View style={styles.tlLine} /> : null}
                   </View>
-                  <View style={[styles.tlCard, styles.visitCard]}>
-                    <View style={styles.visitTag}>
-                      <HousePlus size={13} color={gwarm.tealDeep} strokeWidth={2.4} />
-                      <Text style={styles.visitTagText}>Visita a domicilio</Text>
-                    </View>
-                    {renderPatientRow(
-                      visit.patientId,
-                      visit.motivo,
-                      <Text
-                        style={[styles.visitState, { color: done ? gwarm.teal : accent.main }]}
-                      >
-                        {done ? "Realizada" : "Pendiente"}
-                      </Text>,
-                    )}
-                    {done && visit.resultado ? (
-                      <Text style={styles.visitResult}>{visit.resultado}</Text>
-                    ) : completingVisitId === visit.id ? (
-                      <View style={styles.resultForm}>
-                        <Field
-                          label="¿Cómo fue la visita?"
-                          value={visitResult}
-                          onChangeText={setVisitResult}
-                          placeholder="Cómo encontraste a la gestante, acuerdos…"
-                          multiline
-                          accent={accent.main}
-                          maxLength={400}
+                  <View style={styles.tlCard}>
+                    {renderPatientRow(appt.patientId, appt.motivo, <StatusWord estado={appt.estado} />)}
+                    {canMark ? (
+                      <View style={styles.actionsRow}>
+                        <AppButton
+                          title="Asistió"
+                          onPress={() => markAttendance(appt.id, appt.patientId, "asistida")}
+                          color={gwarm.teal}
+                          variant="soft"
+                          icon={CheckCircle2}
+                          small
+                          style={styles.flex}
+                          testID={`asistio-${appt.id}`}
                         />
-                        <View style={styles.actionsRow}>
-                          <AppButton
-                            title="Guardar"
-                            onPress={() => saveVisitResult(visit.id)}
-                            color={accent.main}
-                            small
-                            disabled={visitResult.trim().length === 0}
-                            style={styles.flex}
-                          />
-                          <AppButton
-                            title="Cancelar"
-                            onPress={() => {
-                              setCompletingVisitId(null);
-                              setVisitResult("");
-                            }}
-                            color={gwarm.inkSoft}
-                            variant="outline"
-                            small
-                            style={styles.flex}
-                          />
-                        </View>
+                        <AppButton
+                          title="Faltó"
+                          onPress={() => markAttendance(appt.id, appt.patientId, "no_asistida")}
+                          color={gwarm.rose}
+                          variant="soft"
+                          icon={XCircle}
+                          small
+                          style={styles.flex}
+                        />
                       </View>
-                    ) : !done ? (
+                    ) : day > todayKey &&
+                      (appt.estado === "programada" || appt.estado === "confirmada") ? (
                       <AppButton
-                        title="Registrar resultado"
-                        onPress={() => {
-                          setCompletingVisitId(visit.id);
-                          setVisitResult("");
-                        }}
+                        title="Reprogramar"
+                        onPress={() =>
+                          router.push({
+                            pathname: "/(obstetra)/programar",
+                            params: { mode: "reprogramar", appointmentId: appt.id },
+                          })
+                        }
                         color={accent.main}
                         variant="outline"
                         small
@@ -471,20 +388,135 @@ export default function AgendaScreen(): React.ReactElement {
                   </View>
                 </View>
               );
-            })}
-          </View>
-        )}
+            }
 
-        <AppButton
-          title="Programar visita a domicilio"
-          onPress={() =>
-            router.push({ pathname: "/(obstetra)/programar", params: { mode: "visita", date: day } })
+            const visit = item.visit;
+            const done = visit.estado === "realizada";
+            return (
+              <View key={visit.id} style={styles.tlRow}>
+                <View style={styles.tlRail}>
+                  <Text style={styles.tlTime}>{visit.time}</Text>
+                  <View
+                    style={[styles.tlDot, { backgroundColor: done ? gwarm.teal : gwarm.tealDeep }]}
+                  />
+                  {!isLast ? <View style={styles.tlLine} /> : null}
+                </View>
+                <View style={[styles.tlCard, styles.visitCard]}>
+                  <View style={styles.visitTag}>
+                    <HousePlus size={13} color={gwarm.tealDeep} strokeWidth={2.4} />
+                    <Text style={styles.visitTagText}>Visita a domicilio</Text>
+                  </View>
+                  {renderPatientRow(
+                    visit.patientId,
+                    visit.motivo,
+                    <Text
+                      style={[styles.visitState, { color: done ? gwarm.teal : accent.main }]}
+                    >
+                      {done ? "Realizada" : "Pendiente"}
+                    </Text>,
+                  )}
+                  {done && visit.resultado ? (
+                    <Text style={styles.visitResult}>{visit.resultado}</Text>
+                  ) : completingVisitId === visit.id ? (
+                    <View style={styles.resultForm}>
+                      <Field
+                        label="¿Cómo fue la visita?"
+                        value={visitResult}
+                        onChangeText={setVisitResult}
+                        placeholder="Cómo encontraste a la gestante, acuerdos…"
+                        multiline
+                        accent={accent.main}
+                        maxLength={400}
+                      />
+                      <View style={styles.actionsRow}>
+                        <AppButton
+                          title="Guardar"
+                          onPress={() => saveVisitResult(visit.id)}
+                          color={accent.main}
+                          small
+                          disabled={visitResult.trim().length === 0}
+                          style={styles.flex}
+                        />
+                        <AppButton
+                          title="Cancelar"
+                          onPress={() => {
+                            setCompletingVisitId(null);
+                            setVisitResult("");
+                          }}
+                          color={gwarm.inkSoft}
+                          variant="outline"
+                          small
+                          style={styles.flex}
+                        />
+                      </View>
+                    </View>
+                  ) : !done ? (
+                    <AppButton
+                      title="Registrar resultado"
+                      onPress={() => {
+                        setCompletingVisitId(visit.id);
+                        setVisitResult("");
+                      }}
+                      color={accent.main}
+                      variant="outline"
+                      small
+                    />
+                  ) : null}
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      )}
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      <WebContainer size="dashboard">
+        <ScreenHeader
+          title="Agenda"
+          right={
+            <AppButton
+              title="Nueva cita"
+              onPress={() =>
+                router.push({ pathname: "/(obstetra)/programar", params: { mode: "cita", date: day } })
+              }
+              color={accent.main}
+              icon={CalendarPlus}
+              small
+            />
           }
-          color={accent.main}
-          variant="soft"
-          icon={HousePlus}
-          style={styles.bottomAction}
         />
+        <DayStrip
+          days={days}
+          selected={day}
+          onSelect={setSelectedDay}
+          todayKey={todayKey}
+          accent={accent.main}
+          accentLight={accent.soft}
+        />
+      </WebContainer>
+
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <WebContainer size="dashboard">
+          {isWide ? (
+            <WebRow gap={20}>
+              <WebCol flex={5}>{renderLeftPanel()}</WebCol>
+              <WebCol flex={7}>{renderTimeline()}</WebCol>
+            </WebRow>
+          ) : (
+            <View style={styles.mobileStack}>
+              {renderLeftPanel()}
+              {renderTimeline()}
+            </View>
+          )}
+        </WebContainer>
       </ScrollView>
     </View>
   );
@@ -495,9 +527,17 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: {
     padding: 16,
-    paddingTop: 4,
+    paddingTop: 8,
     paddingBottom: 32,
+  },
+  mobileStack: {
     gap: 14,
+  },
+  leftStack: {
+    gap: 14,
+  },
+  timelineStack: {
+    gap: 12,
   },
   requestBlock: {
     backgroundColor: gwarm.amberSoft,

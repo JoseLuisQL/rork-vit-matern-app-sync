@@ -2,6 +2,7 @@
  * Crear usuario (administración, estilo "cuaderno"): formulario compacto en
  * bloques con rol segmentado. Para una gestante, el servidor crea también su
  * ficha clínica y genera automáticamente el cronograma de 8 controles MINSA.
+ * Adaptado con arquitectura responsiva Web (contenedor centrado en escritorio).
  */
 import { useRouter } from "expo-router";
 import { UserPlus, WifiOff } from "lucide-react-native";
@@ -26,6 +27,7 @@ import { Field } from "@/components/Field";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Segmented } from "@/components/Segmented";
+import { WebContainer } from "@/components/web/WebContainer";
 
 const accent = warmPlum;
 
@@ -130,7 +132,9 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Nuevo usuario" subtitle="La cuenta queda activa al instante" showBack />
+      <WebContainer size="form">
+        <ScreenHeader title="Nuevo usuario" subtitle="La cuenta queda activa al instante" showBack />
+      </WebContainer>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -141,107 +145,55 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {!online ? (
-            <View style={styles.offlineBox}>
-              <WifiOff size={15} color={gwarm.amber} />
-              <Text style={styles.offlineText}>
-                Sin conexión: crear usuarios necesita al servidor.
-              </Text>
-            </View>
-          ) : null}
+          <WebContainer size="form">
+            <View style={styles.formStack}>
+              {!online ? (
+                <View style={styles.offlineBox}>
+                  <WifiOff size={15} color={gwarm.amber} />
+                  <Text style={styles.offlineText}>
+                    Sin conexión: crear usuarios necesita al servidor.
+                  </Text>
+                </View>
+              ) : null}
 
-          <SectionHeader title="Rol" />
-          <Segmented
-            options={[
-              { key: "gestante", label: "Gestante" },
-              { key: "obstetra", label: "Obstetra" },
-              { key: "admin", label: "Admin" },
-            ]}
-            value={role}
-            onChange={(k) => setRole(k as Role)}
-          />
+              <SectionHeader title="Rol" />
+              <Segmented
+                options={[
+                  { key: "gestante", label: "Gestante" },
+                  { key: "obstetra", label: "Obstetra" },
+                  { key: "admin", label: "Admin" },
+                ]}
+                value={role}
+                onChange={(k) => setRole(k as Role)}
+              />
 
-          <SectionHeader title="Datos de la cuenta" />
-          <Card style={styles.formCard}>
-            <Field
-              label="DNI"
-              value={dni}
-              onChangeText={(t) => setDni(t.replace(/[^0-9]/g, ""))}
-              placeholder="8 dígitos"
-              keyboardType="number-pad"
-              maxLength={8}
-              accent={accent.main}
-              testID="nuevo-dni"
-            />
-            <View style={styles.row2}>
-              <Field
-                label="Nombres"
-                value={firstName}
-                onChangeText={setFirstName}
-                placeholder="Nombres"
-                autoCapitalize="words"
-                accent={accent.main}
-                style={styles.flex}
-              />
-              <Field
-                label="Apellidos"
-                value={lastName}
-                onChangeText={setLastName}
-                placeholder="Apellidos"
-                autoCapitalize="words"
-                accent={accent.main}
-                style={styles.flex}
-              />
-            </View>
-            <View style={styles.row2}>
-              <Field
-                label="Teléfono (opcional)"
-                value={phone}
-                onChangeText={setPhone}
-                placeholder="9xx xxx xxx"
-                keyboardType="phone-pad"
-                accent={accent.main}
-                style={styles.flex}
-              />
-              <Field
-                label="Contraseña"
-                value={password}
-                onChangeText={setPassword}
-                placeholder="Mínimo 6 caracteres"
-                autoCapitalize="none"
-                accent={accent.main}
-                style={styles.flex}
-              />
-            </View>
-          </Card>
-
-          {role === "gestante" ? (
-            <>
-              <SectionHeader title="Ficha clínica inicial" />
+              <SectionHeader title="Datos de la cuenta" />
               <Card style={styles.formCard}>
-                <DatePickerField
-                  label="Última menstruación (FUM)"
-                  value={fumKey}
-                  onChangeDate={setFumKey}
-                  placeholder="Seleccionar FUM en el calendario"
+                <Field
+                  label="DNI"
+                  value={dni}
+                  onChangeText={(t) => setDni(t.replace(/[^0-9]/g, ""))}
+                  placeholder="8 dígitos"
+                  keyboardType="number-pad"
+                  maxLength={8}
                   accent={accent.main}
-                  isFum={true}
-                  hint="Con la FUM se calculan la edad gestacional, la FPP y los 8 controles."
-                  testID="nuevo-fum"
+                  testID="nuevo-dni"
                 />
                 <View style={styles.row2}>
                   <Field
-                    label="Edad"
-                    value={age}
-                    onChangeText={setAge}
-                    keyboardType="number-pad"
+                    label="Nombres"
+                    value={firstName}
+                    onChangeText={setFirstName}
+                    placeholder="Nombres"
+                    autoCapitalize="words"
                     accent={accent.main}
                     style={styles.flex}
                   />
                   <Field
-                    label="Comunidad"
-                    value={community}
-                    onChangeText={setCommunity}
+                    label="Apellidos"
+                    value={lastName}
+                    onChangeText={setLastName}
+                    placeholder="Apellidos"
                     autoCapitalize="words"
                     accent={accent.main}
                     style={styles.flex}
@@ -249,66 +201,122 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
                 </View>
                 <View style={styles.row2}>
                   <Field
-                    label="Hb observada (g/dL)"
-                    value={hb}
-                    onChangeText={setHb}
-                    keyboardType="decimal-pad"
+                    label="Teléfono (opcional)"
+                    value={phone}
+                    onChangeText={setPhone}
+                    placeholder="9xx xxx xxx"
+                    keyboardType="phone-pad"
                     accent={accent.main}
                     style={styles.flex}
                   />
                   <Field
-                    label="IMC"
-                    value={imc}
-                    onChangeText={setImc}
-                    keyboardType="decimal-pad"
+                    label="Contraseña"
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder="Mínimo 6 caracteres"
+                    autoCapitalize="none"
                     accent={accent.main}
                     style={styles.flex}
                   />
                 </View>
-                <View style={styles.row2}>
-                  <Field
-                    label="Presión sistólica"
-                    value={bpSys}
-                    onChangeText={setBpSys}
-                    keyboardType="number-pad"
-                    accent={accent.main}
-                    style={styles.flex}
-                  />
-                  <Field
-                    label="Presión diastólica"
-                    value={bpDia}
-                    onChangeText={setBpDia}
-                    keyboardType="number-pad"
-                    accent={accent.main}
-                    style={styles.flex}
-                  />
-                </View>
-                <Field
-                  label="Número de gestas"
-                  value={gestas}
-                  onChangeText={setGestas}
-                  keyboardType="number-pad"
-                  accent={accent.main}
-                />
               </Card>
-            </>
-          ) : null}
 
-          {error ? (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
+              {role === "gestante" ? (
+                <>
+                  <SectionHeader title="Ficha clínica inicial" />
+                  <Card style={styles.formCard}>
+                    <DatePickerField
+                      label="Última menstruación (FUM)"
+                      value={fumKey}
+                      onChangeDate={setFumKey}
+                      placeholder="Seleccionar FUM en el calendario"
+                      accent={accent.main}
+                      isFum={true}
+                      hint="Con la FUM se calculan la edad gestacional, la FPP y los 8 controles."
+                      testID="nuevo-fum"
+                    />
+                    <View style={styles.row2}>
+                      <Field
+                        label="Edad"
+                        value={age}
+                        onChangeText={setAge}
+                        keyboardType="number-pad"
+                        accent={accent.main}
+                        style={styles.flex}
+                      />
+                      <Field
+                        label="Comunidad"
+                        value={community}
+                        onChangeText={setCommunity}
+                        autoCapitalize="words"
+                        accent={accent.main}
+                        style={styles.flex}
+                      />
+                    </View>
+                    <View style={styles.row2}>
+                      <Field
+                        label="Hb observada (g/dL)"
+                        value={hb}
+                        onChangeText={setHb}
+                        keyboardType="decimal-pad"
+                        accent={accent.main}
+                        style={styles.flex}
+                      />
+                      <Field
+                        label="IMC"
+                        value={imc}
+                        onChangeText={setImc}
+                        keyboardType="decimal-pad"
+                        accent={accent.main}
+                        style={styles.flex}
+                      />
+                    </View>
+                    <View style={styles.row2}>
+                      <Field
+                        label="Presión sistólica"
+                        value={bpSys}
+                        onChangeText={setBpSys}
+                        keyboardType="number-pad"
+                        accent={accent.main}
+                        style={styles.flex}
+                      />
+                      <Field
+                        label="Presión diastólica"
+                        value={bpDia}
+                        onChangeText={setBpDia}
+                        keyboardType="number-pad"
+                        accent={accent.main}
+                        style={styles.flex}
+                      />
+                    </View>
+                    <Field
+                      label="Número de gestas"
+                      value={gestas}
+                      onChangeText={setGestas}
+                      keyboardType="number-pad"
+                      accent={accent.main}
+                    />
+                  </Card>
+                </>
+              ) : null}
+
+              {error ? (
+                <View style={styles.errorBox}>
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              ) : null}
+
+              <AppButton
+                title="Crear usuario"
+                onPress={() => void submit()}
+                color={accent.main}
+                icon={UserPlus}
+                loading={submitting}
+                disabled={!online || submitting}
+                testID="btn-crear-usuario"
+              />
             </View>
-          ) : null}
-
-          <AppButton
-            title="Crear usuario"
-            onPress={() => void submit()}
-            color={accent.main}
-            icon={UserPlus}
-            loading={submitting}
-            disabled={!online || submitting}
-            testID="btn-crear-usuario"
-          />
+          </WebContainer>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -321,6 +329,8 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 48,
+  },
+  formStack: {
     gap: 12,
   },
   offlineBox: {

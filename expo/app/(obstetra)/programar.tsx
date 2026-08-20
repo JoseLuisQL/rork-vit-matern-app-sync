@@ -4,6 +4,7 @@
  * marcan al completarse, lista de pacientes con foto y semáforo, y una
  * tarjeta de resumen antes de guardar. Si el horario se ocupa, se muestran
  * los huecos libres del día.
+ * Adaptado con arquitectura responsiva Web (contenedor centrado en escritorio).
  */
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { CalendarCheck2, Check, HousePlus, Stethoscope, WifiOff } from "lucide-react-native";
@@ -23,6 +24,7 @@ import { Illustration } from "@/components/gestante/Illustration";
 import { PressableScale } from "@/components/PressableScale";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SlotGrid } from "@/components/SlotGrid";
+import { WebContainer } from "@/components/web/WebContainer";
 
 const accent = warmBlue;
 
@@ -170,200 +172,206 @@ export default function ProgramarScreen(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title={title} showBack />
+      <WebContainer size="form">
+        <ScreenHeader title={title} showBack />
+      </WebContainer>
       <ScrollView
         style={styles.flex}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.heroCard}>
-          <Illustration source={ILU.citaNueva} width={78} height={78} />
-          <Text style={styles.heroText}>{heroText}</Text>
-        </View>
-
-        {!online ? (
-          <View style={styles.offlineBox}>
-            <WifiOff size={16} color={gwarm.amber} />
-            <Text style={styles.offlineText}>Sin conexión: necesitas señal para programar.</Text>
-          </View>
-        ) : null}
-
-        {appointment ? (
-          <View style={styles.currentCard}>
-            <Text style={styles.currentLabel}>Cita actual</Text>
-            <Text style={styles.currentText}>
-              {fechaLarga(appointment.dateKey)} a las {appointment.time}
-            </Text>
-          </View>
-        ) : null}
-
-        {mode !== "reprogramar" ? (
-          <View style={styles.typeRow}>
-            <PressableScale
-              onPress={() => setMode("cita")}
-              accessibilityLabel="Cita en el centro de salud"
-              style={[styles.typeChip, mode === "cita" && styles.typeChipActive]}
-            >
-              <Stethoscope
-                size={17}
-                color={mode === "cita" ? "#FFFFFF" : accent.main}
-                strokeWidth={2.3}
-              />
-              <Text style={[styles.typeText, { color: mode === "cita" ? "#FFFFFF" : accent.deep }]}>
-                En el centro
-              </Text>
-            </PressableScale>
-            <PressableScale
-              onPress={() => setMode("visita")}
-              accessibilityLabel="Visita a domicilio"
-              style={[styles.typeChip, mode === "visita" && styles.typeChipActive]}
-            >
-              <HousePlus
-                size={17}
-                color={mode === "visita" ? "#FFFFFF" : accent.main}
-                strokeWidth={2.3}
-              />
-              <Text
-                style={[styles.typeText, { color: mode === "visita" ? "#FFFFFF" : accent.deep }]}
-              >
-                En su casa
-              </Text>
-            </PressableScale>
-          </View>
-        ) : null}
-
-        <StepTitle n={1} title="Elige a la paciente" done={patientId !== null} />
-        {patient && fixedPatient ? (
-          <View style={styles.patientFixed}>
-            <Avatar
-              uri={avatarUri(patient.dni, patient.avatarVersion)}
-              color={accent.main}
-              background={accent.soft}
-              size={46}
-              ring={risk[patient.riskLevel].solid}
-            />
-            <View style={styles.rowInfo}>
-              <Text style={styles.patientName}>
-                {patient.firstName} {patient.lastName}
-              </Text>
-              <Text style={styles.patientMeta}>
-                Semana {patient.weeks} · {patient.community}
-              </Text>
+        <WebContainer size="form">
+          <View style={styles.formStack}>
+            <View style={styles.heroCard}>
+              <Illustration source={ILU.citaNueva} width={78} height={78} />
+              <Text style={styles.heroText}>{heroText}</Text>
             </View>
-          </View>
-        ) : (
-          <View style={styles.listCard}>
-            {sortedPatients.map((p, index) => {
-              const active = patientId === p.id;
-              return (
+
+            {!online ? (
+              <View style={styles.offlineBox}>
+                <WifiOff size={16} color={gwarm.amber} />
+                <Text style={styles.offlineText}>Sin conexión: necesitas señal para programar.</Text>
+              </View>
+            ) : null}
+
+            {appointment ? (
+              <View style={styles.currentCard}>
+                <Text style={styles.currentLabel}>Cita actual</Text>
+                <Text style={styles.currentText}>
+                  {fechaLarga(appointment.dateKey)} a las {appointment.time}
+                </Text>
+              </View>
+            ) : null}
+
+            {mode !== "reprogramar" ? (
+              <View style={styles.typeRow}>
                 <PressableScale
-                  key={p.id}
-                  onPress={() => setPatientId(p.id)}
-                  accessibilityLabel={`Elegir a ${p.firstName} ${p.lastName}`}
-                  style={[styles.patientRow, index > 0 && styles.rowBorder]}
-                  testID={`elegir-${p.id}`}
+                  onPress={() => setMode("cita")}
+                  accessibilityLabel="Cita en el centro de salud"
+                  style={[styles.typeChip, mode === "cita" && styles.typeChipActive]}
                 >
-                  <Avatar
-                    uri={avatarUri(p.dni, p.avatarVersion)}
-                    color={accent.main}
-                    background={accent.soft}
-                    size={42}
-                    ring={risk[p.riskLevel].solid}
+                  <Stethoscope
+                    size={17}
+                    color={mode === "cita" ? "#FFFFFF" : accent.main}
+                    strokeWidth={2.3}
                   />
-                  <View style={styles.rowInfo}>
-                    <Text
-                      style={[styles.patientName, active && { color: accent.main }]}
-                      numberOfLines={1}
-                    >
-                      {p.firstName} {p.lastName}
-                    </Text>
-                    <Text style={styles.patientMeta} numberOfLines={1}>
-                      Semana {p.weeks} · {p.community}
-                    </Text>
-                  </View>
-                  <View
-                    style={[
-                      styles.radio,
-                      active
-                        ? { backgroundColor: accent.main, borderColor: accent.main }
-                        : { borderColor: gwarm.borderStrong },
-                    ]}
-                  >
-                    {active ? <Check size={13} color="#FFFFFF" strokeWidth={3} /> : null}
-                  </View>
+                  <Text style={[styles.typeText, { color: mode === "cita" ? "#FFFFFF" : accent.deep }]}>
+                    En el centro
+                  </Text>
                 </PressableScale>
-              );
-            })}
-          </View>
-        )}
+                <PressableScale
+                  onPress={() => setMode("visita")}
+                  accessibilityLabel="Visita a domicilio"
+                  style={[styles.typeChip, mode === "visita" && styles.typeChipActive]}
+                >
+                  <HousePlus
+                    size={17}
+                    color={mode === "visita" ? "#FFFFFF" : accent.main}
+                    strokeWidth={2.3}
+                  />
+                  <Text
+                    style={[styles.typeText, { color: mode === "visita" ? "#FFFFFF" : accent.deep }]}
+                  >
+                    En su casa
+                  </Text>
+                </PressableScale>
+              </View>
+            ) : null}
 
-        <StepTitle n={2} title="Elige el día" done={true} />
-        <View style={styles.dayStripWrap}>
-          <DayStrip
-            days={days}
-            selected={day}
-            onSelect={selectDay}
-            todayKey={todayKey}
-            accent={accent.main}
-            accentLight={accent.soft}
-          />
-        </View>
-        <Text style={styles.dayLabel}>{capitalize(fechaLarga(day))}</Text>
+            <StepTitle n={1} title="Elige a la paciente" done={patientId !== null} />
+            {patient && fixedPatient ? (
+              <View style={styles.patientFixed}>
+                <Avatar
+                  uri={avatarUri(patient.dni, patient.avatarVersion)}
+                  color={accent.main}
+                  background={accent.soft}
+                  size={46}
+                  ring={risk[patient.riskLevel].solid}
+                />
+                <View style={styles.rowInfo}>
+                  <Text style={styles.patientName}>
+                    {patient.firstName} {patient.lastName}
+                  </Text>
+                  <Text style={styles.patientMeta}>
+                    Semana {patient.weeks} · {patient.community}
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.listCard}>
+                {sortedPatients.map((p, index) => {
+                  const active = patientId === p.id;
+                  return (
+                    <PressableScale
+                      key={p.id}
+                      onPress={() => setPatientId(p.id)}
+                      accessibilityLabel={`Elegir a ${p.firstName} ${p.lastName}`}
+                      style={[styles.patientRow, index > 0 && styles.rowBorder]}
+                      testID={`elegir-${p.id}`}
+                    >
+                      <Avatar
+                        uri={avatarUri(p.dni, p.avatarVersion)}
+                        color={accent.main}
+                        background={accent.soft}
+                        size={42}
+                        ring={risk[p.riskLevel].solid}
+                      />
+                      <View style={styles.rowInfo}>
+                        <Text
+                          style={[styles.patientName, active && { color: accent.main }]}
+                          numberOfLines={1}
+                        >
+                          {p.firstName} {p.lastName}
+                        </Text>
+                        <Text style={styles.patientMeta} numberOfLines={1}>
+                          Semana {p.weeks} · {p.community}
+                        </Text>
+                      </View>
+                      <View
+                        style={[
+                          styles.radio,
+                          active
+                            ? { backgroundColor: accent.main, borderColor: accent.main }
+                            : { borderColor: gwarm.borderStrong },
+                        ]}
+                      >
+                        {active ? <Check size={13} color="#FFFFFF" strokeWidth={3} /> : null}
+                      </View>
+                    </PressableScale>
+                  );
+                })}
+              </View>
+            )}
 
-        <StepTitle n={3} title="Elige la hora" done={slot !== null} />
-        <SlotGrid taken={taken} selected={slot} onSelect={setSlot} accent={accent.main} />
-        <Text style={styles.slotHint}>Los horarios tachados ya están ocupados.</Text>
-
-        {mode !== "reprogramar" ? (
-          <Field
-            label="Motivo (opcional)"
-            value={motivo}
-            onChangeText={setMotivo}
-            placeholder={mode === "visita" ? "Motivo de la visita" : "Motivo de la cita"}
-            accent={accent.main}
-            maxLength={120}
-          />
-        ) : null}
-
-        {error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        ) : null}
-
-        {patient && slot ? (
-          <View style={styles.summaryCard}>
-            <Illustration source={ILU.citaNueva} width={52} height={52} />
-            <View style={styles.rowInfo}>
-              <Text style={styles.summaryTitle}>
-                {mode === "visita" ? "Visita a" : mode === "reprogramar" ? "Nueva fecha para" : "Cita de"}{" "}
-                {patient.firstName}
-              </Text>
-              <Text style={styles.summaryText}>
-                {capitalize(fechaLarga(day))} · {slot}
-              </Text>
-              <Text style={styles.summaryPlace}>
-                {mode === "visita" ? "En su casa" : "En el centro de salud"}
-              </Text>
+            <StepTitle n={2} title="Elige el día" done={true} />
+            <View style={styles.dayStripWrap}>
+              <DayStrip
+                days={days}
+                selected={day}
+                onSelect={selectDay}
+                todayKey={todayKey}
+                accent={accent.main}
+                accentLight={accent.soft}
+              />
             </View>
-          </View>
-        ) : null}
+            <Text style={styles.dayLabel}>{capitalize(fechaLarga(day))}</Text>
 
-        <AppButton
-          title={
-            slot
-              ? `Guardar ${mode === "visita" ? "visita" : "cita"} · ${slot}`
-              : "Elige un horario"
-          }
-          onPress={() => void submit()}
-          color={accent.main}
-          icon={CalendarCheck2}
-          disabled={!canSubmit}
-          loading={submitting}
-          large
-          testID="btn-programar"
-        />
+            <StepTitle n={3} title="Elige la hora" done={slot !== null} />
+            <SlotGrid taken={taken} selected={slot} onSelect={setSlot} accent={accent.main} />
+            <Text style={styles.slotHint}>Los horarios tachados ya están ocupados.</Text>
+
+            {mode !== "reprogramar" ? (
+              <Field
+                label="Motivo (opcional)"
+                value={motivo}
+                onChangeText={setMotivo}
+                placeholder={mode === "visita" ? "Motivo de la visita" : "Motivo de la cita"}
+                accent={accent.main}
+                maxLength={120}
+              />
+            ) : null}
+
+            {error ? (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : null}
+
+            {patient && slot ? (
+              <View style={styles.summaryCard}>
+                <Illustration source={ILU.citaNueva} width={52} height={52} />
+                <View style={styles.rowInfo}>
+                  <Text style={styles.summaryTitle}>
+                    {mode === "visita" ? "Visita a" : mode === "reprogramar" ? "Nueva fecha para" : "Cita de"}{" "}
+                    {patient.firstName}
+                  </Text>
+                  <Text style={styles.summaryText}>
+                    {capitalize(fechaLarga(day))} · {slot}
+                  </Text>
+                  <Text style={styles.summaryPlace}>
+                    {mode === "visita" ? "En su casa" : "En el centro de salud"}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
+
+            <AppButton
+              title={
+                slot
+                  ? `Guardar ${mode === "visita" ? "visita" : "cita"} · ${slot}`
+                  : "Elige un horario"
+              }
+              onPress={() => void submit()}
+              color={accent.main}
+              icon={CalendarCheck2}
+              disabled={!canSubmit}
+              loading={submitting}
+              large
+              testID="btn-programar"
+            />
+          </View>
+        </WebContainer>
       </ScrollView>
     </View>
   );
@@ -375,6 +383,8 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 48,
+  },
+  formStack: {
     gap: 12,
   },
   heroCard: {
@@ -537,7 +547,7 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     color: gwarm.inkSoft,
   },
-  dayStripWrap: { marginHorizontal: -16 },
+  dayStripWrap: { marginHorizontal: 0 },
   dayLabel: {
     fontFamily: gfonts.handBody,
     fontSize: 13.5,

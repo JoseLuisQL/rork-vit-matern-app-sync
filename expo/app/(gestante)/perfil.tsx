@@ -1,11 +1,12 @@
 /**
  * Perfil de la gestante: foto, datos personales, embarazo, recordatorios
  * configurables y cierre de sesión — en el mismo tono cálido de la sección.
+ * Adaptado con arquitectura responsiva Web (contenedor centrado en escritorio).
  */
 import { useRouter } from "expo-router";
 import { LogOut, MessageCircle, Phone } from "lucide-react-native";
-import React, { useCallback } from "react";
-import { Linking, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import React, { useCallback, useState } from "react";
+import { Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
 import { gfonts, gwarm, semantic, spacing } from "@/constants/theme";
 import { GICON, ILU, TOASTILU } from "@/constants/illustrations";
 import { avatarUri } from "@/lib/api";
@@ -23,10 +24,12 @@ import { Avatar } from "@/components/Avatar";
 import { PresenceStatus } from "@/components/PresenceStatus";
 import { useToast } from "@/components/Toast";
 import { PressableScale } from "@/components/PressableScale";
+import { EditProfileModal } from "@/components/EditProfileModal";
 import { ProfilePhoto } from "@/components/ProfilePhoto";
 import { GHeader } from "@/components/gestante/GHeader";
 import { Illustration } from "@/components/gestante/Illustration";
 import { SoftCard } from "@/components/gestante/SoftCard";
+import { WebContainer } from "@/components/web/WebContainer";
 
 function InfoRow({ label, value }: { label: string; value: string }): React.ReactElement {
   return (
@@ -44,6 +47,7 @@ export default function PerfilGestante(): React.ReactElement {
   const { show: showToast } = useToast();
   const patient = useMyPatient();
   const presence = usePresence("obstetra");
+  const [editModalOpen, setEditModalOpen] = useState<boolean>(false);
 
   /** Al encender suena una muestra para que escuche cómo avisan los mensajes. */
   const toggleSounds = useCallback(
@@ -130,200 +134,221 @@ export default function PerfilGestante(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <GHeader title="Mi perfil" back />
+      <WebContainer size="form">
+        <GHeader title="Mi perfil" back />
+      </WebContainer>
       <ScrollView
         style={styles.flex}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <SoftCard style={styles.photoCard}>
-          <ProfilePhoto accentColor={gwarm.teal} accentBackground={gwarm.tealSoft} />
-          <Text style={styles.photoName}>
-            {patient.firstName} {patient.lastName}
-          </Text>
-          <Text style={styles.photoMeta}>
-            Semana {patient.weeks} · {patient.community}
-          </Text>
-          <Illustration source={ILU.flores} width={132} height={38} />
-        </SoftCard>
-
-        <Text style={styles.sectionTitle}>Mis datos</Text>
-        <SoftCard style={styles.card}>
-          <InfoRow label="DNI" value={patient.dni} />
-          <InfoRow label="Edad" value={`${patient.age} años`} />
-          <InfoRow label="Comunidad" value={patient.community} />
-          <InfoRow label="Teléfono" value={patient.phone || "—"} />
-        </SoftCard>
-
-        <Text style={styles.sectionTitle}>Mi embarazo</Text>
-        <SoftCard style={styles.card}>
-          <InfoRow label="Semanas" value={`${patient.weeks}`} />
-          <InfoRow label="Fecha probable de parto" value={fechaCompleta(patient.fppKey)} />
-        </SoftCard>
-
-        <Text style={styles.sectionTitle}>Tu obstetra a cargo</Text>
-        <SoftCard style={styles.card}>
-          <View style={styles.obstetraHeader}>
-            <Avatar
-              uri={
-                view.obstetrician
-                  ? avatarUri(view.obstetrician.dni, view.obstetrician.avatarVersion)
-                  : undefined
-              }
-              color={gwarm.teal}
-              background={gwarm.tealSoft}
-              size={54}
-            />
-            <View style={styles.flex}>
-              <Text style={styles.obstetraName}>
-                {view.obstetrician
-                  ? `Obst. ${view.obstetrician.firstName} ${view.obstetrician.lastName}`
-                  : "Obstetra a cargo"}
+        <WebContainer size="form">
+          <View style={styles.formStack}>
+            <SoftCard style={styles.photoCard}>
+              <ProfilePhoto accentColor={gwarm.teal} accentBackground={gwarm.tealSoft} />
+              <Text style={styles.photoName}>
+                {patient.firstName} {patient.lastName}
               </Text>
-              <Text style={styles.obstetraRole}>
-                {view.center.name} · Obstetricia
+              <Text style={styles.photoMeta}>
+                Semana {patient.weeks} · {patient.community}
               </Text>
-              <View style={styles.presenceBox}>
-                <PresenceStatus
-                  presence={presence}
-                  accent={gwarm.teal}
-                  fallback="Personal de salud"
-                />
-              </View>
+              <Illustration source={ILU.flores} width={132} height={38} />
+            </SoftCard>
+
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>Mis datos</Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setEditModalOpen(true)}
+                hitSlop={8}
+              >
+                <Text style={styles.editAction}>Editar</Text>
+              </Pressable>
             </View>
-          </View>
+            <SoftCard style={styles.card}>
+              <InfoRow label="DNI" value={patient.dni} />
+              <InfoRow label="Edad" value={`${patient.age} años`} />
+              <InfoRow label="Comunidad" value={patient.community} />
+              <InfoRow label="Teléfono" value={patient.phone || "—"} />
+            </SoftCard>
 
-          {view.obstetrician?.phone ? (
-            <InfoRow label="Teléfono" value={view.obstetrician.phone} />
-          ) : null}
+            <Text style={styles.sectionTitle}>Mi embarazo</Text>
+            <SoftCard style={styles.card}>
+              <InfoRow label="Semanas" value={`${patient.weeks}`} />
+              <InfoRow label="Fecha probable de parto" value={fechaCompleta(patient.fppKey)} />
+            </SoftCard>
 
-          <View style={styles.actionsRow}>
-            {view.obstetrician?.phone ? (
-              <View style={styles.actionBtnWrap}>
-                <AppButton
-                  title="Llamar"
-                  onPress={() => {
-                    const rawPhone = view.obstetrician?.phone?.replace(/\s+/g, "");
-                    if (rawPhone) void Linking.openURL(`tel:${rawPhone}`);
-                  }}
-                  variant="soft"
+            <Text style={styles.sectionTitle}>Tu obstetra a cargo</Text>
+            <SoftCard style={styles.card}>
+              <View style={styles.obstetraHeader}>
+                <Avatar
+                  uri={
+                    view.obstetrician
+                      ? avatarUri(view.obstetrician.dni, view.obstetrician.avatarVersion)
+                      : undefined
+                  }
                   color={gwarm.teal}
-                  icon={Phone}
-                  small
-                  testID="btn-llamar-obstetra"
+                  background={gwarm.tealSoft}
+                  size={54}
+                />
+                <View style={styles.flex}>
+                  <Text style={styles.obstetraName}>
+                    {view.obstetrician
+                      ? `Obst. ${view.obstetrician.firstName} ${view.obstetrician.lastName}`
+                      : "Obstetra a cargo"}
+                  </Text>
+                  <Text style={styles.obstetraRole}>
+                    {view.center.name} · Obstetricia
+                  </Text>
+                  <View style={styles.presenceBox}>
+                    <PresenceStatus
+                      presence={presence}
+                      accent={gwarm.teal}
+                      fallback="Personal de salud"
+                    />
+                  </View>
+                </View>
+              </View>
+
+              {view.obstetrician?.phone ? (
+                <InfoRow label="Teléfono" value={view.obstetrician.phone} />
+              ) : null}
+
+              <View style={styles.actionsRow}>
+                {view.obstetrician?.phone ? (
+                  <View style={styles.actionBtnWrap}>
+                    <AppButton
+                      title="Llamar"
+                      onPress={() => {
+                        const rawPhone = view.obstetrician?.phone?.replace(/\s+/g, "");
+                        if (rawPhone) void Linking.openURL(`tel:${rawPhone}`);
+                      }}
+                      variant="soft"
+                      color={gwarm.teal}
+                      icon={Phone}
+                      small
+                      testID="btn-llamar-obstetra"
+                    />
+                  </View>
+                ) : null}
+                <View style={styles.actionBtnWrap}>
+                  <AppButton
+                    title="Mensaje"
+                    onPress={() => router.push("/(gestante)/(tabs)/chat")}
+                    variant="soft"
+                    color={gwarm.terracotta}
+                    icon={MessageCircle}
+                    small
+                    testID="btn-chat-obstetra"
+                  />
+                </View>
+              </View>
+            </SoftCard>
+
+            <Text style={styles.sectionTitle}>Recordatorios</Text>
+            <SoftCard style={styles.card}>
+              <View style={styles.switchRow}>
+                <View style={styles.switchIcon}>
+                  <Illustration source={GICON.campana} width={26} height={26} />
+                </View>
+                <View style={styles.flex}>
+                  <Text style={styles.switchTitle}>Aviso para tus pastillas</Text>
+                  <Text style={styles.switchText}>Todos los días, funciona sin señal</Text>
+                </View>
+                <Switch
+                  value={reminders.tomas}
+                  onValueChange={(v) => void toggleTomas(v)}
+                  trackColor={{ true: gwarm.teal, false: gwarm.borderStrong }}
+                  thumbColor="#FFFFFF"
+                  testID="switch-tomas"
                 />
               </View>
-            ) : null}
-            <View style={styles.actionBtnWrap}>
-              <AppButton
-                title="Mensaje"
-                onPress={() => router.push("/(gestante)/(tabs)/chat")}
-                variant="soft"
-                color={gwarm.terracotta}
-                icon={MessageCircle}
-                small
-                testID="btn-chat-obstetra"
-              />
-            </View>
-          </View>
-        </SoftCard>
 
-        <Text style={styles.sectionTitle}>Recordatorios</Text>
-        <SoftCard style={styles.card}>
-          <View style={styles.switchRow}>
-            <View style={styles.switchIcon}>
-              <Illustration source={GICON.campana} width={26} height={26} />
-            </View>
-            <View style={styles.flex}>
-              <Text style={styles.switchTitle}>Aviso para tus pastillas</Text>
-              <Text style={styles.switchText}>Todos los días, funciona sin señal</Text>
-            </View>
-            <Switch
-              value={reminders.tomas}
-              onValueChange={(v) => void toggleTomas(v)}
-              trackColor={{ true: gwarm.teal, false: gwarm.borderStrong }}
-              thumbColor="#FFFFFF"
-              testID="switch-tomas"
+              {reminders.tomas ? (
+                <View style={styles.hoursRow}>
+                  {REMINDER_HOURS.map((h) => {
+                    const active = reminders.hora === h;
+                    return (
+                      <PressableScale
+                        key={h}
+                        onPress={() => setReminders({ ...reminders, hora: h })}
+                        accessibilityLabel={`Recordar a las ${h}:00`}
+                        style={[
+                          styles.hourChip,
+                          active
+                            ? { backgroundColor: gwarm.teal, borderColor: gwarm.teal }
+                            : { borderColor: gwarm.border },
+                        ]}
+                      >
+                        <Text
+                          style={[styles.hourText, { color: active ? "#FFFFFF" : gwarm.inkSoft }]}
+                        >
+                          {`${h}`.padStart(2, "0")}:00
+                        </Text>
+                      </PressableScale>
+                    );
+                  })}
+                </View>
+              ) : null}
+
+              <View style={[styles.switchRow, styles.switchRowBorder]}>
+                <View style={styles.switchIcon}>
+                  <Illustration source={GICON.citas} width={26} height={26} />
+                </View>
+                <View style={styles.flex}>
+                  <Text style={styles.switchTitle}>Aviso de cita</Text>
+                  <Text style={styles.switchText}>Un día antes, a las 6:00 p. m.</Text>
+                </View>
+                <Switch
+                  value={reminders.citas}
+                  onValueChange={(v) => void toggleCitas(v)}
+                  trackColor={{ true: gwarm.teal, false: gwarm.borderStrong }}
+                  thumbColor="#FFFFFF"
+                  testID="switch-citas"
+                />
+              </View>
+            </SoftCard>
+
+            <Text style={styles.sectionTitle}>Sonidos</Text>
+            <SoftCard style={styles.card}>
+              <View style={styles.switchRow}>
+                <View style={[styles.switchIcon, styles.soundIcon]}>
+                  <Illustration source={TOASTILU.aviso} width={26} height={26} />
+                </View>
+                <View style={styles.flex}>
+                  <Text style={styles.switchTitle}>Sonidos de los avisos</Text>
+                  <Text style={styles.switchText}>Al llegar mensajes, citas o pastillas nuevas</Text>
+                </View>
+                <Switch
+                  value={soundsEnabled}
+                  onValueChange={toggleSounds}
+                  trackColor={{ true: gwarm.teal, false: gwarm.borderStrong }}
+                  thumbColor="#FFFFFF"
+                  testID="switch-sonidos"
+                />
+              </View>
+            </SoftCard>
+
+            <Text style={styles.sectionTitle}>Cuenta</Text>
+            <AppButton
+              title="Cerrar sesión"
+              onPress={() => void handleLogout()}
+              variant="outline"
+              color={semantic.danger}
+              hand
+              icon={LogOut}
             />
+
+            <Text style={styles.about}>VitMaterna · {view.center.name}</Text>
           </View>
-
-          {reminders.tomas ? (
-            <View style={styles.hoursRow}>
-              {REMINDER_HOURS.map((h) => {
-                const active = reminders.hora === h;
-                return (
-                  <PressableScale
-                    key={h}
-                    onPress={() => setReminders({ ...reminders, hora: h })}
-                    accessibilityLabel={`Recordar a las ${h}:00`}
-                    style={[
-                      styles.hourChip,
-                      active
-                        ? { backgroundColor: gwarm.teal, borderColor: gwarm.teal }
-                        : { borderColor: gwarm.border },
-                    ]}
-                  >
-                    <Text
-                      style={[styles.hourText, { color: active ? "#FFFFFF" : gwarm.inkSoft }]}
-                    >
-                      {`${h}`.padStart(2, "0")}:00
-                    </Text>
-                  </PressableScale>
-                );
-              })}
-            </View>
-          ) : null}
-
-          <View style={[styles.switchRow, styles.switchRowBorder]}>
-            <View style={styles.switchIcon}>
-              <Illustration source={GICON.citas} width={26} height={26} />
-            </View>
-            <View style={styles.flex}>
-              <Text style={styles.switchTitle}>Aviso de cita</Text>
-              <Text style={styles.switchText}>Un día antes, a las 6:00 p. m.</Text>
-            </View>
-            <Switch
-              value={reminders.citas}
-              onValueChange={(v) => void toggleCitas(v)}
-              trackColor={{ true: gwarm.teal, false: gwarm.borderStrong }}
-              thumbColor="#FFFFFF"
-              testID="switch-citas"
-            />
-          </View>
-        </SoftCard>
-
-        <Text style={styles.sectionTitle}>Sonidos</Text>
-        <SoftCard style={styles.card}>
-          <View style={styles.switchRow}>
-            <View style={[styles.switchIcon, styles.soundIcon]}>
-              <Illustration source={TOASTILU.aviso} width={26} height={26} />
-            </View>
-            <View style={styles.flex}>
-              <Text style={styles.switchTitle}>Sonidos de los avisos</Text>
-              <Text style={styles.switchText}>Al llegar mensajes, citas o pastillas nuevas</Text>
-            </View>
-            <Switch
-              value={soundsEnabled}
-              onValueChange={toggleSounds}
-              trackColor={{ true: gwarm.teal, false: gwarm.borderStrong }}
-              thumbColor="#FFFFFF"
-              testID="switch-sonidos"
-            />
-          </View>
-        </SoftCard>
-
-        <Text style={styles.sectionTitle}>Cuenta</Text>
-        <AppButton
-          title="Cerrar sesión"
-          onPress={() => void handleLogout()}
-          variant="outline"
-          color={semantic.danger}
-          hand
-          icon={LogOut}
-        />
-
-        <Text style={styles.about}>VitMaterna · {view.center.name}</Text>
+        </WebContainer>
       </ScrollView>
+
+      <EditProfileModal
+        visible={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        accentColor={gwarm.teal}
+      />
     </View>
   );
 }
@@ -334,6 +359,8 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.md,
     paddingBottom: spacing.xxl,
+  },
+  formStack: {
     gap: spacing.sm2,
   },
   card: { gap: spacing.sm },
@@ -355,6 +382,12 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: gwarm.inkSoft,
   },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingRight: spacing.xs,
+  },
   sectionTitle: {
     fontFamily: gfonts.hand,
     fontSize: 17,
@@ -362,6 +395,12 @@ const styles = StyleSheet.create({
     color: gwarm.inkSoft,
     marginTop: spacing.xs,
     marginLeft: spacing.xs,
+  },
+  editAction: {
+    fontFamily: gfonts.hand,
+    fontSize: 16,
+    lineHeight: 21,
+    color: gwarm.teal,
   },
   infoRow: {
     flexDirection: "row",

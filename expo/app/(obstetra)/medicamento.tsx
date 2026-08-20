@@ -3,6 +3,7 @@
  * nombre y dosis por toma, veces al día con vista previa de las casillas que
  * verá la gestante, e indicación de cómo tomarlo. Funciona sin señal: la
  * receta se guarda en el teléfono y se envía sola al volver la conexión.
+ * Adaptado con arquitectura responsiva Web (contenedor centrado en escritorio).
  */
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Check, Pill, Trash2, UserRound } from "lucide-react-native";
@@ -24,6 +25,7 @@ import { SectionHeader } from "@/components/SectionHeader";
 import { Stepper } from "@/components/Stepper";
 import { useToast } from "@/components/Toast";
 import { Illustration } from "@/components/gestante/Illustration";
+import { WebContainer } from "@/components/web/WebContainer";
 
 const accent = warmBlue;
 
@@ -102,11 +104,13 @@ export default function MedicamentoScreen(): React.ReactElement {
   if (!patient || (supplementId != null && supplementId.length > 0 && !editing)) {
     return (
       <View style={styles.container}>
-        <ScreenHeader title="Medicamento" showBack />
-        <EmptyState
-          icon={supplementId ? Pill : UserRound}
-          title={supplementId ? "El medicamento ya no existe" : "Paciente no encontrada"}
-        />
+        <WebContainer size="form">
+          <ScreenHeader title="Medicamento" showBack />
+          <EmptyState
+            icon={supplementId ? Pill : UserRound}
+            title={supplementId ? "El medicamento ya no existe" : "Paciente no encontrada"}
+          />
+        </WebContainer>
       </View>
     );
   }
@@ -177,159 +181,165 @@ export default function MedicamentoScreen(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader
-        title={editing ? "Cambiar medicamento" : "Asignar medicamento"}
-        subtitle={`${patient.firstName} ${patient.lastName}`}
-        showBack
-      />
+      <WebContainer size="form">
+        <ScreenHeader
+          title={editing ? "Cambiar medicamento" : "Asignar medicamento"}
+          subtitle={`${patient.firstName} ${patient.lastName}`}
+          showBack
+        />
+      </WebContainer>
       <ScrollView
         style={styles.flex}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.heroNote}>
-          <Illustration
-            source={name.trim().length > 0 ? medIllustration(name) : ILU.pastillas}
-            width={68}
-            height={68}
-          />
-          <Text style={styles.heroText}>
-            Aparecerá en el teléfono de {patient.firstName} con su dibujo y una casilla gigante
-            por cada toma del día, para marcarla con un toque.
-          </Text>
-        </View>
+        <WebContainer size="form">
+          <View style={styles.formStack}>
+            <View style={styles.heroNote}>
+              <Illustration
+                source={name.trim().length > 0 ? medIllustration(name) : ILU.pastillas}
+                width={68}
+                height={68}
+              />
+              <Text style={styles.heroText}>
+                Aparecerá en el teléfono de {patient.firstName} con su dibujo y una casilla gigante
+                por cada toma del día, para marcarla con un toque.
+              </Text>
+            </View>
 
-        {editing ? null : (
-          <>
-            <SectionHeader title="Los más recetados" />
-            <View style={styles.presetWrap}>
-              {PRESETS.map((preset) => {
-                const active = preset.name === name;
-                return (
+            {editing ? null : (
+              <>
+                <SectionHeader title="Los más recetados" />
+                <View style={styles.presetWrap}>
+                  {PRESETS.map((preset) => {
+                    const active = preset.name === name;
+                    return (
+                      <PressableScale
+                        key={preset.name}
+                        onPress={() => applyPreset(preset)}
+                        accessibilityLabel={`Usar ${preset.name}`}
+                        style={[styles.presetChip, active && styles.presetChipOn]}
+                        testID={`preset-${preset.name}`}
+                      >
+                        <Illustration source={medIllustration(preset.name)} width={26} height={26} />
+                        <Text style={[styles.presetText, active && styles.presetTextOn]}>
+                          {preset.name}
+                        </Text>
+                      </PressableScale>
+                    );
+                  })}
+                </View>
+              </>
+            )}
+
+            <SectionHeader title="Medicamento" />
+            <Card style={styles.formCard}>
+              <Field
+                label="Nombre del medicamento"
+                value={name}
+                onChangeText={(t) => {
+                  setName(t);
+                  if (error) setError(null);
+                }}
+                placeholder="Sulfato ferroso 60 mg…"
+                accent={accent.main}
+                testID="campo-med-nombre"
+              />
+              <Field
+                label="Dosis por toma"
+                value={dose}
+                onChangeText={setDose}
+                placeholder="1 tableta"
+                hint="Ej.: 1 tableta, 5 ml, 1 cápsula"
+                accent={accent.main}
+                testID="campo-med-dosis"
+              />
+            </Card>
+
+            <SectionHeader title="¿Cuántas veces al día?" />
+            <Card style={styles.formCard}>
+              <Stepper
+                label="Tomas por día"
+                value={times}
+                onChange={setTimes}
+                min={1}
+                max={MAX_TIMES_PER_DAY}
+                accent={accent.main}
+                testID="stepper-veces"
+              />
+              <View style={styles.previewBox}>
+                <View style={styles.previewDots}>
+                  {Array.from({ length: times }, (_, i) => (
+                    <View key={`dot-${i}`} style={styles.previewDot}>
+                      <Check size={14} color={gwarm.tealDeep} strokeWidth={3} />
+                    </View>
+                  ))}
+                </View>
+                <Text style={styles.previewText}>
+                  {patient.firstName} {previewText}.
+                </Text>
+              </View>
+            </Card>
+
+            <SectionHeader title="¿Cómo debe tomarlo?" />
+            <Card style={styles.formCard}>
+              <Field
+                label="Indicación (opcional)"
+                value={schedule}
+                onChangeText={setSchedule}
+                placeholder="En ayunas, con bastante agua…"
+                hint="Puedes dejarla vacía: las casillas y recordatorios funcionan igual. Solo es una ayudita que se muestra junto al nombre."
+                accent={accent.main}
+                testID="campo-med-indicacion"
+              />
+              <View style={styles.chipRow}>
+                {SCHEDULE_CHIPS.map((chip) => (
                   <PressableScale
-                    key={preset.name}
-                    onPress={() => applyPreset(preset)}
-                    accessibilityLabel={`Usar ${preset.name}`}
-                    style={[styles.presetChip, active && styles.presetChipOn]}
-                    testID={`preset-${preset.name}`}
+                    key={chip}
+                    onPress={() => setSchedule(chip)}
+                    accessibilityLabel={`Indicación ${chip}`}
+                    style={[styles.smallChip, schedule === chip && styles.smallChipOn]}
                   >
-                    <Illustration source={medIllustration(preset.name)} width={26} height={26} />
-                    <Text style={[styles.presetText, active && styles.presetTextOn]}>
-                      {preset.name}
+                    <Text
+                      style={[styles.smallChipText, schedule === chip && styles.smallChipTextOn]}
+                    >
+                      {chip}
                     </Text>
                   </PressableScale>
-                );
-              })}
-            </View>
-          </>
-        )}
+                ))}
+              </View>
+            </Card>
 
-        <SectionHeader title="Medicamento" />
-        <Card style={styles.formCard}>
-          <Field
-            label="Nombre del medicamento"
-            value={name}
-            onChangeText={(t) => {
-              setName(t);
-              if (error) setError(null);
-            }}
-            placeholder="Sulfato ferroso 60 mg…"
-            accent={accent.main}
-            testID="campo-med-nombre"
-          />
-          <Field
-            label="Dosis por toma"
-            value={dose}
-            onChangeText={setDose}
-            placeholder="1 tableta"
-            hint="Ej.: 1 tableta, 5 ml, 1 cápsula"
-            accent={accent.main}
-            testID="campo-med-dosis"
-          />
-        </Card>
+            {error ? (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : null}
 
-        <SectionHeader title="¿Cuántas veces al día?" />
-        <Card style={styles.formCard}>
-          <Stepper
-            label="Tomas por día"
-            value={times}
-            onChange={setTimes}
-            min={1}
-            max={MAX_TIMES_PER_DAY}
-            accent={accent.main}
-            testID="stepper-veces"
-          />
-          <View style={styles.previewBox}>
-            <View style={styles.previewDots}>
-              {Array.from({ length: times }, (_, i) => (
-                <View key={`dot-${i}`} style={styles.previewDot}>
-                  <Check size={14} color={gwarm.tealDeep} strokeWidth={3} />
-                </View>
-              ))}
-            </View>
-            <Text style={styles.previewText}>
-              {patient.firstName} {previewText}.
+            <AppButton
+              title={editing ? "Guardar cambios" : "Asignar medicamento"}
+              onPress={save}
+              color={accent.main}
+              icon={Check}
+              large
+              testID="btn-guardar-medicamento"
+            />
+            {editing ? (
+              <AppButton
+                title="Quitar este medicamento"
+                onPress={() => void removeMedication()}
+                color={gwarm.rose}
+                variant="outline"
+                icon={Trash2}
+                testID="btn-quitar-medicamento"
+              />
+            ) : null}
+            <Text style={styles.footNote}>
+              Si no hay señal, la receta queda guardada en el teléfono y se envía sola.
             </Text>
           </View>
-        </Card>
-
-        <SectionHeader title="¿Cómo debe tomarlo?" />
-        <Card style={styles.formCard}>
-          <Field
-            label="Indicación (opcional)"
-            value={schedule}
-            onChangeText={setSchedule}
-            placeholder="En ayunas, con bastante agua…"
-            hint="Puedes dejarla vacía: las casillas y recordatorios funcionan igual. Solo es una ayudita que se muestra junto al nombre."
-            accent={accent.main}
-            testID="campo-med-indicacion"
-          />
-          <View style={styles.chipRow}>
-            {SCHEDULE_CHIPS.map((chip) => (
-              <PressableScale
-                key={chip}
-                onPress={() => setSchedule(chip)}
-                accessibilityLabel={`Indicación ${chip}`}
-                style={[styles.smallChip, schedule === chip && styles.smallChipOn]}
-              >
-                <Text
-                  style={[styles.smallChipText, schedule === chip && styles.smallChipTextOn]}
-                >
-                  {chip}
-                </Text>
-              </PressableScale>
-            ))}
-          </View>
-        </Card>
-
-        {error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        ) : null}
-
-        <AppButton
-          title={editing ? "Guardar cambios" : "Asignar medicamento"}
-          onPress={save}
-          color={accent.main}
-          icon={Check}
-          large
-          testID="btn-guardar-medicamento"
-        />
-        {editing ? (
-          <AppButton
-            title="Quitar este medicamento"
-            onPress={() => void removeMedication()}
-            color={gwarm.rose}
-            variant="outline"
-            icon={Trash2}
-            testID="btn-quitar-medicamento"
-          />
-        ) : null}
-        <Text style={styles.footNote}>
-          Si no hay señal, la receta queda guardada en el teléfono y se envía sola.
-        </Text>
+        </WebContainer>
       </ScrollView>
     </View>
   );
@@ -341,6 +351,8 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 48,
+  },
+  formStack: {
     gap: 12,
   },
   heroNote: {

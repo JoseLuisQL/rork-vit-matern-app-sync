@@ -4,6 +4,7 @@
  * ilustraciones que se entienden sin leer, botones gigantes y entrada
  * escalonada suave. Orden lógico: mi embarazo → mi cita → mis pastillas →
  * ayuda → consejos.
+ * Adaptado con arquitectura responsiva Web (cuadrícula 2 columnas en escritorio).
  */
 import { useRouter } from "expo-router";
 import { Baby, ChevronRight, Siren } from "lucide-react-native";
@@ -18,6 +19,7 @@ import { countDoses, dayDoseTotals, doseName, timesPerDayOf } from "@/lib/doses"
 import { capitalize, fechaCompleta, fechaLarga } from "@/lib/format";
 import { medIllustration } from "@/lib/medIllustration";
 import { useApp, useMyPatient } from "@/providers/AppProvider";
+import { useResponsive } from "@/hooks/useResponsive";
 import { AppButton } from "@/components/AppButton";
 import { Avatar } from "@/components/Avatar";
 import { OfflineBanner } from "@/components/OfflineBanner";
@@ -30,10 +32,13 @@ import { CitaProxima } from "@/components/gestante/CitaProxima";
 import { Illustration } from "@/components/gestante/Illustration";
 import { PopIn } from "@/components/gestante/PopIn";
 import { SoftCard } from "@/components/gestante/SoftCard";
+import { WebContainer } from "@/components/web/WebContainer";
+import { WebCol, WebRow } from "@/components/web/WebGrid";
 
 export default function InicioGestante(): React.ReactElement {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { isDesktop } = useResponsive();
   const { view, todayKey, dispatch, user } = useApp();
   const patient = useMyPatient();
 
@@ -88,166 +93,202 @@ export default function InicioGestante(): React.ReactElement {
   const hour = new Date().getHours();
   const saludo = hour < 12 ? "Buenos días" : hour < 19 ? "Buenas tardes" : "Buenas noches";
 
+  const babyCardNode = (
+    <PopIn delay={0}>
+      <SoftCard style={styles.babyCard}>
+        <View style={styles.babyRow}>
+          <View style={styles.babyInfo}>
+            <Text style={styles.babyKicker}>Mi embarazo</Text>
+            <Text style={styles.weekBig}>
+              Semana <Text style={styles.weekNum}>{weeks}</Text>
+            </Text>
+            <Text style={styles.babyMeta}>
+              {remaining > 0
+                ? `Faltan ${remaining} semanas para conocer a tu bebé`
+                : "Tu bebé puede llegar en cualquier momento"}
+            </Text>
+          </View>
+          <Illustration source={ILU.mama} width={106} height={130} />
+        </View>
+        <AnimatedBar progress={weeks / 40} color={gwarm.teal} trackColor={gwarm.tealSoft} />
+        <View style={styles.fppRow}>
+          <Baby size={17} color={gwarm.terracotta} />
+          <Text style={styles.fppText}>Nacería el {fechaCompleta(patient.fppKey)}</Text>
+        </View>
+      </SoftCard>
+    </PopIn>
+  );
+
+  const appointmentNode = (
+    <PopIn delay={80}>
+      {nextAppt ? (
+        <CitaProxima
+          appt={nextAppt}
+          todayKey={todayKey}
+          onConfirm={() => void handleConfirm()}
+          onReschedule={() => void handleReschedule()}
+        />
+      ) : (
+        <SoftCard style={styles.emptyCitaCard}>
+          <Illustration source={ILU.obstetra} width={74} height={90} />
+          <View style={styles.flex}>
+            <Text style={styles.emptyCitaTitle}>Sin citas pendientes</Text>
+            <Text style={styles.emptyCitaText}>
+              Tu obstetra te avisará tu próximo control.
+            </Text>
+          </View>
+        </SoftCard>
+      )}
+    </PopIn>
+  );
+
+  const pillsNode = (
+    <PopIn delay={160}>
+      <SoftCard style={styles.pillsCard}>
+        <BlockTitle
+          illu={GICON.pastillas}
+          title={supplements.length > 0 ? "Mis pastillas de hoy" : "Mis pastillas"}
+          color={gwarm.terracotta}
+          soft={gwarm.terracottaSoft}
+        />
+        {supplements.length === 0 ? (
+          <View style={styles.emptyPillsBox}>
+            <Text style={styles.emptyPillsText}>
+              Aún no tienes pastillas asignadas. Tu obstetra te las indicará en tu próximo control prenatal.
+            </Text>
+          </View>
+        ) : (
+          <>
+            <View style={styles.pillsList}>
+              {supplements.map((s) => {
+                const times = timesPerDayOf(s);
+                const count = countDoses(todayIntakes, s.id);
+                return Array.from({ length: times }, (_, dose) => (
+                  <BigCheckRow
+                    key={`${s.id}-${dose}`}
+                    checked={dose < count}
+                    label={s.name}
+                    illustration={medIllustration(s.name)}
+                    sublabel={times > 1 ? doseName(dose, times) : undefined}
+                    onToggle={() =>
+                      dispatch({
+                        type: "set_intake_count",
+                        patientId: patient.id,
+                        supplementId: s.id,
+                        dayKey: todayKey,
+                        count: dose < count ? dose : dose + 1,
+                      })
+                    }
+                    testID={`toggle-${s.id}-${dose}`}
+                  />
+                ));
+              })}
+            </View>
+            {allTaken ? (
+              <Celebration title="¡Muy bien!" text="Ya tomaste todo lo de hoy." />
+            ) : null}
+          </>
+        )}
+      </SoftCard>
+    </PopIn>
+  );
+
+  const helpNode = (
+    <PopIn delay={240}>
+      <SoftCard style={styles.helpCard}>
+        <View style={styles.helpRow}>
+          <View style={styles.helpInfo}>
+            <Text style={styles.helpTitle}>¿Te sientes mal?</Text>
+            <Text style={styles.helpText}>Avísanos y te ayudamos al instante.</Text>
+          </View>
+          <Illustration source={ILU.manos} width={88} height={88} />
+        </View>
+        <AppButton
+          title="Pedir ayuda"
+          onPress={() => router.push("/(gestante)/alarmas")}
+          variant="danger"
+          large
+          hand
+          icon={Siren}
+          testID="btn-sos"
+        />
+      </SoftCard>
+    </PopIn>
+  );
+
+  const learnNode = (
+    <PopIn delay={320}>
+      <SoftCard
+        onPress={() => router.push("/(gestante)/educacion")}
+        style={styles.learnCard}
+        testID="card-educacion"
+      >
+        <Illustration source={GICON.libro} width={64} height={64} />
+        <View style={styles.flex}>
+          <Text style={styles.learnTitle}>Consejos para ti</Text>
+          <Text style={styles.learnMeta}>Se leen aunque no tengas señal</Text>
+        </View>
+        <ChevronRight size={22} color={gwarm.inkFaint} />
+      </SoftCard>
+    </PopIn>
+  );
+
   return (
     <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm2 }]}>
-        <View style={styles.headerInfo}>
-          <Text style={styles.headerDate} numberOfLines={1}>
-            {capitalize(fechaLarga(todayKey))}
-          </Text>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {saludo}, {user.firstName}
-          </Text>
+      <WebContainer size="dashboard">
+        <View style={[styles.header, { paddingTop: isDesktop ? spacing.md : insets.top + spacing.sm2 }]}>
+          <View style={styles.headerInfo}>
+            <Text style={styles.headerDate} numberOfLines={1}>
+              {capitalize(fechaLarga(todayKey))}
+            </Text>
+            <Text style={styles.headerTitle} numberOfLines={1}>
+              {saludo}, {user.firstName}
+            </Text>
+          </View>
+          <PressableScale
+            onPress={() => router.push("/(gestante)/perfil")}
+            accessibilityLabel="Mi perfil"
+            testID="btn-perfil"
+          >
+            <Avatar
+              uri={avatarUri(user.dni, user.avatarVersion)}
+              color={gwarm.teal}
+              background={gwarm.tealSoft}
+              size={52}
+            />
+          </PressableScale>
         </View>
-        <PressableScale
-          onPress={() => router.push("/(gestante)/perfil")}
-          accessibilityLabel="Mi perfil"
-          testID="btn-perfil"
-        >
-          <Avatar
-            uri={avatarUri(user.dni, user.avatarVersion)}
-            color={gwarm.teal}
-            background={gwarm.tealSoft}
-            size={52}
-          />
-        </PressableScale>
-      </View>
-      <OfflineBanner />
+        <OfflineBanner />
+      </WebContainer>
 
       <ScrollView
         style={styles.flex}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <PopIn delay={0}>
-          <SoftCard style={styles.babyCard}>
-            <View style={styles.babyRow}>
-              <View style={styles.babyInfo}>
-                <Text style={styles.babyKicker}>Mi embarazo</Text>
-                <Text style={styles.weekBig}>
-                  Semana <Text style={styles.weekNum}>{weeks}</Text>
-                </Text>
-                <Text style={styles.babyMeta}>
-                  {remaining > 0
-                    ? `Faltan ${remaining} semanas para conocer a tu bebé`
-                    : "Tu bebé puede llegar en cualquier momento"}
-                </Text>
-              </View>
-              <Illustration source={ILU.mama} width={106} height={130} />
-            </View>
-            <AnimatedBar progress={weeks / 40} color={gwarm.teal} trackColor={gwarm.tealSoft} />
-            <View style={styles.fppRow}>
-              <Baby size={17} color={gwarm.terracotta} />
-              <Text style={styles.fppText}>Nacería el {fechaCompleta(patient.fppKey)}</Text>
-            </View>
-          </SoftCard>
-        </PopIn>
-
-        <PopIn delay={80}>
-          {nextAppt ? (
-            <CitaProxima
-              appt={nextAppt}
-              todayKey={todayKey}
-              onConfirm={() => void handleConfirm()}
-              onReschedule={() => void handleReschedule()}
-            />
+        <WebContainer size="dashboard">
+          {isDesktop ? (
+            <WebRow gap={16}>
+              <WebCol flex={6} style={styles.colStack}>
+                {babyCardNode}
+                {appointmentNode}
+              </WebCol>
+              <WebCol flex={6} style={styles.colStack}>
+                {pillsNode}
+                {helpNode}
+                {learnNode}
+              </WebCol>
+            </WebRow>
           ) : (
-            <SoftCard style={styles.emptyCitaCard}>
-              <Illustration source={ILU.obstetra} width={74} height={90} />
-              <View style={styles.flex}>
-                <Text style={styles.emptyCitaTitle}>Sin citas pendientes</Text>
-                <Text style={styles.emptyCitaText}>
-                  Tu obstetra te avisará tu próximo control.
-                </Text>
-              </View>
-            </SoftCard>
+            <View style={styles.mobileStack}>
+              {babyCardNode}
+              {appointmentNode}
+              {pillsNode}
+              {helpNode}
+              {learnNode}
+            </View>
           )}
-        </PopIn>
-
-        <PopIn delay={160}>
-          <SoftCard style={styles.pillsCard}>
-            <BlockTitle
-              illu={GICON.pastillas}
-              title={supplements.length > 0 ? "Mis pastillas de hoy" : "Mis pastillas"}
-              color={gwarm.terracotta}
-              soft={gwarm.terracottaSoft}
-            />
-            {supplements.length === 0 ? (
-              <View style={styles.emptyPillsBox}>
-                <Text style={styles.emptyPillsText}>
-                  Aún no tienes pastillas asignadas. Tu obstetra te las indicará en tu próximo control prenatal.
-                </Text>
-              </View>
-            ) : (
-              <>
-                <View style={styles.pillsList}>
-                  {supplements.map((s) => {
-                    const times = timesPerDayOf(s);
-                    const count = countDoses(todayIntakes, s.id);
-                    return Array.from({ length: times }, (_, dose) => (
-                      <BigCheckRow
-                        key={`${s.id}-${dose}`}
-                        checked={dose < count}
-                        label={s.name}
-                        illustration={medIllustration(s.name)}
-                        sublabel={times > 1 ? doseName(dose, times) : undefined}
-                        onToggle={() =>
-                          dispatch({
-                            type: "set_intake_count",
-                            patientId: patient.id,
-                            supplementId: s.id,
-                            dayKey: todayKey,
-                            count: dose < count ? dose : dose + 1,
-                          })
-                        }
-                        testID={`toggle-${s.id}-${dose}`}
-                      />
-                    ));
-                  })}
-                </View>
-                {allTaken ? (
-                  <Celebration title="¡Muy bien!" text="Ya tomaste todo lo de hoy." />
-                ) : null}
-              </>
-            )}
-          </SoftCard>
-        </PopIn>
-
-        <PopIn delay={240}>
-          <SoftCard style={styles.helpCard}>
-            <View style={styles.helpRow}>
-              <View style={styles.helpInfo}>
-                <Text style={styles.helpTitle}>¿Te sientes mal?</Text>
-                <Text style={styles.helpText}>Avísanos y te ayudamos al instante.</Text>
-              </View>
-              <Illustration source={ILU.manos} width={88} height={88} />
-            </View>
-            <AppButton
-              title="Pedir ayuda"
-              onPress={() => router.push("/(gestante)/alarmas")}
-              variant="danger"
-              large
-              hand
-              icon={Siren}
-              testID="btn-sos"
-            />
-          </SoftCard>
-        </PopIn>
-
-        <PopIn delay={320}>
-          <SoftCard
-            onPress={() => router.push("/(gestante)/educacion")}
-            style={styles.learnCard}
-            testID="card-educacion"
-          >
-            <Illustration source={GICON.libro} width={64} height={64} />
-            <View style={styles.flex}>
-              <Text style={styles.learnTitle}>Consejos para ti</Text>
-              <Text style={styles.learnMeta}>Se leen aunque no tengas señal</Text>
-            </View>
-            <ChevronRight size={22} color={gwarm.inkFaint} />
-          </SoftCard>
-        </PopIn>
+        </WebContainer>
       </ScrollView>
     </View>
   );
@@ -291,6 +332,11 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.md,
     paddingBottom: spacing.xl,
+  },
+  mobileStack: {
+    gap: spacing.md,
+  },
+  colStack: {
     gap: spacing.md,
   },
   babyCard: { gap: spacing.sm2 },

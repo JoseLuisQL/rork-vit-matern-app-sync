@@ -4,6 +4,7 @@
  * Funciona sin señal: el cambio se guarda en el teléfono, se ve al instante
  * y se envía solo cuando vuelve la conexión. El servidor recalcula semana,
  * anemia y semáforo de riesgo.
+ * Adaptado con arquitectura responsiva Web (contenedor centrado en escritorio).
  */
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Check, Sparkles, UserRound } from "lucide-react-native";
@@ -25,6 +26,7 @@ import { SectionHeader } from "@/components/SectionHeader";
 import { Stepper } from "@/components/Stepper";
 import { useToast } from "@/components/Toast";
 import { Illustration } from "@/components/gestante/Illustration";
+import { WebContainer } from "@/components/web/WebContainer";
 
 const accent = warmBlue;
 
@@ -79,8 +81,10 @@ export default function ActualizarDatosScreen(): React.ReactElement {
   if (!patient) {
     return (
       <View style={styles.container}>
-        <ScreenHeader title="Actualizar datos" showBack />
-        <EmptyState icon={UserRound} title="Paciente no encontrada" />
+        <WebContainer size="form">
+          <ScreenHeader title="Actualizar datos" showBack />
+          <EmptyState icon={UserRound} title="Paciente no encontrada" />
+        </WebContainer>
       </View>
     );
   }
@@ -149,170 +153,176 @@ export default function ActualizarDatosScreen(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader
-        title="Actualizar datos"
-        subtitle={`${patient.firstName} ${patient.lastName}`}
-        showBack
-      />
+      <WebContainer size="form">
+        <ScreenHeader
+          title="Actualizar datos"
+          subtitle={`${patient.firstName} ${patient.lastName}`}
+          showBack
+        />
+      </WebContainer>
       <ScrollView
         style={styles.flex}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.heroNote}>
-          <Illustration source={ILU.carnet} width={68} height={68} />
-          <Text style={styles.heroText}>
-            Registra lo que midas en el control. La semana, la anemia y el semáforo de riesgo
-            se recalculan solos.
-          </Text>
-        </View>
+        <WebContainer size="form">
+          <View style={styles.formStack}>
+            <View style={styles.heroNote}>
+              <Illustration source={ILU.carnet} width={68} height={68} />
+              <Text style={styles.heroText}>
+                Registra lo que midas en el control. La semana, la anemia y el semáforo de riesgo
+                se recalculan solos.
+              </Text>
+            </View>
 
-        <SectionHeader title="Análisis y medidas" />
-        <Card style={styles.formCard}>
-          <View style={styles.row2}>
-            <Field
-              label="Hemoglobina"
-              value={hb}
-              onChangeText={setHb}
-              keyboardType="decimal-pad"
-              hint="g/dL medida en laboratorio"
-              accent={accent.main}
-              style={styles.flex}
-              testID="campo-hb"
+            <SectionHeader title="Análisis y medidas" />
+            <Card style={styles.formCard}>
+              <View style={styles.row2}>
+                <Field
+                  label="Hemoglobina"
+                  value={hb}
+                  onChangeText={setHb}
+                  keyboardType="decimal-pad"
+                  hint="g/dL medida en laboratorio"
+                  accent={accent.main}
+                  style={styles.flex}
+                  testID="campo-hb"
+                />
+                <Field
+                  label="IMC"
+                  value={imc}
+                  onChangeText={setImc}
+                  keyboardType="decimal-pad"
+                  hint="Peso / talla²"
+                  accent={accent.main}
+                  style={styles.flex}
+                  testID="campo-imc"
+                />
+              </View>
+              <View style={styles.row2}>
+                <Field
+                  label="Presión alta"
+                  value={sys}
+                  onChangeText={setSys}
+                  keyboardType="number-pad"
+                  hint="Sistólica"
+                  accent={accent.main}
+                  style={styles.flex}
+                  testID="campo-sys"
+                />
+                <Field
+                  label="Presión baja"
+                  value={dia}
+                  onChangeText={setDia}
+                  keyboardType="number-pad"
+                  hint="Diastólica"
+                  accent={accent.main}
+                  style={styles.flex}
+                  testID="campo-dia"
+                />
+              </View>
+            </Card>
+
+            <SectionHeader title="Embarazo" />
+            <Card style={styles.formCard}>
+              <DatePickerField
+                label="Fecha de última menstruación (FUM)"
+                value={fumKey}
+                onChangeDate={setFumKey}
+                placeholder="Seleccionar FUM en el calendario"
+                accent={accent.main}
+                isFum={true}
+                hint="Con esta fecha se calculan la semana de embarazo y la fecha probable de parto."
+                testID="campo-fum"
+              />
+            </Card>
+
+            <SectionHeader title="Su historia" />
+            <Card style={styles.formCard}>
+              <View style={styles.row3}>
+                <Stepper
+                  label="Gestas"
+                  value={gestas}
+                  onChange={setGestas}
+                  min={1}
+                  max={20}
+                  accent={accent.main}
+                  style={styles.flex}
+                  testID="stepper-gestas"
+                />
+                <Stepper
+                  label="Cesáreas"
+                  value={cesareas}
+                  onChange={setCesareas}
+                  min={0}
+                  max={10}
+                  accent={accent.main}
+                  style={styles.flex}
+                />
+                <Stepper
+                  label="Abortos"
+                  value={abortos}
+                  onChange={setAbortos}
+                  min={0}
+                  max={10}
+                  accent={accent.main}
+                  style={styles.flex}
+                />
+              </View>
+            </Card>
+
+            <SectionHeader title="Contacto" />
+            <Card style={styles.formCard}>
+              <View style={styles.row2}>
+                <Field
+                  label="Edad"
+                  value={edad}
+                  onChangeText={setEdad}
+                  keyboardType="number-pad"
+                  hint="Años"
+                  maxLength={2}
+                  accent={accent.main}
+                  style={styles.flex}
+                />
+                <Field
+                  label="Teléfono"
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
+                  placeholder="987 654 321"
+                  accent={accent.main}
+                  style={styles.flex}
+                />
+              </View>
+              <Field
+                label="Comunidad"
+                value={community}
+                onChangeText={setCommunity}
+                placeholder="San Juan, Talavera…"
+                accent={accent.main}
+              />
+            </Card>
+
+            {error ? (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : null}
+
+            <AppButton
+              title="Guardar cambios"
+              onPress={save}
+              color={accent.main}
+              icon={Check}
+              large
+              testID="btn-guardar-datos"
             />
-            <Field
-              label="IMC"
-              value={imc}
-              onChangeText={setImc}
-              keyboardType="decimal-pad"
-              hint="Peso / talla²"
-              accent={accent.main}
-              style={styles.flex}
-              testID="campo-imc"
-            />
+            <Text style={styles.footNote}>
+              Si no hay señal, el cambio queda guardado en el teléfono y se envía solo.
+            </Text>
           </View>
-          <View style={styles.row2}>
-            <Field
-              label="Presión alta"
-              value={sys}
-              onChangeText={setSys}
-              keyboardType="number-pad"
-              hint="Sistólica"
-              accent={accent.main}
-              style={styles.flex}
-              testID="campo-sys"
-            />
-            <Field
-              label="Presión baja"
-              value={dia}
-              onChangeText={setDia}
-              keyboardType="number-pad"
-              hint="Diastólica"
-              accent={accent.main}
-              style={styles.flex}
-              testID="campo-dia"
-            />
-          </View>
-        </Card>
-
-        <SectionHeader title="Embarazo" />
-        <Card style={styles.formCard}>
-          <DatePickerField
-            label="Fecha de última menstruación (FUM)"
-            value={fumKey}
-            onChangeDate={setFumKey}
-            placeholder="Seleccionar FUM en el calendario"
-            accent={accent.main}
-            isFum={true}
-            hint="Con esta fecha se calculan la semana de embarazo y la fecha probable de parto."
-            testID="campo-fum"
-          />
-        </Card>
-
-        <SectionHeader title="Su historia" />
-        <Card style={styles.formCard}>
-          <View style={styles.row3}>
-            <Stepper
-              label="Gestas"
-              value={gestas}
-              onChange={setGestas}
-              min={1}
-              max={20}
-              accent={accent.main}
-              style={styles.flex}
-              testID="stepper-gestas"
-            />
-            <Stepper
-              label="Cesáreas"
-              value={cesareas}
-              onChange={setCesareas}
-              min={0}
-              max={10}
-              accent={accent.main}
-              style={styles.flex}
-            />
-            <Stepper
-              label="Abortos"
-              value={abortos}
-              onChange={setAbortos}
-              min={0}
-              max={10}
-              accent={accent.main}
-              style={styles.flex}
-            />
-          </View>
-        </Card>
-
-        <SectionHeader title="Contacto" />
-        <Card style={styles.formCard}>
-          <View style={styles.row2}>
-            <Field
-              label="Edad"
-              value={edad}
-              onChangeText={setEdad}
-              keyboardType="number-pad"
-              hint="Años"
-              maxLength={2}
-              accent={accent.main}
-              style={styles.flex}
-            />
-            <Field
-              label="Teléfono"
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-              placeholder="987 654 321"
-              accent={accent.main}
-              style={styles.flex}
-            />
-          </View>
-          <Field
-            label="Comunidad"
-            value={community}
-            onChangeText={setCommunity}
-            placeholder="San Juan, Talavera…"
-            accent={accent.main}
-          />
-        </Card>
-
-        {error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        ) : null}
-
-        <AppButton
-          title="Guardar cambios"
-          onPress={save}
-          color={accent.main}
-          icon={Check}
-          large
-          testID="btn-guardar-datos"
-        />
-        <Text style={styles.footNote}>
-          Si no hay señal, el cambio queda guardado en el teléfono y se envía solo.
-        </Text>
+        </WebContainer>
       </ScrollView>
     </View>
   );
@@ -324,6 +334,8 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 48,
+  },
+  formStack: {
     gap: 12,
   },
   heroNote: {

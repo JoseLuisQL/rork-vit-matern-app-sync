@@ -1,4 +1,7 @@
-/** Lector de artículo educativo: letra grande y cómoda, disponible sin señal. */
+/**
+ * Lector de artículo educativo: letra grande y cómoda, disponible sin señal.
+ * Adaptado con arquitectura responsiva Web (contenedor de lectura centrado).
+ */
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { BookOpenCheck, ChevronRight, Clock3 } from "lucide-react-native";
 import React, { useEffect, useMemo } from "react";
@@ -11,6 +14,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { GHeader } from "@/components/gestante/GHeader";
 import { Illustration } from "@/components/gestante/Illustration";
 import { SoftCard } from "@/components/gestante/SoftCard";
+import { WebContainer } from "@/components/web/WebContainer";
 
 export default function ArticuloScreen(): React.ReactElement {
   const router = useRouter();
@@ -37,62 +41,68 @@ export default function ArticuloScreen(): React.ReactElement {
   if (!article) {
     return (
       <View style={styles.container}>
-        <GHeader title="Artículo" back />
-        <EmptyState icon={BookOpenCheck} title="Artículo no encontrado" />
+        <WebContainer size="reading">
+          <GHeader title="Artículo" back />
+          <EmptyState icon={BookOpenCheck} title="Artículo no encontrado" />
+        </WebContainer>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <GHeader title={article.category} back />
+      <WebContainer size="reading">
+        <GHeader title={article.category} back />
+      </WebContainer>
       <ScrollView
         style={styles.flex}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.heroWrap}>
-          <Illustration
-            source={CATEGORY_ILU[article.category] ?? GICON.libro}
-            width={112}
-            height={112}
-          />
-        </View>
-        <Text style={styles.title}>{article.title}</Text>
-        <View style={styles.metaRow}>
-          <Clock3 size={14} color={gwarm.inkFaint} />
-          <Text style={styles.meta}>{article.minutes} min de lectura</Text>
-        </View>
+        <WebContainer size="reading">
+          <View style={styles.heroWrap}>
+            <Illustration
+              source={CATEGORY_ILU[article.category] ?? GICON.libro}
+              width={112}
+              height={112}
+            />
+          </View>
+          <Text style={styles.title}>{article.title}</Text>
+          <View style={styles.metaRow}>
+            <Clock3 size={14} color={gwarm.inkFaint} />
+            <Text style={styles.meta}>{article.minutes} min de lectura</Text>
+          </View>
 
-        <View style={styles.body}>
-          {article.body.map((paragraph, index) => (
-            <Text key={`p-${index}`} style={styles.paragraph}>
-              {paragraph}
-            </Text>
-          ))}
-        </View>
-
-        <View style={styles.readRow}>
-          <BookOpenCheck size={16} color={gwarm.teal} />
-          <Text style={styles.readText}>Guardado como leído en tu teléfono</Text>
-        </View>
-
-        {next ? (
-          <SoftCard
-            onPress={() =>
-              router.replace({ pathname: "/(gestante)/educacion/[id]", params: { id: next.id } })
-            }
-            style={styles.nextCard}
-          >
-            <View style={styles.flex}>
-              <Text style={styles.nextLabel}>Siguiente lectura</Text>
-              <Text style={styles.nextTitle} numberOfLines={2}>
-                {next.title}
+          <View style={styles.body}>
+            {article.body.map((paragraph, index) => (
+              <Text key={`p-${index}`} style={styles.paragraph}>
+                {paragraph}
               </Text>
-            </View>
-            <ChevronRight size={22} color={gwarm.inkFaint} />
-          </SoftCard>
-        ) : null}
+            ))}
+          </View>
+
+          <View style={styles.readRow}>
+            <BookOpenCheck size={16} color={gwarm.teal} />
+            <Text style={styles.readText}>Guardado como leído en tu teléfono</Text>
+          </View>
+
+          {next ? (
+            <SoftCard
+              onPress={() =>
+                router.replace({ pathname: "/(gestante)/educacion/[id]", params: { id: next.id } })
+              }
+              style={styles.nextCard}
+            >
+              <View style={styles.flex}>
+                <Text style={styles.nextLabel}>Siguiente lectura</Text>
+                <Text style={styles.nextTitle} numberOfLines={2}>
+                  {next.title}
+                </Text>
+              </View>
+              <ChevronRight size={22} color={gwarm.inkFaint} />
+            </SoftCard>
+          ) : null}
+        </WebContainer>
       </ScrollView>
     </View>
   );

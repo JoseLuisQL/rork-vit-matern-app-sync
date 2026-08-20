@@ -2,6 +2,7 @@
  * Inicio de administración ("cuaderno"): saludo con foto de perfil, tarjeta
  * del centro de salud con su dibujo, números clave a mano, módulos con
  * dibujos a crayola y resúmenes de semáforo, anemia y alertas recientes.
+ * Adaptado con arquitectura responsiva Web (2 columnas en escritorio).
  */
 import { useRouter } from "expo-router";
 import { ChartBar, UserPlus, Users } from "lucide-react-native";
@@ -10,6 +11,7 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { gfonts, gwarm, risk, warmBlue, warmPlum, warmTeal } from "@/constants/theme";
 import { ANEMIA_LABEL, RISK_LABEL } from "@/constants/labels";
 import { GICON, ILU } from "@/constants/illustrations";
+import { useResponsive } from "@/hooks/useResponsive";
 import { avatarUri } from "@/lib/api";
 import { fechaLarga, tiempoRelativo } from "@/lib/format";
 import { useApp, usePatients } from "@/providers/AppProvider";
@@ -22,6 +24,8 @@ import { ModuleGrid, type ModuleItem } from "@/components/ModuleGrid";
 import { PopIn } from "@/components/gestante/PopIn";
 import { SectionHeader } from "@/components/SectionHeader";
 import { StatGroup } from "@/components/StatGroup";
+import { WebCol, WebRow } from "@/components/web/WebGrid";
+import { WebContainer } from "@/components/web/WebContainer";
 
 const accent = warmPlum;
 
@@ -59,6 +63,9 @@ export default function InicioAdmin(): React.ReactElement {
   const router = useRouter();
   const { view, todayKey, user } = useApp();
   const patients = usePatients();
+  const { isDesktop, isTablet } = useResponsive();
+
+  const isWide = isDesktop || isTablet;
 
   const reports = view?.reports?.d30 ?? null;
 
@@ -109,122 +116,163 @@ export default function InicioAdmin(): React.ReactElement {
     return <View style={styles.container} />;
   }
 
+  const renderCenterCard = () => (
+    <PopIn>
+      <Card style={styles.centerCard}>
+        <View style={styles.centerInfo}>
+          <Text style={styles.centerName}>{view.center.name}</Text>
+          <Text style={styles.centerMeta}>
+            {reports.gestantes} gestantes en seguimiento{"\n"}
+            {reports.citasHoy} citas para hoy
+          </Text>
+        </View>
+        <Illustration source={ILU.centroSalud} width={104} height={104} />
+      </Card>
+    </PopIn>
+  );
+
+  const renderKPIs = () => (
+    <PopIn delay={60}>
+      <StatGroup
+        items={[
+          { key: "gestantes", value: `${reports.gestantes}`, label: "Gestantes" },
+          {
+            key: "alertas",
+            value: `${reports.alertas.abiertas}`,
+            label: "Alertas abiertas",
+            color: reports.alertas.abiertas > 0 ? gwarm.amber : gwarm.ink,
+          },
+          {
+            key: "adherencia",
+            value: `${reports.adherenciaPromedio}%`,
+            label: "Toman pastillas",
+            color:
+              reports.adherenciaPromedio >= 75
+                ? gwarm.teal
+                : reports.adherenciaPromedio >= 50
+                  ? gwarm.amber
+                  : gwarm.rose,
+          },
+        ]}
+      />
+    </PopIn>
+  );
+
+  const renderAlerts = () => (
+    <PopIn delay={300}>
+      <SectionHeader title="Alertas recientes" />
+      <Card style={styles.alertsCard}>
+        {recentAlerts.length === 0 ? (
+          <Text style={styles.emptyText}>Sin alertas registradas.</Text>
+        ) : (
+          recentAlerts.map((alert, index) => (
+            <View key={alert.id} style={[styles.alertRow, index > 0 && styles.rowBorder]}>
+              <View style={styles.flex}>
+                <Text style={styles.alertName}>{patientName(alert.patientId)}</Text>
+                <Text style={styles.alertMeta}>
+                  {tiempoRelativo(alert.atISO)} ·{" "}
+                  {alert.status === "abierta" ? "Abierta" : "Atendida"}
+                </Text>
+              </View>
+              <AlertTypeWord alertType={alert.type} />
+            </View>
+          ))
+        )}
+      </Card>
+    </PopIn>
+  );
+
+  const renderModules = () => (
+    <PopIn delay={120}>
+      <SectionHeader title="Módulos" />
+      <ModuleGrid items={modules} />
+    </PopIn>
+  );
+
+  const renderRisk = () => (
+    <PopIn delay={180}>
+      <SectionHeader title="Semáforo de riesgo" />
+      <Card style={styles.chartCard}>
+        {(["rojo", "amarillo", "verde"] as RiskLevel[]).map((level) => (
+          <BarRow
+            key={level}
+            label={RISK_LABEL[level].replace("Riesgo ", "")}
+            count={reports.riesgo[level]}
+            total={reports.gestantes}
+            color={risk[level].solid}
+          />
+        ))}
+      </Card>
+    </PopIn>
+  );
+
+  const renderAnemia = () => (
+    <PopIn delay={240}>
+      <SectionHeader title="Anemia" />
+      <Card style={styles.chartCard}>
+        {(["severa", "moderada", "leve", "normal"] as AnemiaClass[]).map((cls) => (
+          <BarRow
+            key={cls}
+            label={ANEMIA_LABEL[cls]}
+            count={reports.anemia[cls]}
+            total={reports.gestantes}
+            color={
+              cls === "normal"
+                ? gwarm.teal
+                : cls === "leve"
+                  ? gwarm.amber
+                  : gwarm.rose
+            }
+          />
+        ))}
+      </Card>
+    </PopIn>
+  );
+
   return (
     <View style={styles.container}>
-      <HomeHeader
-        overline={fechaLarga(todayKey)}
-        title={`Hola, ${user.firstName}`}
-        subtitle="Administración del centro"
-        avatarUri={avatarUri(user.dni, user.avatarVersion)}
-        accentColor={accent.main}
-        accentBackground={accent.soft}
-        onAvatarPress={() => router.push("/(admin)/(tabs)/perfil")}
-      />
+      <WebContainer size="dashboard">
+        <HomeHeader
+          overline={fechaLarga(todayKey)}
+          title={`Hola, ${user.firstName}`}
+          subtitle="Administración del centro"
+          avatarUri={avatarUri(user.dni, user.avatarVersion)}
+          accentColor={accent.main}
+          accentBackground={accent.soft}
+          onAvatarPress={() => router.push("/(admin)/(tabs)/perfil")}
+        />
+      </WebContainer>
+
       <ScrollView
         style={styles.flex}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <PopIn>
-          <Card style={styles.centerCard}>
-            <View style={styles.centerInfo}>
-              <Text style={styles.centerName}>{view.center.name}</Text>
-              <Text style={styles.centerMeta}>
-                {reports.gestantes} gestantes en seguimiento{"\n"}
-                {reports.citasHoy} citas para hoy
-              </Text>
+        <WebContainer size="dashboard">
+          {isWide ? (
+            <WebRow gap={20}>
+              <WebCol flex={6} style={styles.colGap}>
+                {renderCenterCard()}
+                {renderKPIs()}
+                {renderAlerts()}
+              </WebCol>
+              <WebCol flex={4} style={styles.colGap}>
+                {renderModules()}
+                {renderRisk()}
+                {renderAnemia()}
+              </WebCol>
+            </WebRow>
+          ) : (
+            <View style={styles.mobileStack}>
+              {renderCenterCard()}
+              {renderKPIs()}
+              {renderModules()}
+              {renderRisk()}
+              {renderAnemia()}
+              {renderAlerts()}
             </View>
-            <Illustration source={ILU.centroSalud} width={104} height={104} />
-          </Card>
-        </PopIn>
-
-        <PopIn delay={60}>
-          <StatGroup
-            items={[
-              { key: "gestantes", value: `${reports.gestantes}`, label: "Gestantes" },
-              {
-                key: "alertas",
-                value: `${reports.alertas.abiertas}`,
-                label: "Alertas abiertas",
-                color: reports.alertas.abiertas > 0 ? gwarm.amber : gwarm.ink,
-              },
-              {
-                key: "adherencia",
-                value: `${reports.adherenciaPromedio}%`,
-                label: "Toman pastillas",
-                color:
-                  reports.adherenciaPromedio >= 75
-                    ? gwarm.teal
-                    : reports.adherenciaPromedio >= 50
-                      ? gwarm.amber
-                      : gwarm.rose,
-              },
-            ]}
-          />
-        </PopIn>
-
-        <PopIn delay={120}>
-          <SectionHeader title="Módulos" />
-          <ModuleGrid items={modules} />
-        </PopIn>
-
-        <PopIn delay={180}>
-          <SectionHeader title="Semáforo de riesgo" />
-          <Card style={styles.chartCard}>
-            {(["rojo", "amarillo", "verde"] as RiskLevel[]).map((level) => (
-              <BarRow
-                key={level}
-                label={RISK_LABEL[level].replace("Riesgo ", "")}
-                count={reports.riesgo[level]}
-                total={reports.gestantes}
-                color={risk[level].solid}
-              />
-            ))}
-          </Card>
-        </PopIn>
-
-        <PopIn delay={240}>
-          <SectionHeader title="Anemia" />
-          <Card style={styles.chartCard}>
-            {(["severa", "moderada", "leve", "normal"] as AnemiaClass[]).map((cls) => (
-              <BarRow
-                key={cls}
-                label={ANEMIA_LABEL[cls]}
-                count={reports.anemia[cls]}
-                total={reports.gestantes}
-                color={
-                  cls === "normal"
-                    ? gwarm.teal
-                    : cls === "leve"
-                      ? gwarm.amber
-                      : gwarm.rose
-                }
-              />
-            ))}
-          </Card>
-        </PopIn>
-
-        <PopIn delay={300}>
-          <SectionHeader title="Alertas recientes" />
-          <Card style={styles.alertsCard}>
-            {recentAlerts.length === 0 ? (
-              <Text style={styles.emptyText}>Sin alertas registradas.</Text>
-            ) : (
-              recentAlerts.map((alert, index) => (
-                <View key={alert.id} style={[styles.alertRow, index > 0 && styles.rowBorder]}>
-                  <View style={styles.flex}>
-                    <Text style={styles.alertName}>{patientName(alert.patientId)}</Text>
-                    <Text style={styles.alertMeta}>
-                      {tiempoRelativo(alert.atISO)} ·{" "}
-                      {alert.status === "abierta" ? "Abierta" : "Atendida"}
-                    </Text>
-                  </View>
-                  <AlertTypeWord alertType={alert.type} />
-                </View>
-              ))
-            )}
-          </Card>
-        </PopIn>
+          )}
+        </WebContainer>
       </ScrollView>
     </View>
   );
@@ -236,6 +284,11 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 32,
+  },
+  mobileStack: {
+    gap: 12,
+  },
+  colGap: {
     gap: 12,
   },
   centerCard: {

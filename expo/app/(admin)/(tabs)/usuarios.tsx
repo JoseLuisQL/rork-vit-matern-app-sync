@@ -1,6 +1,7 @@
 /**
  * Gestión de usuarios (administración, estilo "cuaderno"): búsqueda cálida,
  * filtro por rol, activar/desactivar cuentas y creación de nuevos usuarios.
+ * Adaptado con arquitectura responsiva Web (rejilla de usuarios en escritorio).
  */
 import { useRouter } from "expo-router";
 import { Search, UserPlus, Users } from "lucide-react-native";
@@ -9,6 +10,7 @@ import { Alert, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "re
 import { gfonts, gShadow, gwarm, warmAccent, warmPlum } from "@/constants/theme";
 import { ROLE_LABEL } from "@/constants/labels";
 import { GICON } from "@/constants/illustrations";
+import { useResponsive } from "@/hooks/useResponsive";
 import { ApiError, avatarUri } from "@/lib/api";
 import { confirmAction } from "@/lib/confirm";
 import { useApp } from "@/providers/AppProvider";
@@ -18,6 +20,7 @@ import { Avatar } from "@/components/Avatar";
 import { EmptyState } from "@/components/EmptyState";
 import { PressableScale } from "@/components/PressableScale";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { WebContainer } from "@/components/web/WebContainer";
 
 const accent = warmPlum;
 const FILTERS: ("todos" | Role)[] = ["todos", "gestante", "obstetra", "admin"];
@@ -28,6 +31,9 @@ export default function UsuariosScreen(): React.ReactElement {
   const [query, setQuery] = useState<string>("");
   const [filter, setFilter] = useState<"todos" | Role>("todos");
   const [busyDni, setBusyDni] = useState<string | null>(null);
+  const { isDesktop, isTablet } = useResponsive();
+
+  const isWide = isDesktop || isTablet;
 
   const users = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -76,55 +82,57 @@ export default function UsuariosScreen(): React.ReactElement {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader
-        title="Usuarios"
-        subtitle={`${view?.users?.length ?? 0} cuentas`}
-        right={
-          <AppButton
-            title="Nuevo"
-            onPress={() => router.push("/(admin)/nuevo-usuario")}
-            color={accent.main}
-            icon={UserPlus}
-            small
-          />
-        }
-      >
-        <View style={styles.searchBox}>
-          <Search size={17} color={gwarm.inkFaint} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Buscar por nombre o DNI"
-            placeholderTextColor={gwarm.inkFaint}
-            style={styles.searchInput}
-            testID="buscar-usuario"
-          />
-        </View>
-        <View style={styles.filterRow}>
-          {FILTERS.map((f) => {
-            const active = filter === f;
-            return (
-              <PressableScale
-                key={f}
-                onPress={() => setFilter(f)}
-                accessibilityLabel={`Filtro ${f}`}
-                style={[
-                  styles.filterChip,
-                  active
-                    ? { backgroundColor: accent.main, borderColor: accent.main }
-                    : { borderColor: gwarm.border, backgroundColor: gwarm.surface },
-                ]}
-              >
-                <Text
-                  style={[styles.filterText, { color: active ? "#FFFFFF" : gwarm.inkSoft }]}
+      <WebContainer size="dashboard">
+        <ScreenHeader
+          title="Usuarios"
+          subtitle={`${view?.users?.length ?? 0} cuentas`}
+          right={
+            <AppButton
+              title="Nuevo usuario"
+              onPress={() => router.push("/(admin)/nuevo-usuario")}
+              color={accent.main}
+              icon={UserPlus}
+              small
+            />
+          }
+        >
+          <View style={styles.searchBox}>
+            <Search size={17} color={gwarm.inkFaint} />
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Buscar por nombre o DNI"
+              placeholderTextColor={gwarm.inkFaint}
+              style={styles.searchInput}
+              testID="buscar-usuario"
+            />
+          </View>
+          <View style={styles.filterRow}>
+            {FILTERS.map((f) => {
+              const active = filter === f;
+              return (
+                <PressableScale
+                  key={f}
+                  onPress={() => setFilter(f)}
+                  accessibilityLabel={`Filtro ${f}`}
+                  style={[
+                    styles.filterChip,
+                    active
+                      ? { backgroundColor: accent.main, borderColor: accent.main }
+                      : { borderColor: gwarm.border, backgroundColor: gwarm.surface },
+                  ]}
                 >
-                  {f === "todos" ? "Todos" : ROLE_LABEL[f]}
-                </Text>
-              </PressableScale>
-            );
-          })}
-        </View>
-      </ScreenHeader>
+                  <Text
+                    style={[styles.filterText, { color: active ? "#FFFFFF" : gwarm.inkSoft }]}
+                  >
+                    {f === "todos" ? "Todos" : ROLE_LABEL[f]}
+                  </Text>
+                </PressableScale>
+              );
+            })}
+          </View>
+        </ScreenHeader>
+      </WebContainer>
 
       <ScrollView
         style={styles.flex}
@@ -132,49 +140,103 @@ export default function UsuariosScreen(): React.ReactElement {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {users.length === 0 ? (
-          <EmptyState
-            icon={Users}
-            illu={GICON.usuarios}
-            title="Sin resultados"
-            text="Prueba con otro nombre o filtro."
-          />
-        ) : (
-          <View style={styles.listCard}>
-            {users.map((u, index) => {
-              const roleColors = warmAccent(u.role);
-              const isMe = u.dni === me?.dni;
-              return (
-                <View key={u.dni} style={[styles.row, index > 0 && styles.rowBorder]}>
-                  <Avatar
-                    uri={avatarUri(u.dni, u.avatarVersion)}
-                    color={roleColors.main}
-                    background={roleColors.soft}
-                    size={44}
-                  />
-                  <View style={styles.info}>
-                    <Text style={[styles.name, !u.active && styles.nameInactive]} numberOfLines={1}>
-                      {u.firstName} {u.lastName}
-                      {isMe ? " (tú)" : ""}
-                    </Text>
-                    <Text style={[styles.roleText, { color: roleColors.main }]}>
-                      {ROLE_LABEL[u.role]}
-                    </Text>
+        <WebContainer size="dashboard">
+          {users.length === 0 ? (
+            <EmptyState
+              icon={Users}
+              illu={GICON.usuarios}
+              title="Sin resultados"
+              text="Prueba con otro nombre o filtro."
+            />
+          ) : isWide ? (
+            <View style={styles.desktopGrid}>
+              {users.map((u) => {
+                const roleColors = warmAccent(u.role);
+                const isMe = u.dni === me?.dni;
+                return (
+                  <View
+                    key={u.dni}
+                    style={[
+                      styles.desktopUserCard,
+                      !u.active && styles.desktopUserCardInactive,
+                    ]}
+                  >
+                    <Avatar
+                      uri={avatarUri(u.dni, u.avatarVersion)}
+                      color={roleColors.main}
+                      background={roleColors.soft}
+                      size={50}
+                    />
+                    <View style={styles.info}>
+                      <Text
+                        style={[styles.name, !u.active && styles.nameInactive]}
+                        numberOfLines={1}
+                      >
+                        {u.firstName} {u.lastName}
+                        {isMe ? " (tú)" : ""}
+                      </Text>
+                      <View style={styles.metaRow}>
+                        <Text style={[styles.roleBadge, { color: roleColors.main, backgroundColor: roleColors.soft }]}>
+                          {ROLE_LABEL[u.role]}
+                        </Text>
+                        <Text style={styles.dniText}>DNI {u.dni}</Text>
+                        {u.phone ? <Text style={styles.dniText}>· Tel: {u.phone}</Text> : null}
+                      </View>
+                    </View>
+                    <View style={styles.switchWrap}>
+                      <Text style={[styles.switchLabel, { color: u.active ? gwarm.tealDeep : gwarm.inkFaint }]}>
+                        {u.active ? "Activo" : "Inactivo"}
+                      </Text>
+                      <Switch
+                        value={u.active}
+                        disabled={isMe || busyDni === u.dni}
+                        onValueChange={(v) => void toggleActive(u, v)}
+                        trackColor={{ true: accent.main, false: gwarm.borderStrong }}
+                        thumbColor="#FFFFFF"
+                        testID={`switch-${u.dni}`}
+                      />
+                    </View>
                   </View>
-                  <Switch
-                    value={u.active}
-                    disabled={isMe || busyDni === u.dni}
-                    onValueChange={(v) => void toggleActive(u, v)}
-                    trackColor={{ true: accent.main, false: gwarm.borderStrong }}
-                    thumbColor="#FFFFFF"
-                    testID={`switch-${u.dni}`}
-                  />
-                </View>
-              );
-            })}
-          </View>
-        )}
-        <Text style={styles.footerNote}>Crear o desactivar cuentas necesita conexión.</Text>
+                );
+              })}
+            </View>
+          ) : (
+            <View style={styles.listCard}>
+              {users.map((u, index) => {
+                const roleColors = warmAccent(u.role);
+                const isMe = u.dni === me?.dni;
+                return (
+                  <View key={u.dni} style={[styles.row, index > 0 && styles.rowBorder]}>
+                    <Avatar
+                      uri={avatarUri(u.dni, u.avatarVersion)}
+                      color={roleColors.main}
+                      background={roleColors.soft}
+                      size={44}
+                    />
+                    <View style={styles.info}>
+                      <Text style={[styles.name, !u.active && styles.nameInactive]} numberOfLines={1}>
+                        {u.firstName} {u.lastName}
+                        {isMe ? " (tú)" : ""}
+                      </Text>
+                      <Text style={[styles.roleText, { color: roleColors.main }]}>
+                        {ROLE_LABEL[u.role]}
+                      </Text>
+                    </View>
+                    <Switch
+                      value={u.active}
+                      disabled={isMe || busyDni === u.dni}
+                      onValueChange={(v) => void toggleActive(u, v)}
+                      trackColor={{ true: accent.main, false: gwarm.borderStrong }}
+                      thumbColor="#FFFFFF"
+                      testID={`switch-${u.dni}`}
+                    />
+                  </View>
+                );
+              })}
+            </View>
+          )}
+          <Text style={styles.footerNote}>Crear o desactivar cuentas necesita conexión.</Text>
+        </WebContainer>
       </ScrollView>
     </View>
   );
@@ -215,6 +277,56 @@ const styles = StyleSheet.create({
     fontFamily: gfonts.hand,
     fontSize: 14.5,
     lineHeight: 19,
+  },
+  desktopGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 16,
+  },
+  desktopUserCard: {
+    flexBasis: "48.5%",
+    flexGrow: 1,
+    minWidth: 320,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    backgroundColor: gwarm.surface,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: gwarm.border,
+    padding: 16,
+    ...gShadow,
+  },
+  desktopUserCardInactive: {
+    opacity: 0.7,
+    backgroundColor: gwarm.surfaceSoft,
+  },
+  metaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 3,
+  },
+  roleBadge: {
+    fontFamily: gfonts.hand,
+    fontSize: 12.5,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  dniText: {
+    fontFamily: gfonts.handBody,
+    fontSize: 13,
+    color: gwarm.inkFaint,
+  },
+  switchWrap: {
+    alignItems: "center",
+    gap: 4,
+  },
+  switchLabel: {
+    fontFamily: gfonts.handBody,
+    fontSize: 11.5,
   },
   listCard: {
     backgroundColor: gwarm.surface,

@@ -380,7 +380,7 @@ export async function handleSchedule(c: AppContext): Promise<Response> {
 
 // ---------- Foto de perfil ----------
 
-/** Sirve la foto de perfil como imagen (pública, cacheable por versión). */
+/** Sirve la foto de perfil como imagen (pública, con revalidación rápida para refrescar cambios). */
 export async function handleAvatarImage(c: AppContext): Promise<Response> {
   const dni = decodeURIComponent(c.req.param("dni") ?? "").trim();
   if (!/^\d{8}$/.test(dni)) return c.json({ error: "Solicitud no válida" }, 400);
@@ -394,7 +394,9 @@ export async function handleAvatarImage(c: AppContext): Promise<Response> {
     status: 200,
     headers: {
       "Content-Type": row.mime,
-      "Cache-Control": "public, max-age=31536000, immutable",
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      "Pragma": "no-cache",
+      "Expires": "0",
     },
   });
 }
@@ -408,7 +410,8 @@ export async function handleSetAvatar(c: AppContext): Promise<Response> {
     const snapshot = await withTx(async (client) => {
       await client.query("DELETE FROM avatars WHERE dni = $1", [user.dni]);
       await client.query("UPDATE users SET avatar_version = NULL WHERE dni = $1", [user.dni]);
-      return buildSnapshot(client, user, { regenerate: false });
+      const updatedUser: UserRecord = { ...user, avatarVersion: null };
+      return buildSnapshot(client, updatedUser, { regenerate: false });
     });
     return c.json({ snapshot });
   }
@@ -430,12 +433,72 @@ export async function handleSetAvatar(c: AppContext): Promise<Response> {
        ON CONFLICT (dni) DO UPDATE SET mime = EXCLUDED.mime, bytes = EXCLUDED.bytes, updated_at = now()`,
       [user.dni, mime, bytes],
     );
-    await client.query(
-      "UPDATE users SET avatar_version = COALESCE(avatar_version, 0) + 1 WHERE dni = $1",
+    const updateRes = await client.query<{ avatar_version: number }>(
+      "UPDATE users SET avatar_version = COALESCE(avatar_version, 0) + 1 WHERE dni = $1 RETURNING avatar_version",
       [user.dni],
     );
-    return buildSnapshot(client, user, { regenerate: false });
+    const newVersion = updateRes.rows[0]?.avatar_version ?? (user.avatarVersion ? user.avatarVersion + 1 : 1);
+    const updatedUser: UserRecord = { ...user, avatarVersion: newVersion };
+    return buildSnapshot(client, updatedUser, { regenerate: false });
   });
+  return c.json({ snapshot });
+}
+
+/** Actualiza datos de perfil (nombres, teléfono, contraseña opcional) del usuario conectado. */
+export async function handleUpdateProfile(c: AppContext): Promise<Response> {
+  const user = c.get("user");
+  const body = await readJson<{
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    password?: string;
+  }>(c);
+
+  const firstName = (body.firstName ?? user.firstName).trim();
+  const lastName = (body.lastName ?? user.lastName).trim();
+  const phone = body.phone !== undefined ? body.phone.trim() : (user.phone ?? "");
+  const password = body.password !== undefined ? body.password.trim() : "";
+
+  if (firstName.length === 0 || lastName.length === 0) {
+    return c.json({ error: "Nombres y apellidos son obligatorios" }, 400);
+  }
+  if (password.length > 0 && password.length < 6) {
+    return c.json({ error: "La contraseña debe tener al menos 6 caracteres" }, 400);
+  }
+
+  const snapshot = await withTx(async (client) => {
+    let newHash: string | undefined;
+    if (password.length >= 6) {
+      newHash = hashPassword(password);
+      await client.query(
+        "UPDATE users SET first_name = $2, last_name = $3, phone = $4, password_hash = $5 WHERE dni = $1",
+        [user.dni, firstName, lastName, phone || null, newHash],
+      );
+    } else {
+      await client.query(
+        "UPDATE users SET first_name = $2, last_name = $3, phone = $4 WHERE dni = $1",
+        [user.dni, firstName, lastName, phone || null],
+      );
+    }
+
+    // Si el usuario es gestante, actualizar también teléfono y nombres en la tabla patients si aplica
+    if (user.role === "gestante" && user.patientId) {
+      await client.query(
+        "UPDATE patients SET first_name = $2, last_name = $3, phone = $4 WHERE id = $1",
+        [user.patientId, firstName, lastName, phone || ""],
+      );
+    }
+
+    const updatedUser: UserRecord = {
+      ...user,
+      firstName,
+      lastName,
+      phone: phone || undefined,
+      passwordHash: newHash ?? user.passwordHash,
+    };
+    return buildSnapshot(client, updatedUser, { regenerate: false });
+  });
+
   return c.json({ snapshot });
 }
 

@@ -3,6 +3,7 @@
  * quién, hace cuánto y qué pasa. Las urgencias van como notas rosadas con
  * borde de color y un botón "Atender"; al cerrar una alerta se confirma
  * con un toast.
+ * Adaptado con arquitectura responsiva Web (rejilla de 2 columnas en escritorio).
  */
 import { useRouter } from "expo-router";
 import { BellOff, CheckCircle2, MessageCircle } from "lucide-react-native";
@@ -10,6 +11,7 @@ import React, { useCallback, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { gfonts, gwarm, warmBlue } from "@/constants/theme";
 import { ILU } from "@/constants/illustrations";
+import { useResponsive } from "@/hooks/useResponsive";
 import { avatarUri } from "@/lib/api";
 import { tiempoRelativo } from "@/lib/format";
 import { useApp, usePatients } from "@/providers/AppProvider";
@@ -26,6 +28,7 @@ import { PressableScale } from "@/components/PressableScale";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { Segmented } from "@/components/Segmented";
 import { useToast } from "@/components/Toast";
+import { WebContainer } from "@/components/web/WebContainer";
 
 const accent = warmBlue;
 type Filter = "abiertas" | "atendidas" | "todas";
@@ -35,6 +38,9 @@ export default function AlertasScreen(): React.ReactElement {
   const { view, dispatch, online } = useApp();
   const patients = usePatients();
   const { show } = useToast();
+  const { isDesktop, isTablet } = useResponsive();
+  const isWide = isDesktop || isTablet;
+
   const [filter, setFilter] = useState<Filter>("abiertas");
   const [attendingId, setAttendingId] = useState<string | null>(null);
   const [note, setNote] = useState<string>("");
@@ -71,23 +77,167 @@ export default function AlertasScreen(): React.ReactElement {
     );
   };
 
+  const renderAlertCard = (alert: AlertModel) => {
+    const p = patientOf(alert.patientId);
+    const isUrgent = alert.type === "emergencia" || alert.type === "alarma";
+    const urgentOpen = isUrgent && alert.status === "abierta";
+    return (
+      <Card
+        key={alert.id}
+        style={[
+          styles.alertCard,
+          isWide && styles.desktopAlertCard,
+          alert.status === "abierta" && styles.alertOpen,
+          urgentOpen && styles.alertUrgent,
+        ]}
+      >
+        <View style={styles.alertTop}>
+          <PressableScale
+            onPress={() =>
+              p &&
+              router.push({ pathname: "/(obstetra)/gestante/[id]", params: { id: p.id } })
+            }
+            accessibilityLabel={`Ficha de ${p?.firstName ?? "paciente"}`}
+            style={styles.alertPatient}
+          >
+            {p ? (
+              <Avatar
+                uri={avatarUri(p.dni, p.avatarVersion)}
+                color={isUrgent ? gwarm.rose : accent.main}
+                background={isUrgent ? gwarm.redSoft : accent.soft}
+                size={40}
+              />
+            ) : null}
+            <View style={styles.rowInfo}>
+              <Text style={styles.alertName} numberOfLines={1}>
+                {p ? `${p.firstName} ${p.lastName.split(" ")[0]}` : "Paciente"}
+              </Text>
+              <Text style={styles.alertTime}>{tiempoRelativo(alert.atISO)}</Text>
+            </View>
+          </PressableScale>
+          <AlertTypeWord alertType={alert.type} />
+        </View>
+
+        {isUrgent ? (
+          <View style={styles.detailRow}>
+            <Illustration
+              source={alert.type === "emergencia" ? ILU.sos : ILU.sintomas}
+              width={54}
+              height={54}
+            />
+            <Text style={[styles.alertDetail, styles.flex]}>{alert.detail}</Text>
+          </View>
+        ) : (
+          <Text style={styles.alertDetail}>{alert.detail}</Text>
+        )}
+
+        {alert.lat != null && alert.lng != null ? (
+          <LocationChip
+            lat={alert.lat}
+            lng={alert.lng}
+            label={
+              p
+                ? `${alert.type === "emergencia" ? "SOS" : "Aviso"} de ${p.firstName} ${p.lastName.split(" ")[0]} · VitMaterna`
+                : "Ubicación del aviso · VitMaterna"
+            }
+            title="Ver ubicación GPS"
+            color={isUrgent ? gwarm.rose : accent.main}
+            testID={`gps-alerta-${alert.id}`}
+          />
+        ) : null}
+
+        {alert.status === "atendida" ? (
+          <View style={styles.attendedBox}>
+            <View style={styles.attendedRow}>
+              <CheckCircle2 size={15} color={gwarm.tealDeep} />
+              <Text style={styles.attendedLabel}>
+                Atendida {alert.attendedAtISO ? tiempoRelativo(alert.attendedAtISO) : ""}
+              </Text>
+            </View>
+            {alert.note ? <Text style={styles.attendedNote}>{alert.note}</Text> : null}
+          </View>
+        ) : attendingId === alert.id ? (
+          <View style={styles.attendForm}>
+            <Field
+              label="¿Qué se hizo o coordinó?"
+              value={note}
+              onChangeText={setNote}
+              placeholder="Escribe una nota corta…"
+              multiline
+              accent={accent.main}
+              maxLength={300}
+            />
+            <View style={styles.formActions}>
+              <AppButton
+                title="Cerrar alerta"
+                onPress={() => attend(alert.id)}
+                color={gwarm.teal}
+                small
+                disabled={note.trim().length === 0}
+                style={styles.flex}
+              />
+              <AppButton
+                title="Cancelar"
+                onPress={() => {
+                  setAttendingId(null);
+                  setNote("");
+                }}
+                color={gwarm.inkSoft}
+                variant="outline"
+                small
+                style={styles.flex}
+              />
+            </View>
+          </View>
+        ) : (
+          <View style={styles.actionsRow}>
+            <AppButton
+              title="Atender"
+              onPress={() => {
+                setAttendingId(alert.id);
+                setNote("");
+              }}
+              color={isUrgent ? gwarm.rose : accent.main}
+              small
+              testID={`atender-${alert.id}`}
+            />
+            <PressableScale
+              onPress={() =>
+                router.push({
+                  pathname: "/(obstetra)/chat/[id]",
+                  params: { id: alert.patientId },
+                })
+              }
+              accessibilityLabel="Abrir chat"
+              style={styles.chatIconButton}
+            >
+              <MessageCircle size={19} color={accent.main} />
+            </PressableScale>
+          </View>
+        )}
+      </Card>
+    );
+  };
+
   return (
     <View style={styles.container}>
-      <ScreenHeader
-        title="Alertas"
-        subtitle={openCount === 0 ? "Todo atendido" : `${openCount} por atender`}
-      >
-        <Segmented
-          options={[
-            { key: "abiertas", label: "Abiertas" },
-            { key: "atendidas", label: "Atendidas" },
-            { key: "todas", label: "Todas" },
-          ]}
-          value={filter}
-          onChange={(k) => setFilter(k as Filter)}
-          style={styles.segmented}
-        />
-      </ScreenHeader>
+      <WebContainer size="dashboard">
+        <ScreenHeader
+          title="Alertas"
+          subtitle={openCount === 0 ? "Todo atendido" : `${openCount} por atender`}
+        >
+          <Segmented
+            options={[
+              { key: "abiertas", label: "Abiertas" },
+              { key: "atendidas", label: "Atendidas" },
+              { key: "todas", label: "Todas" },
+            ]}
+            value={filter}
+            onChange={(k) => setFilter(k as Filter)}
+            style={styles.segmented}
+          />
+        </ScreenHeader>
+      </WebContainer>
 
       <ScrollView
         style={styles.flex}
@@ -95,159 +245,28 @@ export default function AlertasScreen(): React.ReactElement {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {alerts.length === 0 ? (
-          <EmptyState
-            icon={BellOff}
-            illu={ILU.calma}
-            title={filter === "abiertas" ? "Todo tranquilo" : "Nada por aquí"}
-            text={
-              filter === "abiertas"
-                ? "No hay alertas por atender. Se generan solas: inasistencias, pastillas, anemia y emergencias."
-                : "Cambia el filtro para ver otras alertas."
-            }
-          />
-        ) : (
-          alerts.map((alert) => {
-            const p = patientOf(alert.patientId);
-            const isUrgent = alert.type === "emergencia" || alert.type === "alarma";
-            const urgentOpen = isUrgent && alert.status === "abierta";
-            return (
-              <Card
-                key={alert.id}
-                style={[
-                  styles.alertCard,
-                  alert.status === "abierta" && styles.alertOpen,
-                  urgentOpen && styles.alertUrgent,
-                ]}
-              >
-                <View style={styles.alertTop}>
-                  <PressableScale
-                    onPress={() =>
-                      p &&
-                      router.push({ pathname: "/(obstetra)/gestante/[id]", params: { id: p.id } })
-                    }
-                    accessibilityLabel={`Ficha de ${p?.firstName ?? "paciente"}`}
-                    style={styles.alertPatient}
-                  >
-                    {p ? (
-                      <Avatar
-                        uri={avatarUri(p.dni, p.avatarVersion)}
-                        color={isUrgent ? gwarm.rose : accent.main}
-                        background={isUrgent ? gwarm.redSoft : accent.soft}
-                        size={40}
-                      />
-                    ) : null}
-                    <View style={styles.rowInfo}>
-                      <Text style={styles.alertName} numberOfLines={1}>
-                        {p ? `${p.firstName} ${p.lastName.split(" ")[0]}` : "Paciente"}
-                      </Text>
-                      <Text style={styles.alertTime}>{tiempoRelativo(alert.atISO)}</Text>
-                    </View>
-                  </PressableScale>
-                  <AlertTypeWord alertType={alert.type} />
-                </View>
-
-                {isUrgent ? (
-                  <View style={styles.detailRow}>
-                    <Illustration
-                      source={alert.type === "emergencia" ? ILU.sos : ILU.sintomas}
-                      width={54}
-                      height={54}
-                    />
-                    <Text style={[styles.alertDetail, styles.flex]}>{alert.detail}</Text>
-                  </View>
-                ) : (
-                  <Text style={styles.alertDetail}>{alert.detail}</Text>
-                )}
-
-                {alert.lat != null && alert.lng != null ? (
-                  <LocationChip
-                    lat={alert.lat}
-                    lng={alert.lng}
-                    label={
-                      p
-                        ? `${alert.type === "emergencia" ? "SOS" : "Aviso"} de ${p.firstName} ${p.lastName.split(" ")[0]} · VitMaterna`
-                        : "Ubicación del aviso · VitMaterna"
-                    }
-                    title="Ver ubicación GPS"
-                    color={isUrgent ? gwarm.rose : accent.main}
-                    testID={`gps-alerta-${alert.id}`}
-                  />
-                ) : null}
-
-                {alert.status === "atendida" ? (
-                  <View style={styles.attendedBox}>
-                    <View style={styles.attendedRow}>
-                      <CheckCircle2 size={15} color={gwarm.tealDeep} />
-                      <Text style={styles.attendedLabel}>
-                        Atendida {alert.attendedAtISO ? tiempoRelativo(alert.attendedAtISO) : ""}
-                      </Text>
-                    </View>
-                    {alert.note ? <Text style={styles.attendedNote}>{alert.note}</Text> : null}
-                  </View>
-                ) : attendingId === alert.id ? (
-                  <View style={styles.attendForm}>
-                    <Field
-                      label="¿Qué se hizo o coordinó?"
-                      value={note}
-                      onChangeText={setNote}
-                      placeholder="Escribe una nota corta…"
-                      multiline
-                      accent={accent.main}
-                      maxLength={300}
-                    />
-                    <View style={styles.formActions}>
-                      <AppButton
-                        title="Cerrar alerta"
-                        onPress={() => attend(alert.id)}
-                        color={gwarm.teal}
-                        small
-                        disabled={note.trim().length === 0}
-                        style={styles.flex}
-                      />
-                      <AppButton
-                        title="Cancelar"
-                        onPress={() => {
-                          setAttendingId(null);
-                          setNote("");
-                        }}
-                        color={gwarm.inkSoft}
-                        variant="outline"
-                        small
-                        style={styles.flex}
-                      />
-                    </View>
-                  </View>
-                ) : (
-                  <View style={styles.actionsRow}>
-                    <AppButton
-                      title="Atender"
-                      onPress={() => {
-                        setAttendingId(alert.id);
-                        setNote("");
-                      }}
-                      color={isUrgent ? gwarm.rose : accent.main}
-                      small
-                      testID={`atender-${alert.id}`}
-                    />
-                    <PressableScale
-                      onPress={() =>
-                        router.push({
-                          pathname: "/(obstetra)/chat/[id]",
-                          params: { id: alert.patientId },
-                        })
-                      }
-                      accessibilityLabel="Abrir chat"
-                      style={styles.chatIconButton}
-                    >
-                      <MessageCircle size={19} color={accent.main} />
-                    </PressableScale>
-                  </View>
-                )}
-              </Card>
-            );
-          })
-        )}
+        <WebContainer size="dashboard">
+          {alerts.length === 0 ? (
+            <EmptyState
+              icon={BellOff}
+              illu={ILU.calma}
+              title={filter === "abiertas" ? "Todo tranquilo" : "Nada por aquí"}
+              text={
+                filter === "abiertas"
+                  ? "No hay alertas por atender. Se generan solas: inasistencias, pastillas, anemia y emergencias."
+                  : "Cambia el filtro para ver otras alertas."
+              }
+            />
+          ) : isWide ? (
+            <View style={styles.desktopGrid}>
+              {alerts.map((alert) => renderAlertCard(alert))}
+            </View>
+          ) : (
+            <View style={styles.mobileStack}>
+              {alerts.map((alert) => renderAlertCard(alert))}
+            </View>
+          )}
+        </WebContainer>
       </ScrollView>
     </View>
   );
@@ -259,7 +278,19 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 32,
+  },
+  mobileStack: {
     gap: 12,
+  },
+  desktopGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 16,
+  },
+  desktopAlertCard: {
+    flexBasis: "48.5%",
+    flexGrow: 1,
+    minWidth: 340,
   },
   segmented: { marginTop: 8 },
   alertCard: { gap: 10 },

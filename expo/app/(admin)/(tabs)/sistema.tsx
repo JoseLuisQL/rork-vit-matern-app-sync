@@ -2,6 +2,7 @@
  * Sistema (administración): estado del entorno en vivo, interruptor de modo
  * mantenimiento (con mensaje editable e ilustración), interruptor de modo
  * producción y módulo integral de integración con WhatsApp vía Open-WA.
+ * Adaptado con arquitectura responsiva Web (2 columnas en escritorio).
  */
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
@@ -22,6 +23,7 @@ import {
 } from "lucide-react-native";
 import { gfonts, gwarm, warmPlum } from "@/constants/theme";
 import { ILU } from "@/constants/illustrations";
+import { useResponsive } from "@/hooks/useResponsive";
 import { ApiError } from "@/lib/api";
 import { confirmAction } from "@/lib/confirm";
 import { tiempoRelativo } from "@/lib/format";
@@ -34,6 +36,8 @@ import { PopIn } from "@/components/gestante/PopIn";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SectionHeader } from "@/components/SectionHeader";
 import { useToast } from "@/components/Toast";
+import { WebCol, WebRow } from "@/components/web/WebGrid";
+import { WebContainer } from "@/components/web/WebContainer";
 import type { WhatsAppConfig } from "@/types";
 
 const accent = warmPlum;
@@ -51,6 +55,9 @@ export default function SistemaScreen(): React.ReactElement {
   } = useApp();
 
   const { show } = useToast();
+  const { isDesktop, isTablet } = useResponsive();
+  const isWide = isDesktop || isTablet;
+
   const [busy, setBusy] = useState<"mantenimiento" | "entorno" | "mensaje" | "demo" | "wa-config" | "wa-test" | "wa-send" | null>(null);
   const [messageDraft, setMessageDraft] = useState<string>(
     systemConfig?.maintenanceMessage ?? "",
@@ -339,428 +346,457 @@ export default function SistemaScreen(): React.ReactElement {
 
   const isWaEnabled = whatsappConfig?.enabled === true;
 
+  const renderStatusBanner = () => (
+    <PopIn>
+      <Card style={[styles.statusCard, maintenance && styles.statusCardMaintenance]}>
+        <Illustration
+          source={maintenance ? ILU.mantenimiento : isProduction ? ILU.produccion : ILU.centroSalud}
+          width={92}
+          height={92}
+        />
+        <View style={styles.statusInfo}>
+          <Text style={styles.statusTitle}>
+            {maintenance ? "En mantenimiento" : "Funcionando con normalidad"}
+          </Text>
+          <View style={styles.badgeRow}>
+            <View
+              style={[
+                styles.envBadge,
+                { backgroundColor: isProduction ? gwarm.tealSoft : accent.soft },
+              ]}
+            >
+              <View
+                style={[
+                  styles.envDot,
+                  { backgroundColor: isProduction ? gwarm.teal : accent.main },
+                ]}
+              />
+              <Text
+                style={[
+                  styles.envBadgeText,
+                  { color: isProduction ? gwarm.tealDeep : accent.deep },
+                ]}
+              >
+                {isProduction ? "Producción" : "Demostración"}
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.statusMeta}>
+            Último cambio {tiempoRelativo(systemConfig.updatedAtISO)} · se aplica en tiempo
+            real
+          </Text>
+        </View>
+      </Card>
+    </PopIn>
+  );
+
+  const renderEnvironmentSection = () => (
+    <View style={styles.colSection}>
+      {/* Mantenimiento */}
+      <PopIn delay={80}>
+        <SectionHeader title="Modo mantenimiento" />
+        <Card style={styles.card}>
+          <View style={styles.switchRow}>
+            <View style={[styles.iluCircle, { backgroundColor: gwarm.amberSoft }]}>
+              <Illustration source={ILU.mantenimiento} width={38} height={38} />
+            </View>
+            <View style={styles.switchInfo}>
+              <Text style={styles.switchTitle}>Poner en mantenimiento</Text>
+              <Text style={styles.switchText}>
+                Pausa la app de gestantes y obstetras con un aviso ilustrado.
+              </Text>
+            </View>
+            <Switch
+              value={maintenance}
+              disabled={busy !== null}
+              onValueChange={(v) => void toggleMaintenance(v)}
+              trackColor={{ true: gwarm.amber, false: gwarm.borderStrong }}
+              thumbColor="#FFFFFF"
+              testID="switch-mantenimiento"
+            />
+          </View>
+          <Field
+            label="Mensaje que verán las usuarias"
+            value={messageDraft}
+            onChangeText={(t) => {
+              setMessageDraft(t);
+              setMessageDirty(true);
+            }}
+            placeholder="Estamos mejorando VitMaterna…"
+            multiline
+            accent={gwarm.amber}
+            maxLength={240}
+          />
+          {messageChanged ? (
+            <AppButton
+              title="Guardar mensaje"
+              onPress={() => void saveMessage()}
+              color={gwarm.amber}
+              variant="soft"
+              small
+              loading={busy === "mensaje"}
+            />
+          ) : null}
+          <Text style={styles.note}>
+            Sus cambios quedan guardados en cada teléfono y se envían solos al volver la app.
+          </Text>
+        </Card>
+      </PopIn>
+
+      {/* Modo Producción */}
+      <PopIn delay={120}>
+        <SectionHeader title="Modo producción" />
+        <Card style={styles.card}>
+          <View style={styles.switchRow}>
+            <View style={[styles.iluCircle, { backgroundColor: gwarm.tealSoft }]}>
+              <Illustration source={ILU.produccion} width={38} height={38} />
+            </View>
+            <View style={styles.switchInfo}>
+              <Text style={styles.switchTitle}>Usar datos de producción</Text>
+              <Text style={styles.switchText}>
+                Plataforma limpia para uso real: sin datos de ejemplo y sin cuentas de prueba en el login.
+              </Text>
+            </View>
+            <Switch
+              value={isProduction}
+              disabled={busy !== null}
+              onValueChange={(v) => void toggleEnvironment(v)}
+              trackColor={{ true: gwarm.teal, false: gwarm.borderStrong }}
+              thumbColor="#FFFFFF"
+              testID="switch-produccion"
+            />
+          </View>
+          <Text style={styles.note}>
+            {isProduction
+              ? "Estás en producción: el login solo acepta cuentas reales creadas por administración."
+              : "Estás en demostración: el login muestra los accesos de prueba de un toque."}
+          </Text>
+        </Card>
+      </PopIn>
+
+      {!isProduction ? (
+        <PopIn delay={160}>
+          <SectionHeader title="Demostración" />
+          <Card style={styles.card}>
+            <Text style={styles.note}>
+              Vuelve a los datos de ejemplo del servidor: pacientes con distintos niveles de
+              riesgo, citas, alertas, mensajes y visitas.
+            </Text>
+            <AppButton
+              title="Restaurar datos de demostración"
+              onPress={() => void restoreDemo()}
+              color={accent.main}
+              variant="soft"
+              loading={busy === "demo"}
+              testID="btn-reset-demo"
+            />
+          </Card>
+        </PopIn>
+      ) : null}
+    </View>
+  );
+
+  const renderWhatsAppSection = () => (
+    <View style={styles.colSection}>
+      <PopIn delay={40}>
+        <SectionHeader title="Notificaciones por WhatsApp (Open-WA)" />
+        <Card style={styles.card}>
+          <View style={styles.switchRow}>
+            <View style={[styles.iluCircle, { backgroundColor: "#DCF8C6" }]}>
+              <MessageSquare size={26} color="#075E54" />
+            </View>
+            <View style={styles.switchInfo}>
+              <Text style={styles.switchTitle}>Servicio de WhatsApp</Text>
+              <Text style={styles.switchText}>
+                Envía avisos de citas, recordatorios y alertas SOS directo al WhatsApp de usuarias.
+              </Text>
+            </View>
+            <Switch
+              value={isWaEnabled}
+              disabled={busy !== null}
+              onValueChange={(v) => void toggleWhatsAppMaster(v)}
+              trackColor={{ true: "#25D366", false: gwarm.borderStrong }}
+              thumbColor="#FFFFFF"
+              testID="switch-whatsapp-master"
+            />
+          </View>
+
+          {/* Credenciales y Servidor */}
+          <View style={styles.configBox}>
+            <Text style={styles.boxTitle}>Configuración del Servidor</Text>
+            <Field
+              label="URL del Servidor Open-WA"
+              value={waServerUrl}
+              onChangeText={(t) => {
+                setWaServerUrl(t);
+                setWaCredentialsDirty(true);
+              }}
+              placeholder="https://openwa.qware.me"
+              autoCapitalize="none"
+              accent="#075E54"
+            />
+            <Field
+              label="API Key / Secret Token"
+              value={waApiKey}
+              onChangeText={(t) => {
+                setWaApiKey(t);
+                setWaCredentialsDirty(true);
+              }}
+              placeholder="Ingresa tu API Key de Open-WA"
+              autoCapitalize="none"
+              accent="#075E54"
+              secureTextEntry
+            />
+            <Field
+              label="ID de Sesión"
+              value={waSessionId}
+              onChangeText={(t) => {
+                setWaSessionId(t);
+                setWaCredentialsDirty(true);
+              }}
+              placeholder="vitmaterna"
+              autoCapitalize="none"
+              accent="#075E54"
+            />
+
+            {waCredentialsChanged ? (
+              <AppButton
+                title="Guardar credenciales"
+                onPress={() => void saveWhatsAppCredentials()}
+                color="#075E54"
+                variant="solid"
+                small
+                loading={busy === "wa-config"}
+              />
+            ) : null}
+          </View>
+
+          {/* Diagnóstico de Conexión */}
+          <View style={styles.diagBox}>
+            <View style={styles.diagHeader}>
+              <Text style={styles.diagTitle}>Estado de Conexión</Text>
+              <TouchableOpacity
+                style={styles.testBtn}
+                onPress={() => void testConnection()}
+                disabled={busy === "wa-test"}
+              >
+                <RefreshCw size={14} color="#075E54" />
+                <Text style={styles.testBtnText}>
+                  {busy === "wa-test" ? "Verificando…" : "Probar conexión"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {waStatusInfo?.tested ? (
+              <View
+                style={[
+                  styles.statusBadge,
+                  {
+                    backgroundColor: waStatusInfo.ok
+                      ? "#DCF8C6"
+                      : waStatusInfo.status === "unconfigured"
+                        ? gwarm.amberSoft
+                        : "#FFEBEE",
+                  },
+                ]}
+              >
+                {waStatusInfo.ok ? (
+                  <CheckCircle2 size={16} color="#075E54" />
+                ) : (
+                  <AlertTriangle size={16} color="#C62828" />
+                )}
+                <Text
+                  style={[
+                    styles.statusBadgeText,
+                    { color: waStatusInfo.ok ? "#075E54" : "#C62828" },
+                  ]}
+                >
+                  {waStatusInfo.ok
+                    ? `Conectado a ${waStatusInfo.serverUrl ?? "Open-WA"} · ${waStatusInfo.details ?? "Sesión activa"}${
+                        typeof waStatusInfo.battery === "number"
+                          ? ` (${waStatusInfo.battery}% batería)`
+                          : ""
+                      }`
+                    : waStatusInfo.error || "No se pudo conectar"}
+                </Text>
+              </View>
+            ) : (
+              <Text style={styles.diagHint}>
+                Presiona &quot;Probar conexión&quot; para validar la sesión de WhatsApp en openwa.qware.me.
+              </Text>
+            )}
+          </View>
+
+          {/* Interruptores Granulares */}
+          <View style={styles.featuresSection}>
+            <Text style={styles.boxTitle}>Eventos de Notificación</Text>
+
+            <View style={styles.subSwitchRow}>
+              <Calendar size={18} color={gwarm.ink} />
+              <View style={styles.subSwitchInfo}>
+                <Text style={styles.subSwitchTitle}>Citas asignadas y cambios</Text>
+                <Text style={styles.subSwitchText}>
+                  Avisa a la gestante al programar o reprogramar un control.
+                </Text>
+              </View>
+              <Switch
+                value={whatsappConfig?.notifyAppointments !== false}
+                disabled={!isWaEnabled || busy !== null}
+                onValueChange={(v) => void toggleWhatsAppFeature("notifyAppointments", v)}
+                trackColor={{ true: "#25D366", false: gwarm.borderStrong }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <View style={styles.subSwitchRow}>
+              <Pill size={18} color={gwarm.ink} />
+              <View style={styles.subSwitchInfo}>
+                <Text style={styles.subSwitchTitle}>Medicamentos prescritos</Text>
+                <Text style={styles.subSwitchText}>
+                  Avisa a la gestante cuando la obstetra indica o cambia suplementos.
+                </Text>
+              </View>
+              <Switch
+                value={whatsappConfig?.notifySupplements !== false}
+                disabled={!isWaEnabled || busy !== null}
+                onValueChange={(v) => void toggleWhatsAppFeature("notifySupplements", v)}
+                trackColor={{ true: "#25D366", false: gwarm.borderStrong }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <View style={styles.subSwitchRow}>
+              <Bell size={18} color={gwarm.ink} />
+              <View style={styles.subSwitchInfo}>
+                <Text style={styles.subSwitchTitle}>Recordatorios de citas (24h / 2h)</Text>
+                <Text style={styles.subSwitchText}>
+                  Recuerda automáticamente el día previo y horas antes del control.
+                </Text>
+              </View>
+              <Switch
+                value={whatsappConfig?.remindAppointments !== false}
+                disabled={!isWaEnabled || busy !== null}
+                onValueChange={(v) => void toggleWhatsAppFeature("remindAppointments", v)}
+                trackColor={{ true: "#25D366", false: gwarm.borderStrong }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <View style={styles.subSwitchRow}>
+              <Pill size={18} color={gwarm.ink} />
+              <View style={styles.subSwitchInfo}>
+                <Text style={styles.subSwitchTitle}>Recordatorios de pastillas de hoy</Text>
+                <Text style={styles.subSwitchText}>
+                  Aviso matutino para gestantes que no registraron su toma diaria.
+                </Text>
+              </View>
+              <Switch
+                value={whatsappConfig?.remindSupplements !== false}
+                disabled={!isWaEnabled || busy !== null}
+                onValueChange={(v) => void toggleWhatsAppFeature("remindSupplements", v)}
+                trackColor={{ true: "#25D366", false: gwarm.borderStrong }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <View style={styles.subSwitchRow}>
+              <MessageSquare size={18} color={gwarm.ink} />
+              <View style={styles.subSwitchInfo}>
+                <Text style={styles.subSwitchTitle}>Desvío de chat offline</Text>
+                <Text style={styles.subSwitchText}>
+                  Reenvía mensajes de la obstetra si la gestante no está en la app.
+                </Text>
+              </View>
+              <Switch
+                value={whatsappConfig?.chatOfflineFallback !== false}
+                disabled={!isWaEnabled || busy !== null}
+                onValueChange={(v) => void toggleWhatsAppFeature("chatOfflineFallback", v)}
+                trackColor={{ true: "#25D366", false: gwarm.borderStrong }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+
+            <View style={styles.subSwitchRow}>
+              <ShieldAlert size={18} color="#C62828" />
+              <View style={styles.subSwitchInfo}>
+                <Text style={[styles.subSwitchTitle, { color: "#C62828" }]}>
+                  Alertas de Emergencia SOS
+                </Text>
+                <Text style={styles.subSwitchText}>
+                  Envía alerta urgente con GPS a las obstetras si están offline.
+                </Text>
+              </View>
+              <Switch
+                value={whatsappConfig?.sosOfflineAlerts !== false}
+                disabled={!isWaEnabled || busy !== null}
+                onValueChange={(v) => void toggleWhatsAppFeature("sosOfflineAlerts", v)}
+                trackColor={{ true: "#C62828", false: gwarm.borderStrong }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+          </View>
+
+          {/* Enviar Mensaje de Prueba */}
+          <View style={styles.testSection}>
+            <Text style={styles.boxTitle}>Envío de Prueba</Text>
+            <View style={styles.testRow}>
+              <Field
+                label="Celular de prueba"
+                value={waTestPhone}
+                onChangeText={setWaTestPhone}
+                placeholder="987 654 321"
+                keyboardType="phone-pad"
+                accent="#075E54"
+                style={styles.flex}
+              />
+              <AppButton
+                title="Enviar"
+                onPress={() => void sendTestMessage()}
+                color="#075E54"
+                variant="soft"
+                loading={busy === "wa-send"}
+                style={styles.sendBtn}
+              />
+            </View>
+          </View>
+        </Card>
+      </PopIn>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Sistema" subtitle="Mantenimiento, entorno y servicios" />
+      <WebContainer size="dashboard">
+        <ScreenHeader title="Sistema" subtitle="Mantenimiento, entorno y servicios" />
+      </WebContainer>
+
       <ScrollView
         style={styles.flex}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <PopIn>
-          <Card style={[styles.statusCard, maintenance && styles.statusCardMaintenance]}>
-            <Illustration
-              source={maintenance ? ILU.mantenimiento : isProduction ? ILU.produccion : ILU.centroSalud}
-              width={92}
-              height={92}
-            />
-            <View style={styles.statusInfo}>
-              <Text style={styles.statusTitle}>
-                {maintenance ? "En mantenimiento" : "Funcionando con normalidad"}
-              </Text>
-              <View style={styles.badgeRow}>
-                <View
-                  style={[
-                    styles.envBadge,
-                    { backgroundColor: isProduction ? gwarm.tealSoft : accent.soft },
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.envDot,
-                      { backgroundColor: isProduction ? gwarm.teal : accent.main },
-                    ]}
-                  />
-                  <Text
-                    style={[
-                      styles.envBadgeText,
-                      { color: isProduction ? gwarm.tealDeep : accent.deep },
-                    ]}
-                  >
-                    {isProduction ? "Producción" : "Demostración"}
-                  </Text>
-                </View>
+        <WebContainer size="dashboard">
+          <View style={styles.gapStack}>
+            {renderStatusBanner()}
+
+            {isWide ? (
+              <WebRow gap={20}>
+                <WebCol flex={5}>{renderEnvironmentSection()}</WebCol>
+                <WebCol flex={7}>{renderWhatsAppSection()}</WebCol>
+              </WebRow>
+            ) : (
+              <View style={styles.mobileStack}>
+                {renderWhatsAppSection()}
+                {renderEnvironmentSection()}
               </View>
-              <Text style={styles.statusMeta}>
-                Último cambio {tiempoRelativo(systemConfig.updatedAtISO)} · se aplica en tiempo
-                real
-              </Text>
-            </View>
-          </Card>
-        </PopIn>
+            )}
 
-        {/* ---------- SECCIÓN WHATSAPP (OPEN-WA) ---------- */}
-        <PopIn delay={40}>
-          <SectionHeader title="Notificaciones por WhatsApp" />
-          <Card style={styles.card}>
-            <View style={styles.switchRow}>
-              <View style={[styles.iluCircle, { backgroundColor: "#DCF8C6" }]}>
-                <MessageSquare size={26} color="#075E54" />
-              </View>
-              <View style={styles.switchInfo}>
-                <Text style={styles.switchTitle}>Servicio de WhatsApp</Text>
-                <Text style={styles.switchText}>
-                  Envía avisos de citas, recordatorios y alertas SOS directo al WhatsApp de usuarias.
-                </Text>
-              </View>
-              <Switch
-                value={isWaEnabled}
-                disabled={busy !== null}
-                onValueChange={(v) => void toggleWhatsAppMaster(v)}
-                trackColor={{ true: "#25D366", false: gwarm.borderStrong }}
-                thumbColor="#FFFFFF"
-                testID="switch-whatsapp-master"
-              />
-            </View>
-
-            {/* Credenciales y Servidor */}
-            <View style={styles.configBox}>
-              <Text style={styles.boxTitle}>Configuración de Open-WA</Text>
-              <Field
-                label="URL del Servidor Open-WA"
-                value={waServerUrl}
-                onChangeText={(t) => {
-                  setWaServerUrl(t);
-                  setWaCredentialsDirty(true);
-                }}
-                placeholder="https://openwa.qware.me"
-                autoCapitalize="none"
-                accent="#075E54"
-              />
-              <Field
-                label="API Key / Secret Token"
-                value={waApiKey}
-                onChangeText={(t) => {
-                  setWaApiKey(t);
-                  setWaCredentialsDirty(true);
-                }}
-                placeholder="Ingresa tu API Key de Open-WA"
-                autoCapitalize="none"
-                accent="#075E54"
-                secureTextEntry
-              />
-              <Field
-                label="ID de Sesión"
-                value={waSessionId}
-                onChangeText={(t) => {
-                  setWaSessionId(t);
-                  setWaCredentialsDirty(true);
-                }}
-                placeholder="vitmaterna"
-                autoCapitalize="none"
-                accent="#075E54"
-              />
-
-              {waCredentialsChanged ? (
-                <AppButton
-                  title="Guardar credenciales"
-                  onPress={() => void saveWhatsAppCredentials()}
-                  color="#075E54"
-                  variant="solid"
-                  small
-                  loading={busy === "wa-config"}
-                />
-              ) : null}
-            </View>
-
-            {/* Diagnóstico de Conexión */}
-            <View style={styles.diagBox}>
-              <View style={styles.diagHeader}>
-                <Text style={styles.diagTitle}>Estado de Conexión</Text>
-                <TouchableOpacity
-                  style={styles.testBtn}
-                  onPress={() => void testConnection()}
-                  disabled={busy === "wa-test"}
-                >
-                  <RefreshCw size={14} color="#075E54" />
-                  <Text style={styles.testBtnText}>
-                    {busy === "wa-test" ? "Verificando…" : "Probar conexión"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {waStatusInfo?.tested ? (
-                <View
-                  style={[
-                    styles.statusBadge,
-                    {
-                      backgroundColor: waStatusInfo.ok
-                        ? "#DCF8C6"
-                        : waStatusInfo.status === "unconfigured"
-                          ? gwarm.amberSoft
-                          : "#FFEBEE",
-                    },
-                  ]}
-                >
-                  {waStatusInfo.ok ? (
-                    <CheckCircle2 size={16} color="#075E54" />
-                  ) : (
-                    <AlertTriangle size={16} color="#C62828" />
-                  )}
-                  <Text
-                    style={[
-                      styles.statusBadgeText,
-                      { color: waStatusInfo.ok ? "#075E54" : "#C62828" },
-                    ]}
-                  >
-                    {waStatusInfo.ok
-                      ? `Conectado a ${waStatusInfo.serverUrl ?? "Open-WA"} · ${waStatusInfo.details ?? "Sesión activa"}${
-                          typeof waStatusInfo.battery === "number"
-                            ? ` (${waStatusInfo.battery}% batería)`
-                            : ""
-                        }`
-                      : waStatusInfo.error || "No se pudo conectar"}
-                  </Text>
-                </View>
-              ) : (
-                <Text style={styles.diagHint}>
-                  Presiona &quot;Probar conexión&quot; para validar la sesión de WhatsApp en openwa.qware.me.
-                </Text>
-              )}
-            </View>
-
-            {/* Interruptores Granulares */}
-            <View style={styles.featuresSection}>
-              <Text style={styles.boxTitle}>Eventos de Notificación</Text>
-
-              <View style={styles.subSwitchRow}>
-                <Calendar size={18} color={gwarm.ink} />
-                <View style={styles.subSwitchInfo}>
-                  <Text style={styles.subSwitchTitle}>Citas asignadas y cambios</Text>
-                  <Text style={styles.subSwitchText}>
-                    Avisa a la gestante al programar o reprogramar un control.
-                  </Text>
-                </View>
-                <Switch
-                  value={whatsappConfig?.notifyAppointments !== false}
-                  disabled={!isWaEnabled || busy !== null}
-                  onValueChange={(v) => void toggleWhatsAppFeature("notifyAppointments", v)}
-                  trackColor={{ true: "#25D366", false: gwarm.borderStrong }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
-
-              <View style={styles.subSwitchRow}>
-                <Pill size={18} color={gwarm.ink} />
-                <View style={styles.subSwitchInfo}>
-                  <Text style={styles.subSwitchTitle}>Medicamentos prescritos</Text>
-                  <Text style={styles.subSwitchText}>
-                    Avisa a la gestante cuando la obstetra indica o cambia suplementos.
-                  </Text>
-                </View>
-                <Switch
-                  value={whatsappConfig?.notifySupplements !== false}
-                  disabled={!isWaEnabled || busy !== null}
-                  onValueChange={(v) => void toggleWhatsAppFeature("notifySupplements", v)}
-                  trackColor={{ true: "#25D366", false: gwarm.borderStrong }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
-
-              <View style={styles.subSwitchRow}>
-                <Bell size={18} color={gwarm.ink} />
-                <View style={styles.subSwitchInfo}>
-                  <Text style={styles.subSwitchTitle}>Recordatorios de citas (24h / 2h)</Text>
-                  <Text style={styles.subSwitchText}>
-                    Recuerda automáticamente el día previo y horas antes del control.
-                  </Text>
-                </View>
-                <Switch
-                  value={whatsappConfig?.remindAppointments !== false}
-                  disabled={!isWaEnabled || busy !== null}
-                  onValueChange={(v) => void toggleWhatsAppFeature("remindAppointments", v)}
-                  trackColor={{ true: "#25D366", false: gwarm.borderStrong }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
-
-              <View style={styles.subSwitchRow}>
-                <Pill size={18} color={gwarm.ink} />
-                <View style={styles.subSwitchInfo}>
-                  <Text style={styles.subSwitchTitle}>Recordatorios de pastillas de hoy</Text>
-                  <Text style={styles.subSwitchText}>
-                    Aviso matutino para gestantes que no registraron su toma diaria.
-                  </Text>
-                </View>
-                <Switch
-                  value={whatsappConfig?.remindSupplements !== false}
-                  disabled={!isWaEnabled || busy !== null}
-                  onValueChange={(v) => void toggleWhatsAppFeature("remindSupplements", v)}
-                  trackColor={{ true: "#25D366", false: gwarm.borderStrong }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
-
-              <View style={styles.subSwitchRow}>
-                <MessageSquare size={18} color={gwarm.ink} />
-                <View style={styles.subSwitchInfo}>
-                  <Text style={styles.subSwitchTitle}>Desvío de chat offline</Text>
-                  <Text style={styles.subSwitchText}>
-                    Reenvía mensajes de la obstetra si la gestante no está en la app.
-                  </Text>
-                </View>
-                <Switch
-                  value={whatsappConfig?.chatOfflineFallback !== false}
-                  disabled={!isWaEnabled || busy !== null}
-                  onValueChange={(v) => void toggleWhatsAppFeature("chatOfflineFallback", v)}
-                  trackColor={{ true: "#25D366", false: gwarm.borderStrong }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
-
-              <View style={styles.subSwitchRow}>
-                <ShieldAlert size={18} color="#C62828" />
-                <View style={styles.subSwitchInfo}>
-                  <Text style={[styles.subSwitchTitle, { color: "#C62828" }]}>
-                    Alertas de Emergencia SOS
-                  </Text>
-                  <Text style={styles.subSwitchText}>
-                    Envía alerta urgente con GPS a las obstetras si están offline.
-                  </Text>
-                </View>
-                <Switch
-                  value={whatsappConfig?.sosOfflineAlerts !== false}
-                  disabled={!isWaEnabled || busy !== null}
-                  onValueChange={(v) => void toggleWhatsAppFeature("sosOfflineAlerts", v)}
-                  trackColor={{ true: "#C62828", false: gwarm.borderStrong }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
-            </View>
-
-            {/* Enviar Mensaje de Prueba */}
-            <View style={styles.testSection}>
-              <Text style={styles.boxTitle}>Envío de Prueba</Text>
-              <View style={styles.testRow}>
-                <Field
-                  label="Celular de prueba"
-                  value={waTestPhone}
-                  onChangeText={setWaTestPhone}
-                  placeholder="987 654 321"
-                  keyboardType="phone-pad"
-                  accent="#075E54"
-                  style={styles.flex}
-                />
-                <AppButton
-                  title="Enviar"
-                  onPress={() => void sendTestMessage()}
-                  color="#075E54"
-                  variant="soft"
-                  loading={busy === "wa-send"}
-                  style={styles.sendBtn}
-                />
-              </View>
-            </View>
-          </Card>
-        </PopIn>
-
-        {/* ---------- SECCIÓN MANTENIMIENTO ---------- */}
-        <PopIn delay={80}>
-          <SectionHeader title="Modo mantenimiento" />
-          <Card style={styles.card}>
-            <View style={styles.switchRow}>
-              <View style={[styles.iluCircle, { backgroundColor: gwarm.amberSoft }]}>
-                <Illustration source={ILU.mantenimiento} width={38} height={38} />
-              </View>
-              <View style={styles.switchInfo}>
-                <Text style={styles.switchTitle}>Poner en mantenimiento</Text>
-                <Text style={styles.switchText}>
-                  Pausa la app de gestantes y obstetras con un aviso bonito e ilustrado.
-                </Text>
-              </View>
-              <Switch
-                value={maintenance}
-                disabled={busy !== null}
-                onValueChange={(v) => void toggleMaintenance(v)}
-                trackColor={{ true: gwarm.amber, false: gwarm.borderStrong }}
-                thumbColor="#FFFFFF"
-                testID="switch-mantenimiento"
-              />
-            </View>
-            <Field
-              label="Mensaje que verán las usuarias"
-              value={messageDraft}
-              onChangeText={(t) => {
-                setMessageDraft(t);
-                setMessageDirty(true);
-              }}
-              placeholder="Estamos mejorando VitMaterna…"
-              multiline
-              accent={gwarm.amber}
-              maxLength={240}
-            />
-            {messageChanged ? (
-              <AppButton
-                title="Guardar mensaje"
-                onPress={() => void saveMessage()}
-                color={gwarm.amber}
-                variant="soft"
-                small
-                loading={busy === "mensaje"}
-              />
-            ) : null}
-            <Text style={styles.note}>
-              Sus cambios quedan guardados en cada teléfono y se envían solos al volver la app.
+            <Text style={styles.footerNote}>
+              Los cambios del sistema llegan a todos los teléfonos en segundos.
             </Text>
-          </Card>
-        </PopIn>
-
-        {/* ---------- SECCIÓN PRODUCCIÓN ---------- */}
-        <PopIn delay={120}>
-          <SectionHeader title="Modo producción" />
-          <Card style={styles.card}>
-            <View style={styles.switchRow}>
-              <View style={[styles.iluCircle, { backgroundColor: gwarm.tealSoft }]}>
-                <Illustration source={ILU.produccion} width={38} height={38} />
-              </View>
-              <View style={styles.switchInfo}>
-                <Text style={styles.switchTitle}>Usar datos de producción</Text>
-                <Text style={styles.switchText}>
-                  Plataforma limpia para uso real: sin datos de ejemplo y sin cuentas de prueba
-                  en el inicio de sesión.
-                </Text>
-              </View>
-              <Switch
-                value={isProduction}
-                disabled={busy !== null}
-                onValueChange={(v) => void toggleEnvironment(v)}
-                trackColor={{ true: gwarm.teal, false: gwarm.borderStrong }}
-                thumbColor="#FFFFFF"
-                testID="switch-produccion"
-              />
-            </View>
-            <Text style={styles.note}>
-              {isProduction
-                ? "Estás en producción: el login solo acepta cuentas reales creadas por administración."
-                : "Estás en demostración: el login muestra los accesos de prueba de un toque."}
-            </Text>
-          </Card>
-        </PopIn>
-
-        {!isProduction ? (
-          <PopIn delay={160}>
-            <SectionHeader title="Demostración" />
-            <Card style={styles.card}>
-              <Text style={styles.note}>
-                Vuelve a los datos de ejemplo del servidor: pacientes con distintos niveles de
-                riesgo, citas, alertas, mensajes y visitas.
-              </Text>
-              <AppButton
-                title="Restaurar datos de demostración"
-                onPress={() => void restoreDemo()}
-                color={accent.main}
-                variant="soft"
-                loading={busy === "demo"}
-                testID="btn-reset-demo"
-              />
-            </Card>
-          </PopIn>
-        ) : null}
-
-        <Text style={styles.footerNote}>
-          Los cambios del sistema llegan a todos los teléfonos en segundos.
-        </Text>
+          </View>
+        </WebContainer>
       </ScrollView>
     </View>
   );
@@ -772,6 +808,14 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     paddingBottom: 48,
+  },
+  gapStack: {
+    gap: 14,
+  },
+  mobileStack: {
+    gap: 14,
+  },
+  colSection: {
     gap: 14,
   },
   statusCard: {

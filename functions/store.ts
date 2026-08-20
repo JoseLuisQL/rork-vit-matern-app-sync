@@ -200,6 +200,8 @@ export class VitmaternaStore extends DurableObject {
           return await this.handleSchedule(request, db, user);
         case "/api/user/avatar":
           return await this.handleSetAvatar(request, db, user);
+        case "/api/user/profile":
+          return await this.handleUpdateProfile(request, db, user);
         case "/api/user/auto-controls":
           return await this.handleSetAutoControls(request, db, user);
         case "/api/admin/create-user":
@@ -645,6 +647,45 @@ export class VitmaternaStore extends DurableObject {
     }
     await this.ctx.storage.put(`${AVATAR_PREFIX}${user.dni}`, dataUrl);
     user.avatarVersion = (user.avatarVersion ?? 0) + 1;
+    await this.save();
+    return json({ snapshot: this.snapshotFor(user, db) });
+  }
+
+  private async handleUpdateProfile(request: Request, db: DBState, user: StoredUser): Promise<Response> {
+    const body = (await request.json()) as {
+      firstName?: string;
+      lastName?: string;
+      phone?: string;
+      password?: string;
+    };
+    const firstName = (body.firstName ?? user.firstName).trim();
+    const lastName = (body.lastName ?? user.lastName).trim();
+    const phone = body.phone !== undefined ? body.phone.trim() : (user.phone ?? "");
+    const password = body.password !== undefined ? body.password.trim() : "";
+
+    if (firstName.length === 0 || lastName.length === 0) {
+      return json({ error: "Nombres y apellidos son obligatorios" }, 400);
+    }
+    if (password.length > 0 && password.length < 6) {
+      return json({ error: "La contraseña debe tener al menos 6 caracteres" }, 400);
+    }
+
+    user.firstName = firstName;
+    user.lastName = lastName;
+    user.phone = phone || undefined;
+    if (password.length >= 6) {
+      user.password = password;
+    }
+
+    if (user.role === "gestante" && user.patientId) {
+      const patient = db.patients.find((p) => p.id === user.patientId);
+      if (patient) {
+        patient.firstName = firstName;
+        patient.lastName = lastName;
+        patient.phone = phone;
+      }
+    }
+
     await this.save();
     return json({ snapshot: this.snapshotFor(user, db) });
   }

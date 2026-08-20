@@ -1,13 +1,12 @@
 /**
- * Inicio de sesión "cuaderno de cuidado": ilustración de bienvenida hecha a
- * mano y campos cálidos con letra manuscrita. Los accesos de demostración
- * vienen del servidor en tiempo real: en modo producción desaparecen solos,
- * y si hay mantenimiento se muestra el aviso ilustrado. La verificación la
- * hace el servidor (DNI + clave).
+ * Pantalla de inicio de sesión ("cuaderno de cuidado").
+ * En escritorio: layout dividido 50/50 centrado con hero visual a la izquierda
+ * y formulario de acceso a la derecha.
+ * En móvil: flujo vertical apilado con animaciones suaves.
  */
-import { useQuery } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
+import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, Eye, EyeOff, Info } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import {
@@ -21,20 +20,21 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { brand, gfonts, gShadow, gwarm, warmAccent } from "@/constants/theme";
 import { ROLE_LABEL } from "@/constants/labels";
+import { brand, gfonts, gShadow, gwarm, warmAccent } from "@/constants/theme";
 import { GICON, ILU } from "@/constants/illustrations";
 import { api, ApiError } from "@/lib/api";
 import { useApp } from "@/providers/AppProvider";
+import { useResponsive } from "@/hooks/useResponsive";
 import type { PublicConfig, Role } from "@/types";
 import { AppButton } from "@/components/AppButton";
 import { Illustration } from "@/components/gestante/Illustration";
 import { PopIn } from "@/components/gestante/PopIn";
 import { PressableScale } from "@/components/PressableScale";
+import { WebContainer } from "@/components/web/WebContainer";
 
 const DEMO_PASSWORD = "Test@1234";
 
-/** Dibujo de cada rol para la lista de demostración. */
 const ROLE_ILU: Record<Role, string> = {
   gestante: GICON.gestantes,
   obstetra: ILU.obstetra,
@@ -44,6 +44,7 @@ const ROLE_ILU: Record<Role, string> = {
 export default function LoginScreen(): React.ReactElement {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { isDesktop, isTablet } = useResponsive();
   const { login, authNotice, clearAuthNotice } = useApp();
   const [dni, setDni] = useState<string>("");
   const [password, setPassword] = useState<string>("");
@@ -51,10 +52,11 @@ export default function LoginScreen(): React.ReactElement {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  const isWide = isDesktop || isTablet;
+
   /**
    * Configuración pública en tiempo real: entorno (demo/producción),
-   * mantenimiento y cuentas de prueba. Se consulta cada pocos segundos para
-   * que los cambios de administración se reflejen sin recargar.
+   * mantenimiento y cuentas de prueba.
    */
   const { data: publicConfig } = useQuery<PublicConfig>({
     queryKey: ["public-config"],
@@ -75,21 +77,23 @@ export default function LoginScreen(): React.ReactElement {
   );
 
   const doLogin = useCallback(
-    async (d: string, p: string) => {
-      if (!/^\d{8}$/.test(d)) {
-        setError("El DNI debe tener 8 dígitos.");
+    async (dniInput: string, passwordInput: string) => {
+      const cleanDni = dniInput.trim();
+      const cleanPassword = passwordInput.trim();
+      if (!/^\d{8}$/.test(cleanDni)) {
+        setError("Escribe tu DNI completo (8 dígitos).");
         return;
       }
-      if (p.length === 0) {
+      if (cleanPassword.length === 0) {
         setError("Escribe tu contraseña.");
         return;
       }
-      setLoading(true);
       setError(null);
-      clearAuthNotice();
+      setLoading(true);
       try {
-        const user = await login(d, p);
-        goHome(user.role);
+        const u = await login(cleanDni, cleanPassword);
+        clearAuthNotice();
+        goHome(u.role);
       } catch (e) {
         if (e instanceof ApiError && e.status === 0) {
           setError(
@@ -115,6 +119,159 @@ export default function LoginScreen(): React.ReactElement {
     [doLogin, loading],
   );
 
+  const renderHero = () => (
+    <View style={[styles.heroBlock, isWide && styles.heroBlockWide]}>
+      <Illustration source={ILU.bienvenida} width={isWide ? 380 : 310} height={isWide ? 240 : 196} />
+      <View style={styles.brandRow}>
+        <Image
+          source={require("@/assets/images/vitmaterna_logo.png")}
+          style={[styles.logo, isWide && { width: 54, height: 54 }]}
+          contentFit="contain"
+        />
+        <Text style={[styles.title, isWide && { fontSize: 44, lineHeight: 52 }]}>
+          <Text style={{ color: brand.plum }}>Vit</Text>
+          <Text style={{ color: gwarm.ink }}>Materna</Text>
+        </Text>
+      </View>
+      <Text style={[styles.subtitle, isWide && { fontSize: 17, lineHeight: 24 }]}>
+        Cuidamos tu embarazo, cerquita de ti
+      </Text>
+
+      {isWide ? (
+        <View style={styles.desktopClinicBadge}>
+          <Text style={styles.desktopClinicText}>
+            Centro de Salud Talavera · Red de Salud Andahuaylas
+          </Text>
+        </View>
+      ) : null}
+
+      {maintenanceOn ? (
+        <View style={[styles.maintenanceBox, isWide && { marginTop: 16, width: "100%" }]}>
+          <Illustration source={ILU.mantenimiento} width={64} height={64} />
+          <View style={styles.maintenanceInfo}>
+            <Text style={styles.maintenanceTitle}>Estamos en mantenimiento</Text>
+            <Text style={styles.maintenanceText}>
+              {publicConfig?.maintenanceMessage ??
+                "Volvemos en un ratito. Gracias por tu paciencia."}
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
+      {authNotice ? (
+        <View style={[styles.noticeBox, isWide && { marginTop: 16, width: "100%" }]}>
+          <Info size={16} color={gwarm.tealDeep} />
+          <Text style={styles.noticeText}>{authNotice}</Text>
+        </View>
+      ) : null}
+    </View>
+  );
+
+  const renderForm = () => (
+    <View style={styles.formContainer}>
+      <PopIn delay={90}>
+        <View style={styles.formCard}>
+          <Text style={styles.formCardTitle}>Iniciar sesión</Text>
+          <View style={styles.fieldBlock}>
+            <Text style={styles.fieldLabel}>Tu DNI</Text>
+            <TextInput
+              value={dni}
+              onChangeText={(t) => setDni(t.replace(/[^0-9]/g, ""))}
+              placeholder="8 dígitos"
+              placeholderTextColor={gwarm.inkFaint}
+              keyboardType="number-pad"
+              maxLength={8}
+              style={styles.input}
+              testID="login-dni"
+              onSubmitEditing={() => void doLogin(dni, password)}
+            />
+          </View>
+
+          <View style={styles.fieldBlock}>
+            <Text style={styles.fieldLabel}>Tu contraseña</Text>
+            <View style={{ position: "relative" }}>
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Escríbela aquí"
+                placeholderTextColor={gwarm.inkFaint}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                style={[styles.input, { paddingRight: 52 }]}
+                testID="login-password"
+                onSubmitEditing={() => void doLogin(dni, password)}
+              />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                onPress={() => setShowPassword((v) => !v)}
+                style={styles.eyeButton}
+                hitSlop={8}
+              >
+                {showPassword ? (
+                  <EyeOff size={20} color={gwarm.inkFaint} />
+                ) : (
+                  <Eye size={20} color={gwarm.inkFaint} />
+                )}
+              </Pressable>
+            </View>
+          </View>
+
+          {error ? (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
+
+          <AppButton
+            title="Entrar"
+            onPress={() => void doLogin(dni, password)}
+            color={brand.plum}
+            loading={loading}
+            large
+            testID="login-submit"
+          />
+        </View>
+      </PopIn>
+
+      {demoAccounts.length > 0 ? (
+        <PopIn delay={180}>
+          <Text style={styles.demoTitle}>¿Solo quieres mirar? Entra de prueba</Text>
+          <View style={styles.demoList}>
+            {demoAccounts.map((account, index) => {
+              const accent = warmAccent(account.role);
+              return (
+                <PressableScale
+                  key={account.dni}
+                  onPress={() => fillAndLogin(account)}
+                  accessibilityLabel={`Entrar como ${account.name}`}
+                  style={[styles.demoRow, index > 0 && styles.demoRowBorder]}
+                  testID={`demo-${account.dni}`}
+                >
+                  <View style={[styles.demoIlu, { backgroundColor: accent.soft }]}>
+                    <Illustration source={ROLE_ILU[account.role]} width={30} height={30} />
+                  </View>
+                  <View style={styles.demoInfo}>
+                    <Text style={styles.demoName}>{account.name}</Text>
+                    <Text style={[styles.demoMeta, { color: accent.main }]}>
+                      {ROLE_LABEL[account.role]}
+                    </Text>
+                  </View>
+                  <ChevronRight size={18} color={gwarm.inkFaint} />
+                </PressableScale>
+              );
+            })}
+          </View>
+        </PopIn>
+      ) : null}
+
+      <View style={styles.footer}>
+        <Illustration source={ILU.flores} width={92} height={30} />
+        <Text style={styles.footerText}>C.S. Talavera · Andahuaylas</Text>
+      </View>
+    </View>
+  );
+
   return (
     <KeyboardAvoidingView
       style={styles.flex}
@@ -124,147 +281,26 @@ export default function LoginScreen(): React.ReactElement {
         style={styles.flex}
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + 10, paddingBottom: insets.bottom + 28 },
+          isWide
+            ? { minHeight: "100%", justifyContent: "center", paddingVertical: 40 }
+            : { paddingTop: insets.top + 10, paddingBottom: insets.bottom + 28 },
         ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <PopIn>
-          <View style={styles.heroBlock}>
-            <Illustration source={ILU.bienvenida} width={310} height={196} />
-            <View style={styles.brandRow}>
-              <Image
-                source={require("@/assets/images/vitmaterna_logo.png")}
-                style={styles.logo}
-                contentFit="contain"
-              />
-              <Text style={styles.title}>
-                <Text style={{ color: brand.plum }}>Vit</Text>
-                <Text style={{ color: gwarm.ink }}>Materna</Text>
-              </Text>
+        <WebContainer size="dashboard">
+          {isWide ? (
+            <View style={styles.desktopLayout}>
+              <View style={styles.desktopLeftCol}>{renderHero()}</View>
+              <View style={styles.desktopRightCol}>{renderForm()}</View>
             </View>
-            <Text style={styles.subtitle}>Cuidamos tu embarazo, cerquita de ti</Text>
-          </View>
-        </PopIn>
-
-        {maintenanceOn ? (
-          <PopIn>
-            <View style={styles.maintenanceBox}>
-              <Illustration source={ILU.mantenimiento} width={72} height={72} />
-              <View style={styles.maintenanceInfo}>
-                <Text style={styles.maintenanceTitle}>Estamos en mantenimiento</Text>
-                <Text style={styles.maintenanceText}>
-                  {publicConfig?.maintenanceMessage ??
-                    "Volvemos en un ratito. Gracias por tu paciencia."}
-                </Text>
-              </View>
+          ) : (
+            <View style={styles.mobileStack}>
+              <PopIn>{renderHero()}</PopIn>
+              {renderForm()}
             </View>
-          </PopIn>
-        ) : null}
-
-        {authNotice ? (
-          <View style={styles.noticeBox}>
-            <Info size={16} color={gwarm.tealDeep} />
-            <Text style={styles.noticeText}>{authNotice}</Text>
-          </View>
-        ) : null}
-
-        <PopIn delay={90}>
-          <View style={styles.formCard}>
-            <View style={styles.fieldBlock}>
-              <Text style={styles.fieldLabel}>Tu DNI</Text>
-              <TextInput
-                value={dni}
-                onChangeText={(t) => setDni(t.replace(/[^0-9]/g, ""))}
-                placeholder="8 dígitos"
-                placeholderTextColor={gwarm.inkFaint}
-                keyboardType="number-pad"
-                maxLength={8}
-                style={styles.input}
-                testID="login-dni"
-              />
-            </View>
-            <View style={styles.fieldBlock}>
-              <Text style={styles.fieldLabel}>Tu contraseña</Text>
-              <View>
-                <TextInput
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="Escríbela aquí"
-                  placeholderTextColor={gwarm.inkFaint}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                  style={[styles.input, { paddingRight: 52 }]}
-                  testID="login-password"
-                />
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-                  onPress={() => setShowPassword((v) => !v)}
-                  style={styles.eyeButton}
-                  hitSlop={8}
-                >
-                  {showPassword ? (
-                    <EyeOff size={20} color={gwarm.inkFaint} />
-                  ) : (
-                    <Eye size={20} color={gwarm.inkFaint} />
-                  )}
-                </Pressable>
-              </View>
-            </View>
-
-            {error ? (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            ) : null}
-
-            <AppButton
-              title="Entrar"
-              onPress={() => void doLogin(dni, password)}
-              color={brand.plum}
-              loading={loading}
-              large
-              testID="login-submit"
-            />
-          </View>
-        </PopIn>
-
-        {demoAccounts.length > 0 ? (
-          <PopIn delay={180}>
-            <Text style={styles.demoTitle}>¿Solo quieres mirar? Entra de prueba</Text>
-            <View style={styles.demoList}>
-              {demoAccounts.map((account, index) => {
-                const accent = warmAccent(account.role);
-                return (
-                  <PressableScale
-                    key={account.dni}
-                    onPress={() => fillAndLogin(account)}
-                    accessibilityLabel={`Entrar como ${account.name}`}
-                    style={[styles.demoRow, index > 0 && styles.demoRowBorder]}
-                    testID={`demo-${account.dni}`}
-                  >
-                    <View style={[styles.demoIlu, { backgroundColor: accent.soft }]}>
-                      <Illustration source={ROLE_ILU[account.role]} width={30} height={30} />
-                    </View>
-                    <View style={styles.demoInfo}>
-                      <Text style={styles.demoName}>{account.name}</Text>
-                      <Text style={[styles.demoMeta, { color: accent.main }]}>
-                        {ROLE_LABEL[account.role]}
-                      </Text>
-                    </View>
-                    <ChevronRight size={18} color={gwarm.inkFaint} />
-                  </PressableScale>
-                );
-              })}
-            </View>
-          </PopIn>
-        ) : null}
-
-        <View style={styles.footer}>
-          <Illustration source={ILU.flores} width={92} height={30} />
-          <Text style={styles.footerText}>C.S. Talavera · Andahuaylas</Text>
-        </View>
+          )}
+        </WebContainer>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -273,11 +309,49 @@ export default function LoginScreen(): React.ReactElement {
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: gwarm.bg },
   content: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
+    gap: 14,
+  },
+  desktopLayout: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 64,
+    paddingVertical: 24,
+    width: "100%",
+  },
+  desktopLeftCol: {
+    flex: 1,
+    maxWidth: 480,
+    alignItems: "center",
+  },
+  desktopRightCol: {
+    flex: 1,
+    maxWidth: 440,
+  },
+  mobileStack: {
     gap: 14,
   },
   heroBlock: {
     alignItems: "center",
+  },
+  heroBlockWide: {
+    alignItems: "center",
+    textAlign: "center",
+  },
+  desktopClinicBadge: {
+    backgroundColor: gwarm.surfaceSoft,
+    borderWidth: 1,
+    borderColor: gwarm.border,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    marginTop: 14,
+  },
+  desktopClinicText: {
+    fontFamily: gfonts.handBody,
+    fontSize: 13.5,
+    color: gwarm.inkSoft,
   },
   brandRow: {
     flexDirection: "row",
@@ -300,6 +374,7 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     color: gwarm.inkSoft,
     marginTop: 1,
+    textAlign: "center",
   },
   noticeBox: {
     flexDirection: "row",
@@ -345,14 +420,23 @@ const styles = StyleSheet.create({
     color: gwarm.tealDeep,
     flex: 1,
   },
+  formContainer: {
+    gap: 14,
+  },
   formCard: {
     backgroundColor: gwarm.surface,
     borderRadius: 24,
     borderWidth: 1,
     borderColor: gwarm.border,
-    padding: 18,
+    padding: 22,
     gap: 14,
     ...gShadow,
+  },
+  formCardTitle: {
+    fontFamily: gfonts.hand,
+    fontSize: 22,
+    lineHeight: 28,
+    color: gwarm.ink,
   },
   fieldBlock: {
     gap: 6,
@@ -400,7 +484,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     lineHeight: 26,
     color: gwarm.ink,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   demoList: {
     backgroundColor: gwarm.surface,
