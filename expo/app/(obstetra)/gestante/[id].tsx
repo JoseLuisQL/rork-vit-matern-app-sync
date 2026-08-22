@@ -9,6 +9,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   BookOpen,
   CalendarPlus,
+  HelpCircle,
   HousePlus,
   MessageCircle,
   Pencil,
@@ -18,8 +19,8 @@ import {
   type LucideIcon,
 } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
-import { Linking, ScrollView, StyleSheet, Text, View } from "react-native";
-import { gfonts, gShadow, gwarm, risk, warmBlue } from "@/constants/theme";
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { gfonts, gShadow, gwarm, risk, warmBlue, warmPlum } from "@/constants/theme";
 import { ANEMIA_LABEL } from "@/constants/labels";
 import { ILU } from "@/constants/illustrations";
 import { useResponsive } from "@/hooks/useResponsive";
@@ -42,6 +43,7 @@ import { PopIn } from "@/components/gestante/PopIn";
 import { WebCol, WebRow } from "@/components/web/WebGrid";
 import { WebContainer } from "@/components/web/WebContainer";
 import { AssignArticlesModal } from "@/components/obstetra/AssignArticlesModal";
+import { RiskExplanationModal } from "@/components/obstetra/RiskExplanationModal";
 
 const accent = warmBlue;
 
@@ -148,6 +150,7 @@ export default function FichaGestante(): React.ReactElement {
   const anemiaAlert = patient.anemia !== "normal";
 
   const [assignModalVisible, setAssignModalVisible] = useState<boolean>(false);
+  const [riskModalVisible, setRiskModalVisible] = useState<boolean>(false);
 
   const goUpdate = () =>
     router.push({ pathname: "/(obstetra)/actualizar-datos", params: { id: patient.id } });
@@ -210,9 +213,33 @@ export default function FichaGestante(): React.ReactElement {
       </PopIn>
 
       <PopIn delay={60}>
-        <SectionHeader title="Su riesgo" />
+        <View style={styles.riskHeaderRow}>
+          <SectionHeader title="Su riesgo" />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Ver desglose y cálculo de riesgo"
+            onPress={() => setRiskModalVisible(true)}
+            hitSlop={8}
+            style={styles.helpBtn}
+          >
+            <HelpCircle size={17} color={warmPlum.main} />
+            <Text style={styles.helpBtnText}>¿Cómo se calcula?</Text>
+          </Pressable>
+        </View>
         <Card style={[styles.riskCard, { borderLeftColor: riskPalette.solid }]}>
-          <RiskBadge level={patient.riskLevel} />
+          <View style={styles.riskBadgeRow}>
+            <RiskBadge level={patient.riskLevel} />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Detalles del puntaje"
+              onPress={() => setRiskModalVisible(true)}
+              style={styles.scoreDetailBadge}
+            >
+              <Text style={[styles.scoreDetailText, { color: riskPalette.solid }]}>
+                {patient.riskScore} {patient.riskScore === 1 ? "punto" : "puntos"} · Ver detalle
+              </Text>
+            </Pressable>
+          </View>
           {patient.riskFactors.length === 0 ? (
             <Text style={styles.riskNone}>Sin factores de riesgo identificados.</Text>
           ) : (
@@ -514,6 +541,12 @@ export default function FichaGestante(): React.ReactElement {
         patientName={`${patient.firstName} ${patient.lastName}`}
         onClose={() => setAssignModalVisible(false)}
       />
+
+      <RiskExplanationModal
+        visible={riskModalVisible}
+        patient={patient}
+        onClose={() => setRiskModalVisible(false)}
+      />
     </View>
   );
 }
@@ -560,7 +593,44 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: gwarm.ink,
   },
+  riskHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  helpBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: warmPlum.soft,
+  },
+  helpBtnText: {
+    fontFamily: gfonts.hand,
+    fontSize: 13.5,
+    color: warmPlum.main,
+  },
   riskCard: { gap: 8, borderLeftWidth: 4 },
+  riskBadgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  scoreDetailBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: gwarm.surfaceSoft,
+    borderWidth: 1,
+    borderColor: gwarm.border,
+  },
+  scoreDetailText: {
+    fontFamily: gfonts.hand,
+    fontSize: 13,
+  },
   riskNone: {
     fontFamily: gfonts.handBody,
     fontSize: 15,

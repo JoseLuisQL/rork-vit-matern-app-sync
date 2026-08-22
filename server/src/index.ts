@@ -37,28 +37,24 @@ import {
   handleSync,
   handleUpdateProfile,
 } from "./handlers";
+import { cors } from "hono/cors";
 import type { AppEnv } from "./handlers";
 import { presence } from "./presence";
 import { getUserByToken, loadConfig } from "./rows";
 import { startScheduler } from "./scheduler";
 import { DEFAULT_MAINTENANCE_MESSAGE, ensureSeeded } from "./seed";
 
-const CORS_HEADERS: Record<string, string> = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, X-VM-Token",
-  "Access-Control-Max-Age": "86400",
-};
-
 const app = new Hono<AppEnv>();
 
-app.use("*", async (c, next) => {
-  if (c.req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
-  await next();
-  Object.entries(CORS_HEADERS).forEach(([k, v]) => c.res.headers.set(k, v));
-});
+app.use(
+  "*",
+  cors({
+    origin: "*",
+    allowMethods: ["GET", "POST", "OPTIONS"],
+    allowHeaders: ["Content-Type", "X-VM-Token", "x-vm-token", "Authorization"],
+    maxAge: 86400,
+  }),
+);
 
 app.onError((err, c) => {
   console.error("[server] Error:", err instanceof Error ? err.stack : err);

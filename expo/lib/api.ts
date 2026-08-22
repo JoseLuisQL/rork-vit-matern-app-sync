@@ -13,11 +13,23 @@
  */
 import { Platform } from "react-native";
 
-function resolveBaseUrl(): string {
+export function resolveBaseUrl(): string {
   const rorkCloud = process.env.EXPO_PUBLIC_RORK_FUNCTIONS_URL?.trim();
   if (rorkCloud) return rorkCloud.replace(/\/+$/, "");
+
+  // Si estamos en entorno web en localhost (ej. Expo Web en localhost:8081)
+  if (
+    Platform.OS === "web" &&
+    typeof window !== "undefined" &&
+    (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") &&
+    window.location.port !== "8080"
+  ) {
+    return `${window.location.protocol}//${window.location.hostname}:8080`;
+  }
+
   const selfHosted = process.env.EXPO_PUBLIC_API_URL?.trim();
   if (selfHosted) return selfHosted.replace(/\/+$/, "");
+
   if (
     Platform.OS === "web" &&
     typeof window !== "undefined" &&
@@ -27,8 +39,6 @@ function resolveBaseUrl(): string {
   }
   return "https://vit-matern-app-sync-backend.rork.app";
 }
-
-const BASE_URL = resolveBaseUrl();
 
 export class ApiError extends Error {
   status: number;
@@ -46,13 +56,9 @@ export function isOfflineError(e: unknown): boolean {
   return e instanceof ApiError && e.status === 0;
 }
 
-/**
- * URL de la foto de perfil de un usuario. La versión rompe el caché al
- * cambiar la foto; sin versión no hay foto y se muestra el icono por defecto.
- */
 export function avatarUri(dni: string | undefined, version: number | undefined | null): string | undefined {
   if (!dni || version === undefined || version === null) return undefined;
-  return `${BASE_URL}/api/avatar/${dni}?v=${version}`;
+  return `${resolveBaseUrl()}/api/avatar/${dni}?v=${version}`;
 }
 
 interface ApiOptions {
@@ -62,10 +68,11 @@ interface ApiOptions {
 }
 
 export async function api<T>(path: string, options: ApiOptions = {}): Promise<T> {
+  const baseUrl = resolveBaseUrl();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? 12000);
   try {
-    const res = await fetch(`${BASE_URL}${path}`, {
+    const res = await fetch(`${baseUrl}${path}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -86,6 +93,7 @@ export async function api<T>(path: string, options: ApiOptions = {}): Promise<T>
     return data as T;
   } catch (e) {
     if (e instanceof ApiError) throw e;
+    console.error("[VitMaterna API Error]", e, `URL intentada: ${baseUrl}${path}`);
     throw new ApiError("No hay conexión con el servidor", 0);
   } finally {
     clearTimeout(timer);

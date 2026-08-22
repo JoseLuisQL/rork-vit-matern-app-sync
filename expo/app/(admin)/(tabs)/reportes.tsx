@@ -5,7 +5,7 @@
  * trimestres, desglose por comunidad, visitas y asistencia semanal.
  * Adaptado con arquitectura responsiva Web (2 columnas en escritorio).
  */
-import { FileText, Sheet } from "lucide-react-native";
+import { Eye, FileText, Sheet } from "lucide-react-native";
 import React, { useCallback, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { gfonts, gwarm, risk, warmPlum } from "@/constants/theme";
@@ -27,6 +27,7 @@ import { StatGroup } from "@/components/StatGroup";
 import { useToast } from "@/components/Toast";
 import { WebCol, WebRow } from "@/components/web/WebGrid";
 import { WebContainer } from "@/components/web/WebContainer";
+import { ReportPreviewModal } from "@/components/admin/ReportPreviewModal";
 
 const accent = warmPlum;
 
@@ -76,6 +77,7 @@ export default function ReportesScreen(): React.ReactElement {
   const { show } = useToast();
   const [period, setPeriod] = useState<ReportPeriod>("d30");
   const [exporting, setExporting] = useState<"pdf" | "xlsx" | null>(null);
+  const [modalOpen, setModalOpen] = useState<boolean>(false);
   const { isDesktop, isTablet } = useResponsive();
 
   const isWide = isDesktop || isTablet;
@@ -90,10 +92,10 @@ export default function ReportesScreen(): React.ReactElement {
       try {
         if (kind === "pdf") {
           await exportReportPdf({ report, period, view });
-          show("Reporte PDF listo para compartir", "success");
+          show("Informe PDF oficial generado exitosamente", "success");
         } else {
           await exportReportXlsx({ report, period, view });
-          show("Reporte Excel listo para compartir", "success");
+          show("Libro Excel (.xlsx) con 5 hojas generado exitosamente", "success");
         }
       } catch (e) {
         console.log("[VitMaterna] Error al exportar:", e);
@@ -139,16 +141,23 @@ export default function ReportesScreen(): React.ReactElement {
         <View style={styles.exportTop}>
           <Illustration source={ILU.reporte} width={74} height={74} />
           <View style={styles.exportInfo}>
-            <Text style={styles.exportTitle}>Exportar reporte</Text>
+            <Text style={styles.exportTitle}>Exportar Informe Oficial</Text>
             <Text style={styles.exportText}>
-              Plantilla profesional con todos los indicadores, el detalle de gestantes, citas
-              y alertas del periodo.
+              Plantilla formal MINSA / C.S. Talavera con indicadores de gestión, padrón nominal, tamizaje de anemia y alertas del periodo.
             </Text>
           </View>
         </View>
         <View style={styles.exportActions}>
           <AppButton
-            title="PDF"
+            title="Ver / Personalizar Plantilla"
+            onPress={() => setModalOpen(true)}
+            color={warmPlum.main}
+            icon={Eye}
+            style={styles.flex}
+            testID="btn-open-preview"
+          />
+          <AppButton
+            title="Descargar PDF"
             onPress={() => void doExport("pdf")}
             color={gwarm.rose}
             variant="soft"
@@ -159,7 +168,7 @@ export default function ReportesScreen(): React.ReactElement {
             testID="btn-export-pdf"
           />
           <AppButton
-            title="Excel (XLSX)"
+            title="Descargar Excel (.xlsx)"
             onPress={() => void doExport("xlsx")}
             color={gwarm.teal}
             variant="soft"
@@ -172,7 +181,7 @@ export default function ReportesScreen(): React.ReactElement {
         </View>
         {!online ? (
           <Text style={styles.exportNote}>
-            Estás sin señal: se exporta con la última información guardada en el teléfono.
+            Estás sin señal: se exporta con la última información sincronizada en el teléfono.
           </Text>
         ) : null}
       </Card>
@@ -444,6 +453,12 @@ export default function ReportesScreen(): React.ReactElement {
           </View>
         </WebContainer>
       </ScrollView>
+
+      <ReportPreviewModal
+        visible={modalOpen}
+        onClose={() => setModalOpen(false)}
+        initialPeriod={period}
+      />
     </View>
   );
 }
