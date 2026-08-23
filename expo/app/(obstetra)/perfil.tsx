@@ -118,7 +118,11 @@ export default function PerfilObstetra(): React.ReactElement {
   return (
     <View style={styles.container}>
       <WebContainer size="form">
-        <ScreenHeader title="Mi perfil" showBack />
+        <ScreenHeader
+          title="Mi perfil"
+          showBack
+          fallbackHref="/(obstetra)/(tabs)/gestantes"
+        />
       </WebContainer>
       <ScrollView
         style={styles.flex}

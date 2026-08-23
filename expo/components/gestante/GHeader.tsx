@@ -17,6 +17,8 @@ interface GHeaderProps {
   /** Subtítulo como componente (p. ej. estado "En línea" del chat). */
   subtitleNode?: React.ReactNode;
   back?: boolean;
+  onBack?: () => void;
+  fallbackHref?: string;
   right?: React.ReactNode;
 }
 
@@ -25,17 +27,39 @@ export function GHeader({
   subtitle,
   subtitleNode,
   back = false,
+  onBack,
+  fallbackHref,
   right,
 }: GHeaderProps): React.ReactElement {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+      return;
+    }
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    if (fallbackHref) {
+      router.replace(fallbackHref as any);
+      return;
+    }
+    if (typeof window !== "undefined" && window.history && window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    router.replace("/(gestante)/(tabs)/hoy" as any);
+  };
 
   return (
     <View>
       <View style={[styles.container, { paddingTop: insets.top + spacing.sm2 }]}>
         {back ? (
           <PressableScale
-            onPress={() => router.back()}
+            onPress={handleBack}
             accessibilityLabel="Volver"
             style={styles.backButton}
           >

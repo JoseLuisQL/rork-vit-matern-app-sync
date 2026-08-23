@@ -133,7 +133,12 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
   return (
     <View style={styles.container}>
       <WebContainer size="form">
-        <ScreenHeader title="Nuevo usuario" subtitle="La cuenta queda activa al instante" showBack />
+        <ScreenHeader
+          title="Nuevo usuario"
+          subtitle="La cuenta queda activa al instante"
+          showBack
+          fallbackHref="/(admin)/(tabs)/usuarios"
+        />
       </WebContainer>
       <KeyboardAvoidingView
         style={styles.flex}

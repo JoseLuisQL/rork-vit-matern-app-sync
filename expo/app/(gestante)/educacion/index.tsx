@@ -38,7 +38,7 @@ export default function EducacionGestante(): React.ReactElement {
   return (
     <View style={styles.container}>
       <WebContainer size="dashboard">
-        <GHeader title="Consejos" back />
+        <GHeader title="Consejos" back fallbackHref="/(gestante)/(tabs)/hoy" />
       </WebContainer>
       <ScrollView
         style={styles.flex}

@@ -59,7 +59,7 @@ export default function ArticuloScreen(): React.ReactElement {
   return (
     <View style={styles.container}>
       <WebContainer size="reading">
-        <GHeader title={article.category} back />
+        <GHeader title={article.category} back fallbackHref="/(gestante)/(tabs)/educacion" />
       </WebContainer>
       <ScrollView
         style={styles.flex}

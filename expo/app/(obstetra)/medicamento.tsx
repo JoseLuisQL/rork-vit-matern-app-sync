@@ -186,6 +186,7 @@ export default function MedicamentoScreen(): React.ReactElement {
           title={editing ? "Cambiar medicamento" : "Asignar medicamento"}
           subtitle={`${patient.firstName} ${patient.lastName}`}
           showBack
+          fallbackHref={patient ? `/(obstetra)/gestante/${patient.id}` : "/(obstetra)/(tabs)/gestantes"}
         />
       </WebContainer>
       <ScrollView

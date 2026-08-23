@@ -158,6 +158,7 @@ export default function ActualizarDatosScreen(): React.ReactElement {
           title="Actualizar datos"
           subtitle={`${patient.firstName} ${patient.lastName}`}
           showBack
+          fallbackHref={`/(obstetra)/gestante/${patient.id}`}
         />
       </WebContainer>
       <ScrollView

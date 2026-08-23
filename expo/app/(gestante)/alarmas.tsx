@@ -237,7 +237,7 @@ export default function AlarmasScreen(): React.ReactElement {
   return (
     <View style={styles.container}>
       <WebContainer size="form">
-        <GHeader title="Pedir ayuda" back />
+        <GHeader title="Pedir ayuda" back fallbackHref="/(gestante)/(tabs)/hoy" />
       </WebContainer>
       <ScrollView
         style={styles.flex}

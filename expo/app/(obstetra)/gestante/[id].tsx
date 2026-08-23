@@ -504,6 +504,7 @@ export default function FichaGestante(): React.ReactElement {
           title={`${patient.firstName} ${patient.lastName}`}
           subtitle={`Semana ${patient.weeks} · ${patient.community}`}
           showBack
+          fallbackHref="/(obstetra)/(tabs)/gestantes"
           right={
             <Avatar
               uri={avatarUri(patient.dni, patient.avatarVersion)}

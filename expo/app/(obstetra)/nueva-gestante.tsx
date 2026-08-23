@@ -111,7 +111,12 @@ export default function NuevaGestanteScreen(): React.ReactElement {
   return (
     <View style={styles.container}>
       <WebContainer size="form">
-        <ScreenHeader title="Nueva gestante" subtitle="Cuenta + ficha clínica" showBack />
+        <ScreenHeader
+          title="Nueva gestante"
+          subtitle="Cuenta + ficha clínica"
+          showBack
+          fallbackHref="/(obstetra)/(tabs)/gestantes"
+        />
       </WebContainer>
       <KeyboardAvoidingView
         style={styles.flex}

@@ -37,6 +37,7 @@ export default function ChatThreadObstetra(): React.ReactElement {
             ) : undefined
           }
           showBack
+          fallbackHref="/(obstetra)/(tabs)/chat"
           right={
             patient ? (
               <PressableScale

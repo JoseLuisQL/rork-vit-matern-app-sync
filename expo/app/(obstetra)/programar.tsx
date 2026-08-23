@@ -173,7 +173,11 @@ export default function ProgramarScreen(): React.ReactElement {
   return (
     <View style={styles.container}>
       <WebContainer size="form">
-        <ScreenHeader title={title} showBack />
+        <ScreenHeader
+          title={title}
+          showBack
+          fallbackHref={patientId ? `/(obstetra)/gestante/${patientId}` : "/(obstetra)/(tabs)/agenda"}
+        />
       </WebContainer>
       <ScrollView
         style={styles.flex}

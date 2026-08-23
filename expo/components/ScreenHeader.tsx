@@ -18,6 +18,8 @@ interface ScreenHeaderProps {
   /** Subtítulo como componente (p. ej. estado "En línea" del chat). */
   subtitleNode?: React.ReactNode;
   showBack?: boolean;
+  onBack?: () => void;
+  fallbackHref?: string;
   right?: React.ReactNode;
   children?: React.ReactNode;
 }
@@ -27,20 +29,42 @@ export function ScreenHeader({
   subtitle,
   subtitleNode,
   showBack = false,
+  onBack,
+  fallbackHref,
   right,
   children,
 }: ScreenHeaderProps): React.ReactElement {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+      return;
+    }
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    if (fallbackHref) {
+      router.replace(fallbackHref as any);
+      return;
+    }
+    if (typeof window !== "undefined" && window.history && window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    router.replace("/(obstetra)/(tabs)/gestantes" as any);
+  };
+
   return (
     <View style={styles.wrapper}>
-      <View style={[styles.container, { paddingTop: insets.top + spacing.sm2 }]}>
+      <View style={[styles.container, { paddingTop: insets.top + spacing.sm2 }]}>\
         <View style={styles.row}>
           {showBack ? (
             <PressableScale
               accessibilityLabel="Volver"
-              onPress={() => router.back()}
+              onPress={handleBack}
               style={styles.backButton}
             >
               <ArrowLeft size={22} color={gwarm.ink} strokeWidth={2.4} />
