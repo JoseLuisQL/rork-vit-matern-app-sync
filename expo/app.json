@@ -59,6 +59,7 @@
         {
           "icon": "./assets/images/icon.png",
           "color": "#0D9488",
+          "defaultChannel": "default",
           "sounds": [
             "./assets/sounds/mensaje.wav",
             "./assets/sounds/aviso.wav",

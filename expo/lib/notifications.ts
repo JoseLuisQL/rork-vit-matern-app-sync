@@ -107,35 +107,54 @@ export function initNotifications(): void {
   if (Platform.OS === "android") {
     const channelSound = (kind: NotificationKind): string | undefined =>
       isExpoGo ? undefined : SOUND_FILE[kind];
+
+    notifications
+      .setNotificationChannelAsync("default", {
+        name: "General",
+        importance: notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: "#0D9488",
+      })
+      .catch((e) => console.log("[VitMaterna] canal default:", e));
+
     notifications
       .setNotificationChannelAsync("mensajes", {
         name: "Mensajes del chat",
         importance: notifications.AndroidImportance.MAX,
         sound: channelSound("mensaje"),
         vibrationPattern: [0, 200, 120, 200],
+        lightColor: "#0D9488",
       })
       .catch((e) => console.log("[VitMaterna] canal mensajes:", e));
+
     notifications
       .setNotificationChannelAsync("avisos", {
         name: "Avisos de citas y medicamentos",
         importance: notifications.AndroidImportance.MAX,
         sound: channelSound("aviso"),
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: "#0D9488",
       })
       .catch((e) => console.log("[VitMaterna] canal avisos:", e));
+
     notifications
       .setNotificationChannelAsync("emergencias", {
         name: "Emergencias (SOS)",
         importance: notifications.AndroidImportance.MAX,
         sound: channelSound("sos"),
         vibrationPattern: [0, 400, 150, 400, 150, 600],
+        lightColor: "#E11D48",
         bypassDnd: true,
       })
       .catch((e) => console.log("[VitMaterna] canal emergencias:", e));
+
     notifications
       .setNotificationChannelAsync("recordatorios", {
         name: "Recordatorios",
-        importance: notifications.AndroidImportance.DEFAULT,
+        importance: notifications.AndroidImportance.HIGH,
         sound: channelSound("aviso"),
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: "#0D9488",
       })
       .catch((e) => console.log("[VitMaterna] canal recordatorios:", e));
   }

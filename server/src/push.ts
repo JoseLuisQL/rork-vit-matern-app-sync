@@ -11,10 +11,25 @@ export interface ExpoPushMessage {
   body: string;
   data?: Record<string, unknown>;
   sound?: "default" | string | null;
-  channelId?: "mensajes" | "avisos" | "emergencias" | "recordatorios" | string;
+  channelId?: "default" | "mensajes" | "avisos" | "emergencias" | "recordatorios" | string;
   priority?: "default" | "normal" | "high";
   badge?: number;
   _displayInForeground?: boolean;
+}
+
+interface ExpoPushTicket {
+  status: "ok" | "error";
+  id?: string;
+  message?: string;
+  details?: {
+    error?: "DeviceNotRegistered" | "InvalidCredentials" | "MessageTooBig" | "MessageRateExceeded" | string;
+    [key: string]: unknown;
+  };
+}
+
+interface ExpoPushResponse {
+  data?: ExpoPushTicket[];
+  errors?: Array<{ code: string; message: string }>;
 }
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
@@ -23,7 +38,7 @@ const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
  * Envía un lote de notificaciones a través de los servidores de Expo Push.
  * Divide los envíos en bloques de hasta 100 mensajes.
  */
-export async function sendExpoPush(messages: ExpoPushMessage[]): Promise<void> {
+export async function sendExpoPush(messages: ExpoPushMessage[], db?: Queryable): Promise<void> {
   if (!messages || messages.length === 0) return;
 
   const validMessages = messages.filter((m) => typeof m.to === "string" && m.to.trim().length > 0);
@@ -47,6 +62,27 @@ export async function sendExpoPush(messages: ExpoPushMessage[]): Promise<void> {
       if (!res.ok) {
         const text = await res.text();
         console.warn(`[Push] Expo Push API respondió HTTP ${res.status}: ${text}`);
+      } else {
+        const json = (await res.json()) as ExpoPushResponse;
+        if (json.data && Array.isArray(json.data)) {
+          for (let idx = 0; idx < json.data.length; idx++) {
+            const ticket = json.data[idx];
+            const recipient = chunk[idx]?.to;
+            if (ticket && ticket.status === "error") {
+              console.warn(
+                `[Push] Error en ticket Expo para ${recipient}: ${ticket.message} (error: ${ticket.details?.error})`,
+              );
+              if (ticket.details?.error === "DeviceNotRegistered" && db && recipient) {
+                try {
+                  await db.query("DELETE FROM push_tokens WHERE token = $1", [recipient]);
+                  console.log(`[Push] Token expirado eliminado de la base de datos: ${recipient}`);
+                } catch {
+                  // Fallo no crítico
+                }
+              }
+            }
+          }
+        }
       }
     } catch (err) {
       console.error("[Push] Error enviando notificaciones push a Expo:", err);
@@ -93,7 +129,7 @@ export async function notifyUserByDni(
     _displayInForeground: payload._displayInForeground,
   }));
 
-  await sendExpoPush(messages);
+  await sendExpoPush(messages, db);
 }
 
 /**
@@ -125,7 +161,7 @@ export async function notifyPatientByPatientId(
     data: payload.data,
   }));
 
-  await sendExpoPush(messages);
+  await sendExpoPush(messages, db);
 }
 
 /**
@@ -157,5 +193,5 @@ export async function notifyActiveObstetras(
     data: payload.data,
   }));
 
-  await sendExpoPush(messages);
+  await sendExpoPush(messages, db);
 }
