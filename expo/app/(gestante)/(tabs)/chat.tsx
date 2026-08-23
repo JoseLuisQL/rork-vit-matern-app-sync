@@ -48,17 +48,20 @@ export default function ChatGestante(): React.ReactElement {
             )
           }
         />
-        {patient ? (
-          <View style={styles.chatArea}>
-            <GChatThread convId={patient.id} />
-          </View>
-        ) : null}
       </WebContainer>
+      {patient ? (
+        <View style={styles.chatArea}>
+          <WebContainer size="form" style={styles.flex} contentStyle={styles.flex}>
+            <GChatThread convId={patient.id} />
+          </WebContainer>
+        </View>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: gwarm.bg },
+  flex: { flex: 1 },
   chatArea: { flex: 1, minHeight: 0 },
 });

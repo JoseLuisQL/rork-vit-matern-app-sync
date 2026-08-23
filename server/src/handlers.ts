@@ -1009,6 +1009,9 @@ export async function handleRegisterPushToken(c: AppContext): Promise<Response> 
     return c.json({ error: "Push token requerido" }, 400);
   }
 
+  // Eliminar el token de cualquier otro DNI previo en este mismo dispositivo
+  await pool.query("DELETE FROM push_tokens WHERE token = $1 AND dni <> $2", [token, user.dni]);
+
   await pool.query(
     `INSERT INTO push_tokens (dni, token, platform, updated_at)
      VALUES ($1, $2, $3, now())
@@ -1016,6 +1019,7 @@ export async function handleRegisterPushToken(c: AppContext): Promise<Response> 
     [user.dni, token, platform],
   );
 
+  console.log(`[Push] Token registrado para DNI ${user.dni} (${user.firstName} - ${platform}): ${token}`);
   return c.json({ ok: true });
 }
 

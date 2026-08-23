@@ -35,7 +35,7 @@ export function WebContainer({
   const maxWidth = MAX_WIDTHS[size];
 
   if (!isDesktop && !isTablet) {
-    return <View style={[styles.mobileWrapper, style]}>{children}</View>;
+    return <View style={[styles.mobileWrapper, style, contentStyle]}>{children}</View>;
   }
 
   return (

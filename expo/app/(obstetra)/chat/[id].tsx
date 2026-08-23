@@ -56,22 +56,25 @@ export default function ChatThreadObstetra(): React.ReactElement {
             ) : undefined
           }
         />
-        {patient ? (
-          <View style={styles.chatArea}>
+      </WebContainer>
+      {patient ? (
+        <View style={styles.chatArea}>
+          <WebContainer size="form" style={styles.flex} contentStyle={styles.flex}>
             <ChatThread
               convId={patient.id}
               accent={warmBlue.main}
               bottomInset
               peerName={patient.firstName}
             />
-          </View>
-        ) : null}
-      </WebContainer>
+          </WebContainer>
+        </View>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: gwarm.bg },
+  flex: { flex: 1 },
   chatArea: { flex: 1, minHeight: 0 },
 });
