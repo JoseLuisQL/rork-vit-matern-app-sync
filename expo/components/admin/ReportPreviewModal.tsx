@@ -418,8 +418,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   printBtn: {
-    width: 36,
-    height: 36,
+    minWidth: 44,
+    minHeight: 44,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: gwarm.border,
@@ -428,8 +428,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   closeBtn: {
-    width: 36,
-    height: 36,
+    minWidth: 44,
+    minHeight: 44,
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
@@ -463,6 +463,8 @@ const styles = StyleSheet.create({
     backgroundColor: gwarm.surface,
     borderWidth: 1,
     borderColor: gwarm.border,
+    minHeight: 44,
+    justifyContent: "center",
   },
   tabChipActive: {
     backgroundColor: warmPlum.main,
@@ -490,6 +492,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 7,
+    minHeight: 44,
+    justifyContent: "center",
   },
   periodBtnActive: {
     backgroundColor: warmTeal.soft,
