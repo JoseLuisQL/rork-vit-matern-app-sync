@@ -237,7 +237,7 @@ export default function AlarmasScreen(): React.ReactElement {
   return (
     <View style={styles.container}>
       <WebContainer size="form">
-        <GHeader title="Pedir ayuda" back fallbackHref="/(gestante)/(tabs)/hoy" />
+        <GHeader title="Pedir ayuda" back fallbackHref="/(gestante)/(tabs)/inicio" />
       </WebContainer>
       <ScrollView
         style={styles.flex}
@@ -407,7 +407,7 @@ const styles = StyleSheet.create({
   },
   successText: {
     fontFamily: gfonts.handBody,
-    fontSize: 15.5,
+    fontSize: 16,
     lineHeight: 24,
     color: gwarm.inkSoft,
     textAlign: "center",

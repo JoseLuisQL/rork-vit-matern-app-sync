@@ -135,7 +135,7 @@ export default function PerfilGestante(): React.ReactElement {
   return (
     <View style={styles.container}>
       <WebContainer size="form">
-        <GHeader title="Mi perfil" back fallbackHref="/(gestante)/(tabs)/hoy" />
+        <GHeader title="Mi perfil" back fallbackHref="/(gestante)/(tabs)/inicio" />
       </WebContainer>
       <ScrollView
         style={styles.flex}

@@ -38,7 +38,7 @@ export default function EducacionGestante(): React.ReactElement {
   return (
     <View style={styles.container}>
       <WebContainer size="dashboard">
-        <GHeader title="Consejos" back fallbackHref="/(gestante)/(tabs)/hoy" />
+        <GHeader title="Consejos" back fallbackHref="/(gestante)/(tabs)/inicio" />
       </WebContainer>
       <ScrollView
         style={styles.flex}
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
   },
   heroText: {
     fontFamily: gfonts.handBody,
-    fontSize: 14.5,
+    fontSize: 15,
     lineHeight: 20,
     color: gwarm.inkSoft,
     marginTop: 2,
@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: gfonts.hand,
-    fontSize: 18.5,
+    fontSize: 19,
     lineHeight: 24,
     color: gwarm.ink,
   },
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
   },
   meta: {
     fontFamily: gfonts.handBody,
-    fontSize: 13.5,
+    fontSize: 14,
     lineHeight: 18,
     color: gwarm.inkFaint,
   },

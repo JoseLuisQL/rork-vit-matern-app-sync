@@ -51,7 +51,7 @@ export function GHeader({
       window.history.back();
       return;
     }
-    router.replace("/(gestante)/(tabs)/hoy" as any);
+    router.replace("/(gestante)/(tabs)/inicio" as any);
   };
 
   return (
