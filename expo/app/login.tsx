@@ -350,7 +350,8 @@ const styles = StyleSheet.create({
   },
   desktopClinicText: {
     fontFamily: gfonts.handBody,
-    fontSize: 13.5,
+    fontSize: 14,
+    lineHeight: 19,
     color: gwarm.inkSoft,
   },
   brandRow: {
@@ -409,7 +410,7 @@ const styles = StyleSheet.create({
   },
   maintenanceText: {
     fontFamily: gfonts.handBody,
-    fontSize: 13.5,
+    fontSize: 14,
     lineHeight: 19,
     color: gwarm.inkSoft,
   },
@@ -461,9 +462,12 @@ const styles = StyleSheet.create({
   },
   eyeButton: {
     position: "absolute",
-    right: 14,
+    right: 10,
     top: 0,
     bottom: 0,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: "center",
     justifyContent: "center",
   },
   errorBox: {
@@ -534,7 +538,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontFamily: gfonts.handBody,
-    fontSize: 12.5,
+    fontSize: 13,
     lineHeight: 17,
     color: gwarm.inkFaint,
   },

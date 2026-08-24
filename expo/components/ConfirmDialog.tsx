@@ -570,11 +570,11 @@ const styles = StyleSheet.create({
   },
   closeIconBtn: {
     position: "absolute",
-    top: 14,
-    right: 14,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    top: 10,
+    right: 10,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: gwarm.surfaceSoft,
@@ -655,7 +655,7 @@ const styles = StyleSheet.create({
   },
   cancelButtonText: {
     fontFamily: gfonts.hand,
-    fontSize: 16.5,
+    fontSize: 17,
     color: gwarm.inkSoft,
   },
   confirmButton: {
@@ -684,7 +684,7 @@ const styles = StyleSheet.create({
   },
   confirmButtonText: {
     fontFamily: gfonts.hand,
-    fontSize: 16.5,
+    fontSize: 17,
     color: "#FFFFFF",
     letterSpacing: 0.3,
   },

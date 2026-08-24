@@ -626,13 +626,17 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontFamily: gfonts.handBody,
-    fontSize: 12.5,
+    fontSize: 13,
     lineHeight: 16,
     color: gwarm.inkSoft,
   },
   closeBtn: {
     padding: 6,
     borderRadius: 8,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   scroll: {
     flexGrow: 0,
@@ -684,6 +688,8 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: gwarm.border,
     backgroundColor: gwarm.surfaceSoft,
+    minHeight: 44,
+    justifyContent: "center",
   },
   catChipSelected: {
     borderColor: warmPlum.main,
@@ -691,8 +697,8 @@ const styles = StyleSheet.create({
   },
   catChipText: {
     fontFamily: gfonts.hand,
-    fontSize: 13.5,
-    lineHeight: 17,
+    fontSize: 14,
+    lineHeight: 18,
     color: gwarm.inkSoft,
   },
   catChipTextSelected: {
@@ -716,7 +722,7 @@ const styles = StyleSheet.create({
   },
   switchLabel: {
     fontFamily: gfonts.handBody,
-    fontSize: 13.5,
+    fontSize: 14,
     color: gwarm.ink,
   },
   imageUploadSection: {
@@ -759,10 +765,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignSelf: "flex-start",
     marginTop: 4,
+    minHeight: 44,
   },
   uploadBtnText: {
     fontFamily: gfonts.hand,
-    fontSize: 13.5,
+    fontSize: 14,
     color: warmPlum.main,
   },
   imagePreviewWrap: {
@@ -793,6 +800,7 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 10,
     alignSelf: "flex-start",
+    minHeight: 44,
   },
   imageBtnText: {
     fontFamily: gfonts.handBody,
@@ -809,10 +817,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+    minHeight: 44,
+    justifyContent: "center",
   },
   addBtnText: {
     fontFamily: gfonts.hand,
-    fontSize: 14.5,
+    fontSize: 15,
     color: warmPlum.main,
   },
   paragraphRow: {
@@ -840,6 +850,10 @@ const styles = StyleSheet.create({
   removeParagraphBtn: {
     padding: 8,
     marginTop: 6,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   emptyLinksText: {
     fontFamily: gfonts.handBody,
@@ -870,6 +884,10 @@ const styles = StyleSheet.create({
   },
   removeLinkBtn: {
     padding: 8,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   errorBox: {
     backgroundColor: semantic.dangerLight,
@@ -880,7 +898,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontFamily: gfonts.handBody,
-    fontSize: 13.5,
+    fontSize: 14,
     lineHeight: 18,
     color: semantic.danger,
     textAlign: "center",

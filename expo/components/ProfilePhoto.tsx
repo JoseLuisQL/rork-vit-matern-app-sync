@@ -141,7 +141,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   removeWrap: {
-    minHeight: 32,
+    minHeight: 44,
+    minWidth: 44,
+    alignItems: "center",
     justifyContent: "center",
   },
   removeText: {

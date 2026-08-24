@@ -549,12 +549,12 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontFamily: gfonts.handBody,
-    fontSize: 12.5,
+    fontSize: 13,
     color: gwarm.inkSoft,
   },
   closeBtn: {
-    width: 34,
-    height: 34,
+    minWidth: 44,
+    minHeight: 44,
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
@@ -604,7 +604,7 @@ const styles = StyleSheet.create({
   },
   scorePillText: {
     fontFamily: gfonts.hand,
-    fontSize: 12.5,
+    fontSize: 13,
     color: "#FFFFFF",
     fontWeight: "700",
   },
@@ -631,7 +631,7 @@ const styles = StyleSheet.create({
   },
   sectionHeading: {
     fontFamily: gfonts.hand,
-    fontSize: 15.5,
+    fontSize: 16,
     color: gwarm.ink,
   },
   emptyRiskBox: {
@@ -720,12 +720,12 @@ const styles = StyleSheet.create({
   },
   normalLabel: {
     fontFamily: gfonts.hand,
-    fontSize: 13.5,
+    fontSize: 14,
     color: gwarm.ink,
   },
   normalPts: {
     fontFamily: gfonts.hand,
-    fontSize: 11.5,
+    fontSize: 12,
     color: gwarm.teal,
     fontWeight: "700",
   },
@@ -765,7 +765,7 @@ const styles = StyleSheet.create({
   },
   ruleName: {
     fontFamily: gfonts.hand,
-    fontSize: 13.5,
+    fontSize: 14,
     fontWeight: "700",
   },
   ruleDesc: {

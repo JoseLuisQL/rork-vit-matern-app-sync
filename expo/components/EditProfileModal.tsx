@@ -306,6 +306,10 @@ const styles = StyleSheet.create({
   closeBtn: {
     padding: 4,
     borderRadius: 8,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   scroll: {
     flexGrow: 0,
@@ -319,8 +323,8 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: gfonts.hand,
-    fontSize: 14.5,
-    lineHeight: 18,
+    fontSize: 15,
+    lineHeight: 19,
     color: gwarm.ink,
   },
   input: {
@@ -331,7 +335,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     height: 48,
     fontFamily: gfonts.handBody,
-    fontSize: 15.5,
+    fontSize: 16,
     color: gwarm.ink,
   },
   readonlyInput: {
@@ -347,7 +351,7 @@ const styles = StyleSheet.create({
   },
   readonlyText: {
     fontFamily: gfonts.handBody,
-    fontSize: 15.5,
+    fontSize: 16,
     color: gwarm.inkSoft,
   },
   passwordWrapper: {
@@ -358,13 +362,15 @@ const styles = StyleSheet.create({
     right: 12,
     top: 0,
     bottom: 0,
+    minWidth: 44,
+    minHeight: 44,
     justifyContent: "center",
     alignItems: "center",
   },
   hint: {
     fontFamily: gfonts.handBody,
-    fontSize: 12.5,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 17,
     color: gwarm.inkFaint,
   },
   errorBox: {
@@ -376,7 +382,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontFamily: gfonts.handBody,
-    fontSize: 13.5,
+    fontSize: 14,
     lineHeight: 18,
     color: semantic.danger,
     textAlign: "center",

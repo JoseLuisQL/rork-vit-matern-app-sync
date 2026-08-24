@@ -354,13 +354,17 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontFamily: gfonts.handBody,
-    fontSize: 12.5,
-    lineHeight: 16,
+    fontSize: 13,
+    lineHeight: 17,
     color: gwarm.inkSoft,
   },
   closeBtn: {
     padding: 6,
     borderRadius: 8,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   toolbar: {
     paddingHorizontal: 16,
@@ -380,6 +384,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: gwarm.border,
     alignSelf: "flex-start",
+    minHeight: 44,
   },
   selectAllBtnActive: {
     borderColor: withAlpha(warmBlue.main, 0.4),
@@ -387,7 +392,7 @@ const styles = StyleSheet.create({
   },
   selectAllText: {
     fontFamily: gfonts.hand,
-    fontSize: 13.5,
+    fontSize: 14,
     color: gwarm.inkSoft,
   },
   selectAllTextActive: {
@@ -404,6 +409,8 @@ const styles = StyleSheet.create({
     backgroundColor: gwarm.surfaceSoft,
     borderWidth: 1,
     borderColor: gwarm.border,
+    minHeight: 44,
+    justifyContent: "center",
   },
   catChipActive: {
     backgroundColor: warmBlue.main,

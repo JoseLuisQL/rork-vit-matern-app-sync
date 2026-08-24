@@ -624,7 +624,7 @@ const styles = StyleSheet.create({
   },
   valueText: {
     fontFamily: gfonts.handBody,
-    fontSize: 15.5,
+    fontSize: 16,
     color: gwarm.ink,
     lineHeight: 21,
   },
@@ -649,16 +649,20 @@ const styles = StyleSheet.create({
     backgroundColor: gwarm.surface,
     borderWidth: 1,
     borderColor: gwarm.border,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   errorText: {
     fontFamily: gfonts.handBody,
-    fontSize: 13.5,
+    fontSize: 14,
     lineHeight: 18,
     color: gwarm.rose,
   },
   hintText: {
     fontFamily: gfonts.handBody,
-    fontSize: 12.5,
+    fontSize: 13,
     lineHeight: 17,
     color: gwarm.inkFaint,
   },
@@ -723,6 +727,10 @@ const styles = StyleSheet.create({
     backgroundColor: gwarm.surfaceSoft,
     borderWidth: 1,
     borderColor: gwarm.border,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   /* ATTAJOS / PRESETS */
@@ -740,6 +748,8 @@ const styles = StyleSheet.create({
     backgroundColor: gwarm.surfaceSoft,
     borderWidth: 1.5,
     borderColor: gwarm.border,
+    minHeight: 44,
+    justifyContent: "center",
   },
   presetChipText: {
     fontFamily: gfonts.hand,
@@ -759,8 +769,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   navArrow: {
-    width: 34,
-    height: 34,
+    minWidth: 44,
+    minHeight: 44,
     borderRadius: 12,
     backgroundColor: gwarm.surfaceSoft,
     borderWidth: 1,
@@ -785,7 +795,7 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "center",
     fontFamily: gfonts.handBody,
-    fontSize: 12.5,
+    fontSize: 13,
     color: gwarm.inkSoft,
   },
   dowWeekend: {
@@ -854,6 +864,8 @@ const styles = StyleSheet.create({
     backgroundColor: gwarm.surfaceSoft,
     borderWidth: 1.5,
     borderColor: gwarm.border,
+    minHeight: 44,
+    justifyContent: "center",
   },
   yearChipText: {
     fontFamily: gfonts.hand,
@@ -874,6 +886,7 @@ const styles = StyleSheet.create({
     borderColor: gwarm.border,
     alignItems: "center",
     justifyContent: "center",
+    minHeight: 44,
   },
   monthGridCellText: {
     fontFamily: gfonts.hand,
@@ -920,7 +933,7 @@ const styles = StyleSheet.create({
   },
   selectedDateBadgeText: {
     fontFamily: gfonts.handBody,
-    fontSize: 13.5,
+    fontSize: 14,
     color: gwarm.ink,
   },
 
@@ -941,6 +954,8 @@ const styles = StyleSheet.create({
     backgroundColor: gwarm.surfaceSoft,
     borderWidth: 1,
     borderColor: gwarm.border,
+    minHeight: 44,
+    justifyContent: "center",
   },
   cancelBtnText: {
     fontFamily: gfonts.handBody,
@@ -954,6 +969,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 14,
+    minHeight: 44,
+    justifyContent: "center",
   },
   confirmBtnDisabled: {
     opacity: 0.5,
