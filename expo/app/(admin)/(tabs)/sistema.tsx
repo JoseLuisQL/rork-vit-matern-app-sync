@@ -502,8 +502,8 @@ export default function SistemaScreen(): React.ReactElement {
         <SectionHeader title="Notificaciones por WhatsApp (Open-WA)" />
         <Card style={styles.card}>
           <View style={styles.switchRow}>
-            <View style={[styles.iluCircle, { backgroundColor: "#DCF8C6" }]}>
-              <MessageSquare size={26} color="#075E54" />
+            <View style={[styles.iluCircle, { backgroundColor: gwarm.tealSoft }]}>
+              <MessageSquare size={26} color={gwarm.tealDeep} />
             </View>
             <View style={styles.switchInfo}>
               <Text style={styles.switchTitle}>Servicio de WhatsApp</Text>
@@ -515,7 +515,7 @@ export default function SistemaScreen(): React.ReactElement {
               value={isWaEnabled}
               disabled={busy !== null}
               onValueChange={(v) => void toggleWhatsAppMaster(v)}
-              trackColor={{ true: "#25D366", false: gwarm.borderStrong }}
+              trackColor={{ true: gwarm.teal, false: gwarm.borderStrong }}
               thumbColor="#FFFFFF"
               testID="switch-whatsapp-master"
             />
@@ -533,7 +533,7 @@ export default function SistemaScreen(): React.ReactElement {
               }}
               placeholder="https://openwa.qware.me"
               autoCapitalize="none"
-              accent="#075E54"
+              accent={gwarm.tealDeep}
             />
             <Field
               label="API Key / Secret Token"
@@ -544,7 +544,7 @@ export default function SistemaScreen(): React.ReactElement {
               }}
               placeholder="Ingresa tu API Key de Open-WA"
               autoCapitalize="none"
-              accent="#075E54"
+              accent={gwarm.tealDeep}
               secureTextEntry
             />
             <Field
@@ -556,14 +556,14 @@ export default function SistemaScreen(): React.ReactElement {
               }}
               placeholder="vitmaterna"
               autoCapitalize="none"
-              accent="#075E54"
+              accent={gwarm.tealDeep}
             />
 
             {waCredentialsChanged ? (
               <AppButton
                 title="Guardar credenciales"
                 onPress={() => void saveWhatsAppCredentials()}
-                color="#075E54"
+                color={gwarm.tealDeep}
                 variant="solid"
                 small
                 loading={busy === "wa-config"}
@@ -580,7 +580,7 @@ export default function SistemaScreen(): React.ReactElement {
                 onPress={() => void testConnection()}
                 disabled={busy === "wa-test"}
               >
-                <RefreshCw size={14} color="#075E54" />
+                <RefreshCw size={14} color={gwarm.tealDeep} />
                 <Text style={styles.testBtnText}>
                   {busy === "wa-test" ? "Verificando…" : "Probar conexión"}
                 </Text>
@@ -593,7 +593,7 @@ export default function SistemaScreen(): React.ReactElement {
                   styles.statusBadge,
                   {
                     backgroundColor: waStatusInfo.ok
-                      ? "#DCF8C6"
+                      ? gwarm.tealSoft
                       : waStatusInfo.status === "unconfigured"
                         ? gwarm.amberSoft
                         : "#FFEBEE",
@@ -601,14 +601,14 @@ export default function SistemaScreen(): React.ReactElement {
                 ]}
               >
                 {waStatusInfo.ok ? (
-                  <CheckCircle2 size={16} color="#075E54" />
+                  <CheckCircle2 size={16} color={gwarm.tealDeep} />
                 ) : (
                   <AlertTriangle size={16} color="#C62828" />
                 )}
                 <Text
                   style={[
                     styles.statusBadgeText,
-                    { color: waStatusInfo.ok ? "#075E54" : "#C62828" },
+                    { color: waStatusInfo.ok ? gwarm.tealDeep : "#C62828" },
                   ]}
                 >
                   {waStatusInfo.ok
@@ -643,7 +643,7 @@ export default function SistemaScreen(): React.ReactElement {
                 value={whatsappConfig?.notifyAppointments !== false}
                 disabled={!isWaEnabled || busy !== null}
                 onValueChange={(v) => void toggleWhatsAppFeature("notifyAppointments", v)}
-                trackColor={{ true: "#25D366", false: gwarm.borderStrong }}
+                trackColor={{ true: gwarm.teal, false: gwarm.borderStrong }}
                 thumbColor="#FFFFFF"
               />
             </View>
@@ -660,7 +660,7 @@ export default function SistemaScreen(): React.ReactElement {
                 value={whatsappConfig?.notifySupplements !== false}
                 disabled={!isWaEnabled || busy !== null}
                 onValueChange={(v) => void toggleWhatsAppFeature("notifySupplements", v)}
-                trackColor={{ true: "#25D366", false: gwarm.borderStrong }}
+                trackColor={{ true: gwarm.teal, false: gwarm.borderStrong }}
                 thumbColor="#FFFFFF"
               />
             </View>
@@ -677,7 +677,7 @@ export default function SistemaScreen(): React.ReactElement {
                 value={whatsappConfig?.remindAppointments !== false}
                 disabled={!isWaEnabled || busy !== null}
                 onValueChange={(v) => void toggleWhatsAppFeature("remindAppointments", v)}
-                trackColor={{ true: "#25D366", false: gwarm.borderStrong }}
+                trackColor={{ true: gwarm.teal, false: gwarm.borderStrong }}
                 thumbColor="#FFFFFF"
               />
             </View>
@@ -694,7 +694,7 @@ export default function SistemaScreen(): React.ReactElement {
                 value={whatsappConfig?.remindSupplements !== false}
                 disabled={!isWaEnabled || busy !== null}
                 onValueChange={(v) => void toggleWhatsAppFeature("remindSupplements", v)}
-                trackColor={{ true: "#25D366", false: gwarm.borderStrong }}
+                trackColor={{ true: gwarm.teal, false: gwarm.borderStrong }}
                 thumbColor="#FFFFFF"
               />
             </View>
@@ -711,7 +711,7 @@ export default function SistemaScreen(): React.ReactElement {
                 value={whatsappConfig?.chatOfflineFallback !== false}
                 disabled={!isWaEnabled || busy !== null}
                 onValueChange={(v) => void toggleWhatsAppFeature("chatOfflineFallback", v)}
-                trackColor={{ true: "#25D366", false: gwarm.borderStrong }}
+                trackColor={{ true: gwarm.teal, false: gwarm.borderStrong }}
                 thumbColor="#FFFFFF"
               />
             </View>
@@ -746,13 +746,13 @@ export default function SistemaScreen(): React.ReactElement {
                 onChangeText={setWaTestPhone}
                 placeholder="987 654 321"
                 keyboardType="phone-pad"
-                accent="#075E54"
+                accent={gwarm.tealDeep}
                 style={styles.flex}
               />
               <AppButton
                 title="Enviar"
                 onPress={() => void sendTestMessage()}
-                color="#075E54"
+                color={gwarm.tealDeep}
                 variant="soft"
                 loading={busy === "wa-send"}
                 style={styles.sendBtn}
@@ -851,12 +851,12 @@ const styles = StyleSheet.create({
   },
   envBadgeText: {
     fontFamily: gfonts.hand,
-    fontSize: 14.5,
+    fontSize: 15,
     lineHeight: 18,
   },
   statusMeta: {
     fontFamily: gfonts.handBody,
-    fontSize: 12.5,
+    fontSize: 13,
     lineHeight: 17,
     color: gwarm.inkSoft,
   },
@@ -876,7 +876,7 @@ const styles = StyleSheet.create({
   switchInfo: { flex: 1, minWidth: 0, gap: 1 },
   switchTitle: {
     fontFamily: gfonts.hand,
-    fontSize: 18.5,
+    fontSize: 19,
     lineHeight: 24,
     color: gwarm.ink,
   },
@@ -896,7 +896,7 @@ const styles = StyleSheet.create({
   },
   boxTitle: {
     fontFamily: gfonts.hand,
-    fontSize: 16.5,
+    fontSize: 17,
     lineHeight: 21,
     color: gwarm.ink,
   },
@@ -923,19 +923,20 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#DCF8C6",
+    backgroundColor: gwarm.tealSoft,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 8,
+    minHeight: 44,
   },
   testBtnText: {
     fontFamily: gfonts.hand,
-    fontSize: 13.5,
-    color: "#075E54",
+    fontSize: 14,
+    color: gwarm.tealDeep,
   },
   diagHint: {
     fontFamily: gfonts.handBody,
-    fontSize: 12.5,
+    fontSize: 13,
     lineHeight: 17,
     color: gwarm.inkFaint,
   },
@@ -968,13 +969,13 @@ const styles = StyleSheet.create({
   subSwitchInfo: { flex: 1, minWidth: 0, gap: 1 },
   subSwitchTitle: {
     fontFamily: gfonts.hand,
-    fontSize: 15.5,
+    fontSize: 16,
     lineHeight: 20,
     color: gwarm.ink,
   },
   subSwitchText: {
     fontFamily: gfonts.handBody,
-    fontSize: 12.5,
+    fontSize: 13,
     lineHeight: 16,
     color: gwarm.inkSoft,
   },
@@ -996,13 +997,13 @@ const styles = StyleSheet.create({
   },
   note: {
     fontFamily: gfonts.handBody,
-    fontSize: 13.5,
+    fontSize: 14,
     lineHeight: 19,
     color: gwarm.inkSoft,
   },
   footerNote: {
     fontFamily: gfonts.handBody,
-    fontSize: 12.5,
+    fontSize: 13,
     lineHeight: 17,
     color: gwarm.inkFaint,
     textAlign: "center",
