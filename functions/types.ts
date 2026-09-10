@@ -84,6 +84,7 @@ export interface Patient {
   dni: string;
   firstName: string;
   lastName: string;
+  obstetraDni?: string;
   age: number;
   community: string;
   phone: string;

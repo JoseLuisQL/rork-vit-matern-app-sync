@@ -4,7 +4,7 @@
  * Adaptado con arquitectura responsiva Web (rejilla de usuarios en escritorio).
  */
 import { useRouter } from "expo-router";
-import { Search, UserPlus, Users } from "lucide-react-native";
+import { Search, UserPlus, Users, Trash2 } from "lucide-react-native";
 import React, { useCallback, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { gfonts, gShadow, gwarm, warmAccent, warmPlum } from "@/constants/theme";
@@ -27,7 +27,7 @@ const FILTERS: ("todos" | Role)[] = ["todos", "gestante", "obstetra", "admin"];
 
 export default function UsuariosScreen(): React.ReactElement {
   const router = useRouter();
-  const { view, user: me, adminSetActive, online } = useApp();
+  const { view, user: me, adminSetActive, adminDeleteUser, online } = useApp();
   const [query, setQuery] = useState<string>("");
   const [filter, setFilter] = useState<"todos" | Role>("todos");
   const [busyDni, setBusyDni] = useState<string | null>(null);
@@ -78,6 +78,43 @@ export default function UsuariosScreen(): React.ReactElement {
       }
     },
     [adminSetActive, online],
+  );
+
+  const deleteUser = useCallback(
+    async (target: User) => {
+      if (!online) {
+        showNotice("Sin conexión", "Necesitas conexión para eliminar una cuenta.");
+        return;
+      }
+      if (target.dni === me?.dni) {
+        showNotice("Acción no permitida", "No puedes eliminar tu propia cuenta.");
+        return;
+      }
+      const ok = await confirmAction({
+        title: "Eliminar usuario",
+        message: `¿Estás seguro de que deseas eliminar a ${target.firstName} ${target.lastName}? Sus citas y registros asociados se darán de baja.`,
+        confirmText: "Eliminar",
+        destructive: true,
+      });
+      if (!ok) return;
+      setBusyDni(target.dni);
+      try {
+        await adminDeleteUser(target.dni);
+        showNotice("Usuario eliminado", `La cuenta de ${target.firstName} fue eliminada correctamente.`);
+      } catch (e) {
+        showNotice(
+          "No se pudo eliminar el usuario",
+          e instanceof ApiError && e.status === 0
+            ? "Sin conexión con el servidor."
+            : e instanceof Error
+              ? e.message
+              : "Error desconocido",
+        );
+      } finally {
+        setBusyDni(null);
+      }
+    },
+    [adminDeleteUser, me?.dni, online],
   );
 
   return (
@@ -183,18 +220,30 @@ export default function UsuariosScreen(): React.ReactElement {
                         {u.phone ? <Text style={styles.dniText}>· Tel: {u.phone}</Text> : null}
                       </View>
                     </View>
-                    <View style={styles.switchWrap}>
-                      <Text style={[styles.switchLabel, { color: u.active ? gwarm.tealDeep : gwarm.inkFaint }]}>
-                        {u.active ? "Activo" : "Inactivo"}
-                      </Text>
-                      <Switch
-                        value={u.active}
-                        disabled={isMe || busyDni === u.dni}
-                        onValueChange={(v) => void toggleActive(u, v)}
-                        trackColor={{ true: accent.main, false: gwarm.borderStrong }}
-                        thumbColor="#FFFFFF"
-                        testID={`switch-${u.dni}`}
-                      />
+                    <View style={styles.actionsWrap}>
+                      <View style={styles.switchWrap}>
+                        <Text style={[styles.switchLabel, { color: u.active ? gwarm.tealDeep : gwarm.inkFaint }]}>
+                          {u.active ? "Activo" : "Inactivo"}
+                        </Text>
+                        <Switch
+                          value={u.active}
+                          disabled={isMe || busyDni === u.dni}
+                          onValueChange={(v) => void toggleActive(u, v)}
+                          trackColor={{ true: accent.main, false: gwarm.borderStrong }}
+                          thumbColor="#FFFFFF"
+                          testID={`switch-${u.dni}`}
+                        />
+                      </View>
+                      {!isMe && (
+                        <PressableScale
+                          onPress={() => void deleteUser(u)}
+                          disabled={busyDni === u.dni}
+                          style={styles.deleteBtn}
+                          accessibilityLabel={`Eliminar a ${u.firstName}`}
+                        >
+                          <Trash2 size={18} color={gwarm.rose} />
+                        </PressableScale>
+                      )}
                     </View>
                   </View>
                 );
@@ -222,14 +271,26 @@ export default function UsuariosScreen(): React.ReactElement {
                         {ROLE_LABEL[u.role]}
                       </Text>
                     </View>
-                    <Switch
-                      value={u.active}
-                      disabled={isMe || busyDni === u.dni}
-                      onValueChange={(v) => void toggleActive(u, v)}
-                      trackColor={{ true: accent.main, false: gwarm.borderStrong }}
-                      thumbColor="#FFFFFF"
-                      testID={`switch-${u.dni}`}
-                    />
+                    <View style={styles.mobileActions}>
+                      <Switch
+                        value={u.active}
+                        disabled={isMe || busyDni === u.dni}
+                        onValueChange={(v) => void toggleActive(u, v)}
+                        trackColor={{ true: accent.main, false: gwarm.borderStrong }}
+                        thumbColor="#FFFFFF"
+                        testID={`switch-${u.dni}`}
+                      />
+                      {!isMe && (
+                        <PressableScale
+                          onPress={() => void deleteUser(u)}
+                          disabled={busyDni === u.dni}
+                          style={styles.deleteBtn}
+                          accessibilityLabel={`Eliminar a ${u.firstName}`}
+                        >
+                          <Trash2 size={18} color={gwarm.rose} />
+                        </PressableScale>
+                      )}
+                    </View>
                   </View>
                 );
               })}
@@ -327,6 +388,26 @@ const styles = StyleSheet.create({
   switchLabel: {
     fontFamily: gfonts.handBody,
     fontSize: 11.5,
+  },
+  actionsWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  mobileActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  deleteBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: gwarm.redSoft,
+    borderWidth: 1,
+    borderColor: gwarm.redMid,
+    alignItems: "center",
+    justifyContent: "center",
   },
   listCard: {
     backgroundColor: gwarm.surface,

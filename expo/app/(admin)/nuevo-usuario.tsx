@@ -5,8 +5,8 @@
  * Adaptado con arquitectura responsiva Web (contenedor centrado en escritorio).
  */
 import { useRouter } from "expo-router";
-import { UserPlus, WifiOff } from "lucide-react-native";
-import React, { useCallback, useState } from "react";
+import { UserPlus, WifiOff, Stethoscope } from "lucide-react-native";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -24,6 +24,7 @@ import { AppButton } from "@/components/AppButton";
 import { Card } from "@/components/Card";
 import { DatePickerField } from "@/components/DatePickerField";
 import { Field } from "@/components/Field";
+import { PressableScale } from "@/components/PressableScale";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Segmented } from "@/components/Segmented";
@@ -33,7 +34,11 @@ const accent = warmPlum;
 
 export default function NuevoUsuarioScreen(): React.ReactElement {
   const router = useRouter();
-  const { createUser, online } = useApp();
+  const { view, createUser, online } = useApp();
+
+  const obstetras = useMemo(() => {
+    return (view?.users ?? []).filter((u) => u.role === "obstetra" && u.active);
+  }, [view?.users]);
 
   const [role, setRole] = useState<Role>("gestante");
   const [dni, setDni] = useState<string>("");
@@ -41,6 +46,7 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
   const [lastName, setLastName] = useState<string>("");
   const [phone, setPhone] = useState<string>("");
   const [password, setPassword] = useState<string>("Test@1234");
+  const [obstetraDni, setObstetraDni] = useState<string>("");
 
   const [fumKey, setFumKey] = useState<string>("");
   const [age, setAge] = useState<string>("25");
@@ -48,8 +54,45 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
   const [hb, setHb] = useState<string>("13.0");
   const [bpSys, setBpSys] = useState<string>("110");
   const [bpDia, setBpDia] = useState<string>("70");
-  const [imc, setImc] = useState<string>("24.0");
+  const [weight, setWeight] = useState<string>("58.0");
+  const [height, setHeight] = useState<string>("1.55");
+  const [imc, setImc] = useState<string>("24.1");
   const [gestas, setGestas] = useState<string>("1");
+
+  const updateComputedImc = useCallback((wStr: string, hStr: string) => {
+    const w = parseFloat(wStr.replace(",", "."));
+    let h = parseFloat(hStr.replace(",", "."));
+    if (w > 0 && h > 0) {
+      if (h > 3) h = h / 100; // Si el usuario ingresa en cm (ej: 155)
+      const calculated = (w / (h * h)).toFixed(1);
+      setImc(calculated);
+    }
+  }, []);
+
+  const handleWeightChange = useCallback(
+    (val: string) => {
+      setWeight(val);
+      updateComputedImc(val, height);
+    },
+    [height, updateComputedImc],
+  );
+
+  const handleHeightChange = useCallback(
+    (val: string) => {
+      setHeight(val);
+      updateComputedImc(weight, val);
+    },
+    [weight, updateComputedImc],
+  );
+
+  const imcInfo = useMemo(() => {
+    const val = parseFloat(imc);
+    if (!val || isNaN(val) || val <= 0) return null;
+    if (val < 18.5) return { label: "Bajo peso", color: gwarm.amber };
+    if (val < 25) return { label: "Normal", color: gwarm.tealDeep };
+    if (val < 30) return { label: "Sobrepeso", color: gwarm.amber };
+    return { label: "Obesidad", color: gwarm.rose };
+  }, [imc]);
 
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,6 +124,7 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
         lastName: lastName.trim(),
         role,
         phone: phone.trim() || undefined,
+        obstetraDni: role === "gestante" && obstetraDni ? obstetraDni : undefined,
         patient:
           role === "gestante"
             ? {
@@ -118,6 +162,7 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
     password,
     role,
     phone,
+    obstetraDni,
     fumKey,
     age,
     community,
@@ -228,6 +273,58 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
 
               {role === "gestante" ? (
                 <>
+                  <SectionHeader title="Obstetra responsable" />
+                  <Card style={styles.formCard}>
+                    <Text style={styles.hintText}>
+                      Asigna la obstetra que realizará el seguimiento de controles y citas prenatales.
+                    </Text>
+                    {obstetras.length === 0 ? (
+                      <Text style={styles.emptyHint}>No hay obstetras activos registrados.</Text>
+                    ) : (
+                      <View style={styles.obstetraList}>
+                        <PressableScale
+                          onPress={() => setObstetraDni("")}
+                          style={[
+                            styles.obstetraChip,
+                            obstetraDni === "" && styles.obstetraChipActive,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.obstetraChipText,
+                              obstetraDni === "" && styles.obstetraChipTextActive,
+                            ]}
+                          >
+                            Sin asignar
+                          </Text>
+                        </PressableScale>
+                        {obstetras.map((o) => {
+                          const active = obstetraDni === o.dni;
+                          return (
+                            <PressableScale
+                              key={o.dni}
+                              onPress={() => setObstetraDni(o.dni)}
+                              style={[
+                                styles.obstetraChip,
+                                active && styles.obstetraChipActive,
+                              ]}
+                            >
+                              <Stethoscope size={15} color={active ? "#FFFFFF" : accent.main} />
+                              <Text
+                                style={[
+                                  styles.obstetraChipText,
+                                  active && styles.obstetraChipTextActive,
+                                ]}
+                              >
+                                {o.firstName} {o.lastName}
+                              </Text>
+                            </PressableScale>
+                          );
+                        })}
+                      </View>
+                    )}
+                  </Card>
+
                   <SectionHeader title="Ficha clínica inicial" />
                   <Card style={styles.formCard}>
                     <DatePickerField
@@ -260,6 +357,34 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
                     </View>
                     <View style={styles.row2}>
                       <Field
+                        label="Peso (kg)"
+                        value={weight}
+                        onChangeText={handleWeightChange}
+                        placeholder="Ej. 58"
+                        keyboardType="decimal-pad"
+                        accent={accent.main}
+                        style={styles.flex}
+                      />
+                      <Field
+                        label="Talla (m o cm)"
+                        value={height}
+                        onChangeText={handleHeightChange}
+                        placeholder="Ej. 1.55 o 155"
+                        keyboardType="decimal-pad"
+                        accent={accent.main}
+                        style={styles.flex}
+                      />
+                    </View>
+                    <View style={styles.row2}>
+                      <Field
+                        label="IMC (peso / talla²)"
+                        value={imc}
+                        onChangeText={setImc}
+                        keyboardType="decimal-pad"
+                        accent={accent.main}
+                        style={styles.flex}
+                      />
+                      <Field
                         label="Hb observada (g/dL)"
                         value={hb}
                         onChangeText={setHb}
@@ -267,15 +392,18 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
                         accent={accent.main}
                         style={styles.flex}
                       />
-                      <Field
-                        label="IMC"
-                        value={imc}
-                        onChangeText={setImc}
-                        keyboardType="decimal-pad"
-                        accent={accent.main}
-                        style={styles.flex}
-                      />
                     </View>
+                    {imcInfo ? (
+                      <View style={styles.imcBox}>
+                        <Text style={styles.imcText}>
+                          Estado nutricional:{" "}
+                          <Text style={{ color: imcInfo.color, fontFamily: gfonts.hand }}>
+                            {imcInfo.label}
+                          </Text>{" "}
+                          ({imc} kg/m²)
+                        </Text>
+                      </View>
+                    ) : null}
                     <View style={styles.row2}>
                       <Field
                         label="Presión sistólica"
@@ -356,7 +484,61 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   formCard: { gap: 12 },
+  hintText: {
+    fontFamily: gfonts.handBody,
+    fontSize: 13.5,
+    lineHeight: 18,
+    color: gwarm.inkSoft,
+  },
+  emptyHint: {
+    fontFamily: gfonts.handBody,
+    fontSize: 13.5,
+    color: gwarm.inkFaint,
+    fontStyle: "italic",
+  },
+  obstetraList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  obstetraChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: gwarm.border,
+    backgroundColor: gwarm.surface,
+  },
+  obstetraChipActive: {
+    backgroundColor: accent.main,
+    borderColor: accent.main,
+  },
+  obstetraChipText: {
+    fontFamily: gfonts.hand,
+    fontSize: 14,
+    color: gwarm.ink,
+  },
+  obstetraChipTextActive: {
+    color: "#FFFFFF",
+  },
   row2: { flexDirection: "row", gap: 12 },
+  imcBox: {
+    backgroundColor: gwarm.surfaceSoft,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: gwarm.border,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    alignItems: "center",
+  },
+  imcText: {
+    fontFamily: gfonts.handBody,
+    fontSize: 13.5,
+    color: gwarm.ink,
+  },
   errorBox: {
     backgroundColor: gwarm.redSoft,
     borderRadius: 16,

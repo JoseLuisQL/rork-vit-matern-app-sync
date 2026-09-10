@@ -208,6 +208,8 @@ export class VitmaternaStore extends DurableObject {
           return await this.handleCreateUser(request, db, user);
         case "/api/admin/set-active":
           return await this.handleSetActive(request, db, user);
+        case "/api/admin/delete-user":
+          return await this.handleDeleteUser(request, db, user);
         case "/api/admin/config":
           return await this.handleAdminConfig(request, db, user);
         case "/api/admin/reset":
@@ -946,6 +948,7 @@ export class VitmaternaStore extends DurableObject {
       lastName?: string;
       role?: "gestante" | "obstetra" | "admin";
       phone?: string;
+      obstetraDni?: string;
       patient?: {
         age?: number;
         community?: string;
@@ -991,6 +994,7 @@ export class VitmaternaStore extends DurableObject {
         dni,
         firstName,
         lastName,
+        obstetraDni: body.obstetraDni?.trim() || undefined,
         age: Math.max(12, Math.min(60, Math.round(p.age ?? 25))),
         community: (p.community ?? "Talavera").trim() || "Talavera",
         phone: (body.phone ?? "").trim(),
@@ -1062,6 +1066,34 @@ export class VitmaternaStore extends DurableObject {
         if (db.sessions[t].dni === target.dni) delete db.sessions[t];
       });
     }
+    await this.save();
+    return json({ snapshot: this.snapshotFor(user, db) });
+  }
+
+  private async handleDeleteUser(request: Request, db: DBState, user: StoredUser): Promise<Response> {
+    if (user.role !== "admin") return json({ error: "Acción no permitida" }, 403);
+    const body = (await request.json()) as { dni?: string };
+    if (!body.dni) return json({ error: "DNI requerido" }, 400);
+    if (body.dni === user.dni) return json({ error: "No puedes eliminar tu propia cuenta" }, 400);
+
+    const targetIdx = db.users.findIndex((u) => u.dni === body.dni);
+    if (targetIdx === -1) return json({ error: "Usuario no encontrado" }, 404);
+
+    const target = db.users[targetIdx];
+    Object.keys(db.sessions).forEach((t) => {
+      if (db.sessions[t].dni === target.dni) delete db.sessions[t];
+    });
+
+    if (target.patientId) {
+      db.appointments.forEach((a) => {
+        if (a.patientId === target.patientId && (a.estado === "programada" || a.estado === "confirmada")) {
+          a.estado = "no_asistida";
+        }
+      });
+      db.patients = db.patients.filter((p) => p.id !== target.patientId && p.dni !== target.dni);
+    }
+
+    db.users.splice(targetIdx, 1);
     await this.save();
     return json({ snapshot: this.snapshotFor(user, db) });
   }

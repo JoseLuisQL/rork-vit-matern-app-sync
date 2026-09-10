@@ -78,6 +78,7 @@ export interface CreateUserParams {
   lastName: string;
   role: "gestante" | "obstetra" | "admin";
   phone?: string;
+  obstetraDni?: string;
   patient?: {
     age?: number;
     community?: string;
@@ -382,6 +383,10 @@ export const [AppProvider, useApp] = createContextHook(() => {
     (dni: string, active: boolean) => runOnline("/api/admin/set-active", { dni, active }),
     [runOnline],
   );
+  const adminDeleteUser = useCallback(
+    (dni: string) => runOnline("/api/admin/delete-user", { dni }),
+    [runOnline],
+  );
   const adminReset = useCallback(() => runOnline("/api/admin/reset", {}), [runOnline]);
 
   /** Configuración del sistema (solo admin): mantenimiento, mensaje y entorno. */
@@ -573,6 +578,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       schedule,
       createUser,
       adminSetActive,
+      adminDeleteUser,
       adminReset,
       adminSetConfig,
       adminSetWhatsAppConfig,
@@ -615,6 +621,7 @@ export const [AppProvider, useApp] = createContextHook(() => {
       schedule,
       createUser,
       adminSetActive,
+      adminDeleteUser,
       adminReset,
       adminSetConfig,
       adminSaveArticle,
