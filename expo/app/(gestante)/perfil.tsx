@@ -168,7 +168,7 @@ export default function PerfilGestante(): React.ReactElement {
             <SoftCard style={styles.card}>
               <InfoRow label="DNI" value={patient.dni} />
               <InfoRow label="Edad" value={`${patient.age} años`} />
-              <InfoRow label="Comunidad" value={patient.community} />
+              <InfoRow label="Dirección" value={patient.community} />
               <InfoRow label="Teléfono" value={patient.phone || "—"} />
             </SoftCard>
 

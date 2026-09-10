@@ -240,7 +240,7 @@ export default function ActualizarDatosScreen(): React.ReactElement {
             </Card>
 
             <SectionHeader title="Su historia" />
-            <Card style={styles.formCard}>
+            <Card style={[styles.formCard, styles.historyCard]}>
               <View style={styles.row3}>
                 <Stepper
                   label="Gestas"
@@ -250,6 +250,7 @@ export default function ActualizarDatosScreen(): React.ReactElement {
                   max={20}
                   accent={accent.main}
                   style={styles.flex}
+                  compact
                   testID="stepper-gestas"
                 />
                 <Stepper
@@ -260,6 +261,7 @@ export default function ActualizarDatosScreen(): React.ReactElement {
                   max={10}
                   accent={accent.main}
                   style={styles.flex}
+                  compact
                 />
                 <Stepper
                   label="Abortos"
@@ -269,6 +271,7 @@ export default function ActualizarDatosScreen(): React.ReactElement {
                   max={10}
                   accent={accent.main}
                   style={styles.flex}
+                  compact
                 />
               </View>
             </Card>
@@ -297,7 +300,7 @@ export default function ActualizarDatosScreen(): React.ReactElement {
                 />
               </View>
               <Field
-                label="Comunidad"
+                label="Dirección"
                 value={community}
                 onChangeText={setCommunity}
                 placeholder="San Juan, Talavera…"
@@ -358,8 +361,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   formCard: { gap: 12 },
+  historyCard: {
+    paddingHorizontal: 8,
+    paddingVertical: 14,
+  },
   row2: { flexDirection: "row", gap: 10 },
-  row3: { flexDirection: "row", gap: 8 },
+  row3: { flexDirection: "row", gap: 6 },
   groupLabel: {
     fontFamily: gfonts.hand,
     fontSize: 16.5,

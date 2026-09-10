@@ -24,6 +24,7 @@ interface PressableScaleProps {
   children: React.ReactNode;
   accessibilityLabel?: string;
   testID?: string;
+  hitSlop?: number | { top?: number; bottom?: number; left?: number; right?: number };
 }
 
 export function PressableScale({
@@ -35,6 +36,7 @@ export function PressableScale({
   children,
   accessibilityLabel,
   testID,
+  hitSlop,
 }: PressableScaleProps): React.ReactElement {
   const scale = useRef(new Animated.Value(1)).current;
 
@@ -63,6 +65,7 @@ export function PressableScale({
       accessibilityLabel={accessibilityLabel}
       testID={testID}
       disabled={disabled}
+      hitSlop={hitSlop}
       onPress={handlePress}
       onLongPress={onLongPress}
       onPressIn={() => animateTo(0.97)}

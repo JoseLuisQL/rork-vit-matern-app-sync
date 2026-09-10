@@ -347,9 +347,10 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
                         style={styles.flex}
                       />
                       <Field
-                        label="Comunidad"
+                        label="Dirección"
                         value={community}
                         onChangeText={setCommunity}
+                        placeholder="Ej. Talavera"
                         autoCapitalize="words"
                         accent={accent.main}
                         style={styles.flex}
