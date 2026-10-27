@@ -968,9 +968,18 @@ export async function ensureSeeded(): Promise<void> {
         );
       });
       console.log(`[seed] Demostración reconstruida (v${SEED_VERSION})`);
-    } else if (row.seed_version !== SEED_VERSION) {
-      await pool.query("UPDATE app_config SET seed_version = $1 WHERE id = 1", [SEED_VERSION]);
-      console.log("[seed] Entorno de producción: datos reales conservados");
+    } else {
+      if (row.seed_version !== SEED_VERSION) {
+        await pool.query("UPDATE app_config SET seed_version = $1 WHERE id = 1", [SEED_VERSION]);
+        console.log("[seed] Entorno de producción: datos reales conservados");
+      }
+      const artCount = await pool.query<{ c: string }>("SELECT COUNT(*)::text AS c FROM articles");
+      if (Number(artCount.rows[0]?.c ?? 0) === 0) {
+        await withTx(async (client) => {
+          for (const art of DEFAULT_ARTICLES) await insertArticle(client, art);
+        });
+        console.log("[seed] Catálogo educativo base sembrado en entorno existente");
+      }
     }
     return;
   }
@@ -1000,6 +1009,7 @@ export async function ensureSeeded(): Promise<void> {
          VALUES ($1, $2, 'admin', $3, $4, TRUE, now())`,
         [dni, hashPassword(password), firstName, lastName],
       );
+      for (const art of DEFAULT_ARTICLES) await insertArticle(client, art);
     });
     console.log(`[seed] Base inicializada en PRODUCCIÓN (admin ${dni})`);
   } else {

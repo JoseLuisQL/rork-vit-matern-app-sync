@@ -28,6 +28,7 @@ import { PressableScale } from "@/components/PressableScale";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Segmented } from "@/components/Segmented";
+import { Stepper } from "@/components/Stepper";
 import { WebContainer } from "@/components/web/WebContainer";
 
 const accent = warmPlum;
@@ -57,7 +58,9 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
   const [weight, setWeight] = useState<string>("58.0");
   const [height, setHeight] = useState<string>("1.55");
   const [imc, setImc] = useState<string>("24.1");
-  const [gestas, setGestas] = useState<string>("1");
+  const [gestas, setGestas] = useState<number>(1);
+  const [cesareas, setCesareas] = useState<number>(0);
+  const [abortos, setAbortos] = useState<number>(0);
 
   const updateComputedImc = useCallback((wStr: string, hStr: string) => {
     const w = parseFloat(wStr.replace(",", "."));
@@ -141,7 +144,9 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
                 weight: parsedWeight > 0 ? Number(parsedWeight.toFixed(1)) : undefined,
                 height: parsedHeight > 0 ? Number(parsedHeight.toFixed(2)) : undefined,
                 imc: parseFloat(imc) || 24,
-                gestas: parseInt(gestas, 10) || 1,
+                gestas,
+                cesareas,
+                abortos,
                 obstetraDni: obstetraDni || undefined,
               }
             : undefined,
@@ -180,6 +185,8 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
     height,
     imc,
     gestas,
+    cesareas,
+    abortos,
     createUser,
     router,
   ]);
@@ -432,13 +439,49 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
                         style={styles.flex}
                       />
                     </View>
-                    <Field
-                      label="Número de gestas"
-                      value={gestas}
-                      onChangeText={setGestas}
-                      keyboardType="number-pad"
-                      accent={accent.main}
-                    />
+                  </Card>
+
+                  <SectionHeader title="Su historia" />
+                  <Card style={[styles.formCard, styles.historyCard]}>
+                    <View style={styles.historySummaryRow}>
+                      <Text style={styles.historySummaryText}>
+                        Gestaciones: <Text style={styles.historyNum}>{gestas}</Text> · Cesáreas:{" "}
+                        <Text style={styles.historyNum}>{cesareas}</Text> · Abortos:{" "}
+                        <Text style={styles.historyNum}>{abortos}</Text>
+                      </Text>
+                    </View>
+                    <View style={styles.row3}>
+                      <Stepper
+                        label="Gestaciones"
+                        value={gestas}
+                        onChange={setGestas}
+                        min={1}
+                        max={20}
+                        accent={accent.main}
+                        style={styles.flex}
+                        compact
+                      />
+                      <Stepper
+                        label="Cesáreas"
+                        value={cesareas}
+                        onChange={setCesareas}
+                        min={0}
+                        max={10}
+                        accent={accent.main}
+                        style={styles.flex}
+                        compact
+                      />
+                      <Stepper
+                        label="Abortos"
+                        value={abortos}
+                        onChange={setAbortos}
+                        min={0}
+                        max={10}
+                        accent={accent.main}
+                        style={styles.flex}
+                        compact
+                      />
+                    </View>
                   </Card>
                 </>
               ) : null}
@@ -471,7 +514,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: {
     padding: 16,
-    paddingBottom: 48,
+    paddingBottom: 120,
   },
   formStack: {
     gap: 12,
@@ -494,6 +537,29 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   formCard: { gap: 12 },
+  historyCard: {
+    paddingHorizontal: 10,
+    paddingVertical: 14,
+  },
+  historySummaryRow: {
+    backgroundColor: gwarm.surfaceSoft,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: gwarm.border,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    alignItems: "center",
+  },
+  historySummaryText: {
+    fontFamily: gfonts.handBody,
+    fontSize: 13.5,
+    color: gwarm.inkSoft,
+  },
+  historyNum: {
+    fontFamily: gfonts.hand,
+    fontSize: 15,
+    color: accent.main,
+  },
   hintText: {
     fontFamily: gfonts.handBody,
     fontSize: 13.5,
@@ -535,6 +601,7 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
   },
   row2: { flexDirection: "row", gap: 12 },
+  row3: { flexDirection: "row", gap: 6 },
   imcBox: {
     backgroundColor: gwarm.surfaceSoft,
     borderRadius: 14,

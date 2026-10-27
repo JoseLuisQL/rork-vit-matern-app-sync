@@ -11,6 +11,7 @@ import { Check, CheckCheck, Clock3, Send } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -74,10 +75,26 @@ export function ChatThread({
   const insets = useSafeAreaInsets();
   const { view, user, dispatch, setChatPresence } = useApp();
   const [draft, setDraft] = useState<string>("");
+  const [keyboardOpen, setKeyboardOpen] = useState<boolean>(false);
+  const listRef = useRef<FlatList<Message>>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const myRole = user?.role === "obstetra" ? "obstetra" : "gestante";
   const presence = usePresence(myRole === "gestante" ? "obstetra" : convId);
   const canSend = draft.trim().length > 0;
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener("keyboardDidShow", () => {
+      setKeyboardOpen(true);
+      listRef.current?.scrollToOffset({ offset: 0, animated: true });
+    });
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+      setKeyboardOpen(false);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Con la pantalla abierta se avisa qué conversación se está viendo
   // (sincronización rápida + no llegan notificaciones de este chat).
@@ -279,9 +296,10 @@ export function ChatThread({
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 24}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 96 : 84}
     >
       <FlatList
+        ref={listRef}
         data={messages}
         keyExtractor={(m) => m.id}
         renderItem={renderItem}
@@ -290,12 +308,13 @@ export function ChatThread({
         ListFooterComponent={introCard}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
         testID="chat-thread"
       />
       <View
         style={[
           styles.inputBar,
-          bottomInset && { paddingBottom: Math.max(insets.bottom, spacing.sm2) },
+          bottomInset && !keyboardOpen && { paddingBottom: Math.max(insets.bottom, spacing.sm2) },
         ]}
       >
         <TextInput

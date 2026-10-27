@@ -7,8 +7,8 @@
  */
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Check, Pill, Trash2, UserRound } from "lucide-react-native";
-import React, { useEffect, useMemo, useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { gfonts, gShadow, gwarm, warmBlue } from "@/constants/theme";
 import { ILU } from "@/constants/illustrations";
 import { confirmAction } from "@/lib/confirm";
@@ -71,6 +71,27 @@ export default function MedicamentoScreen(): React.ReactElement {
   const { view, dispatch, online } = useApp();
   const patient = usePatient(patientId);
   const { show } = useToast();
+  const scrollRef = useRef<ScrollView>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState<number>(0);
+
+  const scrollToBottom = useCallback(() => {
+    setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 150);
+  }, []);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener("keyboardDidShow", (e) => {
+      setKeyboardHeight(e.endCoordinates?.height ?? 280);
+    });
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const editing = useMemo(
     () => (supplementId ? view?.supplements.find((s) => s.id === supplementId) ?? null : null),
@@ -192,11 +213,15 @@ export default function MedicamentoScreen(): React.ReactElement {
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 88 : 24}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 96 : 84}
       >
       <ScrollView
+        ref={scrollRef}
         style={styles.flex}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          keyboardHeight > 0 && { paddingBottom: keyboardHeight + 140 },
+        ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -294,6 +319,7 @@ export default function MedicamentoScreen(): React.ReactElement {
                 label="Indicación (opcional)"
                 value={schedule}
                 onChangeText={setSchedule}
+                onFocus={scrollToBottom}
                 placeholder="En ayunas, con bastante agua…"
                 hint="Puedes dejarla vacía: las casillas y recordatorios funcionan igual. Solo es una ayudita que se muestra junto al nombre."
                 accent={accent.main}

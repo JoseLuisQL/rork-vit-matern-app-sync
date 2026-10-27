@@ -315,6 +315,8 @@ export interface Snapshot {
   presence?: Record<string, PresenceView>;
   /** Obstetra activo/a asignado/a al cuidado de la gestante. */
   obstetrician?: PublicUser;
+  /** Lista de obstetras activos para asignación de gestantes. */
+  obstetras?: PublicUser[];
   users?: PublicUser[];
   reports?: { d30: ReportBlock; total: ReportBlock };
   /** Configuración global (mantenimiento + entorno) visible por todos los roles. */

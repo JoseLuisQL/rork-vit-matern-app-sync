@@ -540,6 +540,7 @@ export async function handleCreateUser(c: AppContext): Promise<Response> {
     lastName?: string;
     role?: "gestante" | "obstetra" | "admin";
     phone?: string;
+    obstetraDni?: string;
     patient?: {
       obstetraDni?: string;
       age?: number;
@@ -624,7 +625,10 @@ export async function handleCreateUser(c: AppContext): Promise<Response> {
         weight !== undefined && height !== undefined && height > 0
           ? Math.round((weight / (height * height)) * 10) / 10
           : p.imc ?? 24;
-      let defaultObstetraDni = user.role === "obstetra" ? user.dni : (p.obstetraDni ?? "").trim();
+      let defaultObstetraDni =
+        user.role === "obstetra"
+          ? user.dni
+          : (body.obstetraDni ?? p.obstetraDni ?? "").trim();
       if (!defaultObstetraDni) {
         const obsRes = await client.query<{ dni: string }>(
           "SELECT dni FROM users WHERE role = 'obstetra' AND active = TRUE ORDER BY seq LIMIT 1",
@@ -876,6 +880,10 @@ export async function handleAdminConfig(c: AppContext): Promise<Response> {
             a.bytes,
           ]);
         }
+        const seedArticles = buildSeed().articles ?? [];
+        for (const art of seedArticles) {
+          await insertArticle(client, art);
+        }
         await client.query("UPDATE app_config SET environment = 'produccion', updated_at = $1", [
           nowISO,
         ]);
@@ -1073,14 +1081,26 @@ export async function handleAdminWhatsAppTestConnection(c: AppContext): Promise<
 export async function handleAdminWhatsAppSendTest(c: AppContext): Promise<Response> {
   const user = c.get("user");
   if (user.role !== "admin") return c.json({ error: "Acción no permitida" }, 403);
-  const body = await readJson<{ phone?: string; message?: string }>(c);
+  const body = await readJson<{
+    phone?: string;
+    message?: string;
+    serverUrl?: string;
+    apiKey?: string;
+    sessionId?: string;
+  }>(c);
 
   const phone = (body.phone ?? "").trim();
   if (!phone) {
     return c.json({ error: "Ingresa un número de celular de prueba" }, 400);
   }
 
-  const config = await loadWhatsAppConfig(pool);
+  const storedConfig = await loadWhatsAppConfig(pool);
+  const config: WhatsAppConfig = {
+    ...storedConfig,
+    serverUrl: body.serverUrl?.trim() || storedConfig.serverUrl || "https://openwa.qware.me",
+    apiKey: body.apiKey?.trim() || storedConfig.apiKey || "vitmaterna-openwa-key",
+    sessionId: body.sessionId?.trim() || storedConfig.sessionId || "vitmaterna",
+  };
   if (!config.serverUrl || !config.apiKey) {
     return c.json(
       { error: "Primero debes configurar la URL del servidor y la API Key de Open-WA" },

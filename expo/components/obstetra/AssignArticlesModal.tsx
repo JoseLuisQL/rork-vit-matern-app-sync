@@ -406,7 +406,9 @@ const styles = StyleSheet.create({
   card: {
     width: "100%",
     maxWidth: 640,
-    maxHeight: "88%",
+    maxHeight: "90%",
+    minHeight: 420,
+    flexShrink: 1,
     backgroundColor: gwarm.surface,
     borderRadius: 24,
     borderWidth: 1,
@@ -540,7 +542,9 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
   },
   scroll: {
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 1,
+    minHeight: 220,
   },
   scrollContent: {
     padding: 16,

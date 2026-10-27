@@ -197,6 +197,9 @@ export class VitmaternaStore extends DurableObjectBase {
       if (!stored.config) {
         stored.config = defaultConfig("demo");
       }
+      if (!stored.articles || stored.articles.length === 0) {
+        stored.articles = buildSeed().articles;
+      }
       stored.patients.forEach((p) => {
         if (!p.obstetraDni) p.obstetraDni = "11111111";
       });
@@ -1087,24 +1090,31 @@ export class VitmaternaStore extends DurableObjectBase {
     user: StoredUser,
   ): Promise<Response> {
     if (user.role !== "admin") return json({ error: "Acción no permitida" }, 403);
-    const body = (await request.json()) as { phone?: string; message?: string };
+    const body = (await request.json()) as {
+      phone?: string;
+      message?: string;
+      serverUrl?: string;
+      apiKey?: string;
+      sessionId?: string;
+    };
     const phone = (body.phone ?? "").trim();
     if (!phone) {
       return json({ error: "Ingresa un número de celular de prueba" }, 400);
     }
-    if (!this.whatsappConfig.serverUrl || !this.whatsappConfig.apiKey) {
-      return json(
-        { error: "Primero debes configurar la URL del servidor y la API Key de Open-WA" },
-        400,
-      );
-    }
+    const effectiveConfig: WhatsAppConfig = {
+      ...this.whatsappConfig,
+      serverUrl: body.serverUrl?.trim() || this.whatsappConfig.serverUrl || "https://openwa.qware.me",
+      apiKey: body.apiKey?.trim() || this.whatsappConfig.apiKey || "vitmaterna-openwa-key",
+      sessionId: body.sessionId?.trim() || this.whatsappConfig.sessionId || "vitmaterna",
+      enabled: true,
+    };
     const message =
       body.message?.trim() ||
       templateTestMessage({
         adminName: `${user.firstName} ${user.lastName}`.trim(),
         timestamp: new Date().toLocaleString("es-PE", { timeZone: "America/Lima" }),
       });
-    const res = await sendWhatsAppText({ ...this.whatsappConfig, enabled: true }, phone, message);
+    const res = await sendWhatsAppText(effectiveConfig, phone, message);
     if (!res.ok) {
       return json(
         { error: res.error || "No se pudo entregar el mensaje de prueba a WhatsApp" },

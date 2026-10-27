@@ -54,9 +54,10 @@ export function Stepper({
         <View style={styles.valueWrap}>
           <Text
             style={[styles.value, compact && styles.valueCompact, { color: accent }]}
-            numberOfLines={1}
+            allowFontScaling={false}
+            testID={testID ? `${testID}-value` : undefined}
           >
-            {String(value)}
+            {`${value}`}
           </Text>
         </View>
         <PressableScale
@@ -74,12 +75,12 @@ export function Stepper({
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 6 },
+  container: { gap: 6, minWidth: 0 },
   labelRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 5,
+    gap: 4,
   },
   label: {
     fontFamily: gfonts.handBody,
@@ -87,15 +88,16 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     color: gwarm.ink,
     textAlign: "center",
+    flexShrink: 1,
   },
   labelCompact: {
-    fontSize: 13,
-    lineHeight: 17,
+    fontSize: 12.5,
+    lineHeight: 16,
   },
   countPill: {
     minWidth: 22,
     height: 20,
-    paddingHorizontal: 6,
+    paddingHorizontal: 5,
     borderRadius: 999,
     borderWidth: 1,
     alignItems: "center",
@@ -105,6 +107,7 @@ const styles = StyleSheet.create({
     fontFamily: gfonts.hand,
     fontSize: 13,
     lineHeight: 16,
+    fontWeight: "700",
   },
   row: {
     flexDirection: "row",
@@ -119,13 +122,13 @@ const styles = StyleSheet.create({
   },
   rowCompact: {
     height: 42,
-    paddingHorizontal: 4,
+    paddingHorizontal: 3,
     borderRadius: 12,
   },
   button: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 11,
     backgroundColor: gwarm.surface,
     borderWidth: 1,
     borderColor: gwarm.border,
@@ -133,27 +136,29 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   buttonCompact: {
-    width: 30,
+    width: 26,
     height: 30,
-    borderRadius: 9,
+    borderRadius: 8,
   },
   buttonOff: { backgroundColor: gwarm.surfaceSoft },
   valueWrap: {
     flex: 1,
-    minWidth: 28,
+    minWidth: 26,
+    paddingHorizontal: 2,
     alignItems: "center",
     justifyContent: "center",
   },
   value: {
     textAlign: "center",
     fontFamily: gfonts.hand,
-    fontSize: 21,
-    lineHeight: 26,
+    fontSize: 20,
+    lineHeight: 24,
     color: gwarm.ink,
     fontWeight: "700",
+    includeFontPadding: false,
   },
   valueCompact: {
-    fontSize: 18,
-    lineHeight: 22,
+    fontSize: 17,
+    lineHeight: 21,
   },
 });

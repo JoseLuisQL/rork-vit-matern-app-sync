@@ -10,6 +10,7 @@ import { Check, CheckCheck, Clock3, Send } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -62,8 +63,24 @@ export function GChatThread({ convId }: GChatThreadProps): React.ReactElement {
   const { view, dispatch, setChatPresence } = useApp();
   const presence = usePresence("obstetra");
   const [draft, setDraft] = useState<string>("");
+  const [keyboardOpen, setKeyboardOpen] = useState<boolean>(false);
+  const listRef = useRef<FlatList<Message>>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const canSend = draft.trim().length > 0;
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener("keyboardDidShow", () => {
+      setKeyboardOpen(true);
+      listRef.current?.scrollToOffset({ offset: 0, animated: true });
+    });
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+      setKeyboardOpen(false);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Con la pantalla abierta se avisa qué conversación se está viendo
   // (sincronización rápida + no llegan notificaciones de este chat).
@@ -242,7 +259,7 @@ export function GChatThread({ convId }: GChatThreadProps): React.ReactElement {
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 24}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 96 : 84}
     >
       {messages.length === 0 ? (
         <View style={styles.flex}>
@@ -257,6 +274,7 @@ export function GChatThread({ convId }: GChatThreadProps): React.ReactElement {
         </View>
       ) : (
         <FlatList
+          ref={listRef}
           data={messages}
           keyExtractor={(m) => m.id}
           renderItem={renderItem}
@@ -265,10 +283,11 @@ export function GChatThread({ convId }: GChatThreadProps): React.ReactElement {
           ListFooterComponent={introCard}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
           testID="chat-thread"
         />
       )}
-      <View style={styles.inputBar}>
+      <View style={[styles.inputBar, keyboardOpen && { paddingBottom: spacing.sm2 }]}>
         <TextInput
           value={draft}
           onChangeText={handleChangeText}

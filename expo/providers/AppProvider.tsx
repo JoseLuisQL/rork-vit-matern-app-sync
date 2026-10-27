@@ -25,6 +25,7 @@ import {
 } from "@/lib/notifications";
 import { playSnapshotSounds, setSoundsPreference } from "@/lib/sounds";
 import { useToast } from "@/components/Toast";
+import { ARTICLES } from "@/constants/content";
 import { todayKeyLocal } from "@/lib/format";
 import type {
   ActionInput,
@@ -480,10 +481,14 @@ export const [AppProvider, useApp] = createContextHook(() => {
     async (
       phone: string,
       message?: string,
+      config?: Partial<WhatsAppConfig>,
     ): Promise<{ ok: boolean; message?: string; error?: string }> => {
       const s = sessionRef.current;
       if (!s) throw new ApiError("Sin sesión", 0);
-      return api("/api/admin/whatsapp/send-test", { token: s.token, body: { phone, message } });
+      return api("/api/admin/whatsapp/send-test", {
+        token: s.token,
+        body: { phone, message, ...(config ?? {}) },
+      });
     },
     [],
   );
@@ -652,8 +657,12 @@ export const [AppProvider, useApp] = createContextHook(() => {
 
 /** Lista de artículos educativos disponibles para el rol actual. */
 export function useArticles(): Article[] {
-  const { view } = useApp();
-  return view?.articles ?? [];
+  const { view, user } = useApp();
+  const serverArticles = view?.articles ?? [];
+  if (serverArticles.length === 0 && user?.role !== "gestante") {
+    return ARTICLES;
+  }
+  return serverArticles;
 }
 
 /** Asignaciones de artículos por paciente. */

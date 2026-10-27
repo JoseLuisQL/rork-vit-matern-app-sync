@@ -69,6 +69,7 @@ export default function GestanteTabsLayout(): React.ReactElement {
       <Tabs
         screenOptions={{
           headerShown: false,
+          tabBarHideOnKeyboard: true,
           tabBarActiveTintColor: gwarm.tealDeep,
           tabBarInactiveTintColor: gwarm.inkFaint,
           tabBarStyle: isDesktop

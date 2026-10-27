@@ -173,4 +173,34 @@ describe("WhatsApp Client — Open-WA HTTP Service", () => {
     expect(status.status).toBe("connected");
     expect(status.battery).toBe(95);
   });
+
+  it("auto-recovers a disconnected Open-WA session during testWhatsAppConnection (Issue #45)", async () => {
+    const calledUrls: string[] = [];
+    globalThis.fetch = mock(async (url, init) => {
+      const urlStr = String(url);
+      calledUrls.push(`${init?.method ?? "GET"} ${urlStr}`);
+      if (urlStr.endsWith("/sessions/cliente1") && (!init?.method || init.method === "GET")) {
+        return new Response(
+          JSON.stringify({ id: "cliente1", status: "disconnected" }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      if (urlStr.endsWith("/sessions/cliente1/start") && init?.method === "POST") {
+        return new Response(
+          JSON.stringify({ id: "cliente1", status: "connected" }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response(
+        JSON.stringify({ status: "ok" }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }) as unknown as typeof fetch;
+
+    const status = await testWhatsAppConnection({ ...activeConfig, sessionId: "cliente1" });
+    expect(status.ok).toBe(true);
+    expect(status.status).toBe("connected");
+    expect(calledUrls.some((u) => u.includes("/sessions/cliente1/start"))).toBe(true);
+  });
 });
+

@@ -438,4 +438,60 @@ describe("Server Domain — Role-based Snapshot Filtering & MINSA Reports", () =
     expect(report.porComunidad.length).toBe(2);
     expect(report.asistenciaSemanal.length).toBe(6);
   });
+
+  it("snapshotFor strictly isolates patients per assigned obstetraDni (Issues #38 & #46)", () => {
+    const secondObstetra: UserRecord = {
+      dni: "55555555",
+      passwordHash: "hash-999",
+      role: "obstetra",
+      firstName: "Elena",
+      lastName: "Vargas",
+      patientId: null,
+      phone: "983444555",
+      active: true,
+      createdAtISO: new Date(Date.now() + 1000).toISOString(),
+      avatarVersion: 1,
+    };
+
+    const multiObsData: AppData = {
+      ...appData,
+      users: [...appData.users, secondObstetra],
+      patients: [
+        { ...appData.patients[0]!, obstetraDni: "11111111" }, // Ana -> Carmen
+        { ...appData.patients[1]!, obstetraDni: "55555555" }, // Lucía -> Elena
+      ],
+    };
+
+    const snapCarmen = snapshotFor(obstetraUser, multiObsData, {});
+    expect(snapCarmen.patients.map((p) => p.id)).toEqual(["p-ana"]);
+    expect(snapCarmen.appointments.map((a) => a.id)).toEqual(["a-ana"]);
+    expect(snapCarmen.obstetras?.length).toBe(2);
+
+    const snapElena = snapshotFor(secondObstetra, multiObsData, {});
+    expect(snapElena.patients.map((p) => p.id)).toEqual(["p-lucia"]);
+    expect(snapElena.appointments.map((a) => a.id)).toEqual(["a-lucia"]);
+    expect(snapElena.articles?.length).toBe(2); // Active educational articles for AssignArticlesModal (#49)
+  });
+
+  it("computePatient exposes FPP (Issue #44), IMC with weight/height (Issue #40), and obstetric history (Issue #41)", () => {
+    const enriched: Patient = {
+      ...appData.patients[1]!,
+      weightKg: 64,
+      heightCm: 160,
+      imc: 25.0,
+      gestas: 3,
+      cesareas: 1,
+      abortos: 1,
+      fumKey: "2026-01-10",
+    };
+    const view = computePatient(enriched, appData, "2026-06-15");
+    expect(view.fppKey).toBe("2026-10-17");
+    expect(view.weightKg).toBe(64);
+    expect(view.heightCm).toBe(160);
+    expect(view.imc).toBe(25.0);
+    expect(view.gestas).toBe(3);
+    expect(view.cesareas).toBe(1);
+    expect(view.abortos).toBe(1);
+  });
 });
+

@@ -359,8 +359,13 @@ export default function SistemaScreen(): React.ReactElement {
     }
     setBusy("wa-send");
     try {
-      const res = await adminSendTestWhatsApp(phone);
+      const res = await adminSendTestWhatsApp(phone, undefined, {
+        serverUrl: waServerUrl.trim(),
+        apiKey: waApiKey.trim(),
+        sessionId: waSessionId.trim(),
+      });
       if (res.ok) {
+        setWaCredentialsDirty(false);
         show(`Mensaje de prueba entregado a ${phone}`, "success");
       } else {
         show(`Error: ${res.error || "No se pudo enviar"}`, "error");
@@ -370,7 +375,7 @@ export default function SistemaScreen(): React.ReactElement {
     } finally {
       setBusy(null);
     }
-  }, [adminSendTestWhatsApp, waTestPhone, requireOnline, show]);
+  }, [adminSendTestWhatsApp, waTestPhone, waServerUrl, waApiKey, waSessionId, requireOnline, show]);
 
   if (!systemConfig) {
     return <View style={styles.container} />;

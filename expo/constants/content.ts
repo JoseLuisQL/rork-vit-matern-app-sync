@@ -100,4 +100,66 @@ export const ARTICLES: Article[] = [
       "Si sientes que te hacen daño en casa, cuéntale a tu obstetra. Te escucharemos sin juzgar y te acompañaremos.",
     ],
   },
+  {
+    id: "a-video-respiracion",
+    category: "Preparación",
+    title: "Video: Ejercicios de respiración y psicoprofilaxis para el parto",
+    minutes: 5,
+    mediaType: "video",
+    mediaUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    summary: "Aprende paso a paso cómo respirar durante las contracciones para disminuir el dolor y oxigenar a tu bebé.",
+    body: [
+      "La respiración pausada (inhalar por la nariz en 4 segundos y exhalar suave por la boca) ayuda a relajar el suelo pélvico.",
+      "Practica estos ejercicios 10 minutos al día sentada sobre una manta o cojín cómodo en casa.",
+      "Mira el video demostrativo junto a tu acompañante para que pueda guiarte el día del parto.",
+    ],
+    links: [
+      {
+        label: "Ver video demostrativo de psicoprofilaxis",
+        url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        kind: "video",
+      },
+    ],
+  },
+  {
+    id: "a-pdf-carnet-minsa",
+    category: "Documentos PDF",
+    title: "Cartilla PDF: Guía materna de controles y nutrición MINSA",
+    minutes: 6,
+    mediaType: "pdf",
+    mediaUrl: "https://www.gob.pe/minsa",
+    summary: "Documento descargable con el calendario de los 8 controles prenatales, vacunas y recetas ricas en hierro.",
+    body: [
+      "Descarga o consulta esta cartilla oficial con el cronograma completo de exámenes de laboratorio, ecografías y vacunas (dTpa, Influenza).",
+      "Incluye tablas prácticas de combinación de alimentos ricos en hierro hemínico para prevenir la anemia materna.",
+    ],
+    links: [
+      {
+        label: "Abrir Cartilla Materna en PDF (MINSA)",
+        url: "https://www.gob.pe/minsa",
+        kind: "pdf",
+      },
+    ],
+  },
+  {
+    id: "a-img-posiciones-lactancia",
+    category: "Posparto",
+    title: "Infografía: Posiciones correctas para un buen agarre en la lactancia",
+    minutes: 2,
+    mediaType: "imagen",
+    imageUrl: "https://images.unsplash.com/photo-1555252333-9f8e92e65df9?auto=format&fit=crop&w=900&q=80",
+    mediaUrl: "https://images.unsplash.com/photo-1555252333-9f8e92e65df9?auto=format&fit=crop&w=900&q=80",
+    summary: "Guía visual ilustrada para lograr un agarre profundo sin dolor y asegurar una buena producción de leche.",
+    body: [
+      "Observa en la infografía cómo la boca del bebé debe cubrir gran parte de la areola, con el labio inferior volteado hacia afuera.",
+      "Barriga con barriga: el cuerpo de tu bebé debe estar alineado frente a ti para tragar sin esfuerzo.",
+    ],
+    links: [
+      {
+        label: "Ver infografía en tamaño completo",
+        url: "https://images.unsplash.com/photo-1555252333-9f8e92e65df9?auto=format&fit=crop&w=900&q=80",
+        kind: "imagen",
+      },
+    ],
+  },
 ];

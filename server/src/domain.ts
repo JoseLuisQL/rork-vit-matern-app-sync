@@ -179,11 +179,13 @@ export function snapshotFor(
   const avatarByDni = new Map<string, number | null>(
     data.users.map((u) => [u.dni, u.avatarVersion]),
   );
+  const activeObstetras = data.users.filter((u) => u.role === "obstetra" && u.active);
   const patients = data.patients
     .filter((p) => {
       if (isGestante) return p.id === pid;
       if (isObstetra) {
-        return p.obstetraDni ? p.obstetraDni === user.dni : true;
+        if (p.obstetraDni) return p.obstetraDni === user.dni;
+        return activeObstetras.length <= 1 || activeObstetras[0]?.dni === user.dni;
       }
       return true;
     })
@@ -225,6 +227,7 @@ export function snapshotFor(
     scopedArticles = allArticles.filter((a) => a.active && assignedIds.has(a.id));
     scopedAssignments = allAssignments.filter((a) => a.patientId === pid);
   } else if (isObstetra) {
+    scopedArticles = allArticles.filter((a) => a.active);
     scopedAssignments = allAssignments.filter((a) => visiblePatientIds.has(a.patientId));
   }
 
@@ -264,6 +267,7 @@ export function snapshotFor(
 
   if (user.role === "admin" || user.role === "obstetra") {
     snapshot.users = data.users.map(publicUser);
+    snapshot.obstetras = activeObstetras.map(publicUser);
   }
 
   if (user.role === "admin") {

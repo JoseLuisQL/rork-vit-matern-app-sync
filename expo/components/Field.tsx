@@ -29,6 +29,7 @@ interface FieldProps {
   hint?: string;
   /** Compatibilidad: toda la app ya usa letra manuscrita. */
   hand?: boolean;
+  onFocus?: () => void;
   style?: StyleProp<ViewStyle>;
   testID?: string;
 }
@@ -46,6 +47,7 @@ export function Field({
   multiline = false,
   accent = gwarm.teal,
   hint,
+  onFocus,
   style,
   testID,
 }: FieldProps): React.ReactElement {
@@ -65,7 +67,10 @@ export function Field({
         maxLength={maxLength}
         autoCapitalize={autoCapitalize}
         multiline={multiline}
-        onFocus={() => setFocused(true)}
+        onFocus={() => {
+          setFocused(true);
+          onFocus?.();
+        }}
         onBlur={() => setFocused(false)}
         style={[
           styles.input,

@@ -23,6 +23,7 @@
         "backgroundColor": "#E7F4F2"
       },
       "package": "app.rork.ztb4shx7jxkj17tpuz62u",
+      "softwareKeyboardLayoutMode": "resize",
       "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.RECORD_AUDIO",

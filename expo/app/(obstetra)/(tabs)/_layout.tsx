@@ -82,6 +82,7 @@ export default function ObstetraTabsLayout(): React.ReactElement {
       <Tabs
         screenOptions={{
           headerShown: false,
+          tabBarHideOnKeyboard: true,
           tabBarActiveTintColor: warmBlue.deep,
           tabBarInactiveTintColor: gwarm.inkFaint,
           tabBarStyle: isDesktop

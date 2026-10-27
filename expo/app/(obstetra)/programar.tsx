@@ -8,8 +8,8 @@
  */
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { CalendarCheck2, Check, Clock, HousePlus, Stethoscope, WifiOff } from "lucide-react-native";
-import React, { useCallback, useMemo, useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { gfonts, gShadow, gwarm, risk, warmBlue } from "@/constants/theme";
 import { AGENDA_SLOTS } from "@/constants/labels";
 import { ILU } from "@/constants/illustrations";
@@ -70,6 +70,27 @@ export default function ProgramarScreen(): React.ReactElement {
   const patients = usePatients();
 
   const [mode, setMode] = useState<Mode>(initialMode);
+  const scrollRef = useRef<ScrollView>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState<number>(0);
+
+  const scrollToFocusedInput = useCallback(() => {
+    setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 150);
+  }, []);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener("keyboardDidShow", (e) => {
+      setKeyboardHeight(e.endCoordinates?.height ?? 280);
+    });
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const appointment = useMemo(
     () =>
@@ -187,11 +208,15 @@ export default function ProgramarScreen(): React.ReactElement {
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 88 : 24}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 96 : 84}
       >
       <ScrollView
+        ref={scrollRef}
         style={styles.flex}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          keyboardHeight > 0 && { paddingBottom: keyboardHeight + 140 },
+        ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -362,6 +387,7 @@ export default function ProgramarScreen(): React.ReactElement {
               <View style={styles.customTimeRow}>
                 <TextInput
                   value={customTime}
+                  onFocus={scrollToFocusedInput}
                   onChangeText={(txt) => {
                     const clean = txt.replace(/[^0-9:]/g, "").slice(0, 5);
                     let formatted = clean;
@@ -402,6 +428,7 @@ export default function ProgramarScreen(): React.ReactElement {
                 label="Motivo (opcional)"
                 value={motivo}
                 onChangeText={setMotivo}
+                onFocus={scrollToFocusedInput}
                 placeholder={mode === "visita" ? "Motivo de la visita" : "Motivo de la cita"}
                 accent={accent.main}
                 maxLength={120}
