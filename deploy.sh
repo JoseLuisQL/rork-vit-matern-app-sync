@@ -20,10 +20,11 @@ if ! docker network ls | grep -q "sivac_net"; then
     docker network create sivac_net
 fi
 
-# 3. Actualizar código desde Git (si es un repositorio git)
+# 3. Actualizar código desde Git (preserva .env.prod y volúmenes de BD)
 if [ -d .git ]; then
-    echo "🔄 Descargando últimos cambios desde Git..."
-    git pull --ff-only || echo "⚠️  No se pudo hacer git pull automático; continuando con el código local..."
+    echo "🔄 Sincronizando últimos cambios desde Git (origin/main)..."
+    git fetch origin main
+    git reset --hard origin/main
 fi
 
 # 4. Descargar/construir y levantar contenedores (aplica migración automática en PostgreSQL al iniciar api)
