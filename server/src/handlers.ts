@@ -1071,6 +1071,19 @@ export async function handleAdminWhatsAppTestConnection(c: AppContext): Promise<
     sessionId: body.sessionId?.trim() || current.sessionId,
   };
 
+  if (
+    testCfg.serverUrl !== current.serverUrl ||
+    testCfg.apiKey !== current.apiKey ||
+    testCfg.sessionId !== current.sessionId
+  ) {
+    await pool.query(
+      `UPDATE whatsapp_config
+          SET server_url = $1, api_key = $2, session_id = $3, updated_at = $4
+        WHERE id = 1`,
+      [testCfg.serverUrl, testCfg.apiKey, testCfg.sessionId, new Date().toISOString()],
+    );
+  }
+
   const status = await testWhatsAppConnection(testCfg);
   return c.json(status);
 }
@@ -1105,6 +1118,19 @@ export async function handleAdminWhatsAppSendTest(c: AppContext): Promise<Respon
     return c.json(
       { error: "Primero debes configurar la URL del servidor y la API Key de Open-WA" },
       400,
+    );
+  }
+
+  if (
+    config.serverUrl !== storedConfig.serverUrl ||
+    config.apiKey !== storedConfig.apiKey ||
+    config.sessionId !== storedConfig.sessionId
+  ) {
+    await pool.query(
+      `UPDATE whatsapp_config
+          SET server_url = $1, api_key = $2, session_id = $3, updated_at = $4
+        WHERE id = 1`,
+      [config.serverUrl, config.apiKey, config.sessionId, new Date().toISOString()],
     );
   }
 

@@ -111,6 +111,66 @@ function getConnectionTestEndpoints(config: WhatsAppConfig): string[] {
 }
 
 /**
+ * Consulta la lista de sesiones en Open-WA (/api/sessions) para resolver el UUID
+ * real de la sesión cuando el usuario ingresó el nombre (ej. "cliente1", "vitmaterna")
+ * o cuando el UUID configurado cambió en el servidor Open-WA.
+ */
+async function resolveOpenWaSessionUuid(
+  config: WhatsAppConfig,
+  headers: Record<string, string>,
+): Promise<string | null> {
+  const cleanBase = config.serverUrl.replace(/\/+$/, "");
+  const apiBase = cleanBase.endsWith("/api") ? cleanBase : `${cleanBase}/api`;
+  const target = (config.sessionId ?? "").trim().toLowerCase();
+
+  for (const listUrl of [`${apiBase}/sessions`, `${cleanBase}/sessions`]) {
+    try {
+      const res = await fetchWithTimeout(listUrl, { method: "GET", headers }, 3500);
+      if (!res.ok) continue;
+      const body = (await res.json().catch(() => null)) as unknown;
+      if (!Array.isArray(body) || body.length === 0) continue;
+
+      const sessions = body.filter(
+        (s): s is { id: string; name?: string; status?: string } =>
+          Boolean(s && typeof s === "object" && "id" in s && typeof (s as { id?: unknown }).id === "string"),
+      );
+      if (sessions.length === 0) continue;
+
+      // 1. Coincidencia exacta por id o por name
+      const exact = sessions.find(
+        (s) =>
+          s.id.toLowerCase() === target ||
+          (typeof s.name === "string" && s.name.trim().toLowerCase() === target),
+      );
+      // 2. Si no coincide, preferir cualquier sesión en estado "ready" o la primera disponible
+      const chosen =
+        exact ??
+        sessions.find((s) => String(s.status ?? "").toLowerCase() === "ready") ??
+        sessions[0];
+
+      if (chosen) {
+        const st = String(chosen.status ?? "").toLowerCase();
+        if (st && st !== "ready" && st !== "connected" && st !== "authenticated") {
+          try {
+            await fetchWithTimeout(
+              `${apiBase}/sessions/${encodeURIComponent(chosen.id)}/start`,
+              { method: "POST", headers },
+              2500,
+            );
+          } catch {
+            // Ignorar si no soporta /start
+          }
+        }
+        return chosen.id;
+      }
+    } catch {
+      // Continuar
+    }
+  }
+  return null;
+}
+
+/**
  * Envía un mensaje de texto plano o enriquecido a un número de WhatsApp.
  */
 export async function sendWhatsAppText(
@@ -136,8 +196,10 @@ export async function sendWhatsAppText(
   const headers = getAuthHeaders(config);
   const endpoints = getTextEndpoints(config);
   let lastError = "No se pudo entregar el mensaje";
+  let triedResolvedSession = false;
 
-  for (const endpoint of endpoints) {
+  for (let i = 0; i < endpoints.length; i++) {
+    const endpoint = endpoints[i];
     try {
       // DTO estricto según la ruta de Open-WA
       const isModernSessionApi = endpoint.includes("/messages/send-text");
@@ -190,6 +252,21 @@ export async function sendWhatsAppText(
           ok: false,
           error: `API Key incorrecta o no autorizada en Open-WA (HTTP ${res.status})`,
         };
+      }
+
+      // Si el endpoint de sesión devuelve 404 (ej. se usó el nombre "cliente1" en vez del UUID),
+      // resolvemos el UUID real desde GET /api/sessions e inyectamos el endpoint correcto.
+      if (isModernSessionApi && !triedResolvedSession) {
+        triedResolvedSession = true;
+        const resolvedUuid = await resolveOpenWaSessionUuid(config, headers);
+        if (resolvedUuid && resolvedUuid !== config.sessionId?.trim()) {
+          const cleanBase = config.serverUrl.replace(/\/+$/, "");
+          const apiBase = cleanBase.endsWith("/api") ? cleanBase : `${cleanBase}/api`;
+          const resolvedEndpoint = `${apiBase}/sessions/${encodeURIComponent(resolvedUuid)}/messages/send-text`;
+          if (!endpoints.includes(resolvedEndpoint)) {
+            endpoints.splice(i + 1, 0, resolvedEndpoint);
+          }
+        }
       }
 
       if (res.status === 404) {

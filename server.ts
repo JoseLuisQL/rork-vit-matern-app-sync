@@ -67,6 +67,20 @@ app.get("/health", (_req, res) => {
   res.json({ ok: true, db: true, mode: "in-memory", now: new Date().toISOString() });
 });
 
+app.get(["/manual-pruebas-issues-vitmaterna.pdf", "/api/manual-pdf"], (_req, res) => {
+  const pdfPath = path.join(__dirname, "manual-pruebas-issues-vitmaterna.pdf");
+  if (fs.existsSync(pdfPath)) {
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      'attachment; filename="Manual_Pruebas_Issues_37_al_50_VitMaterna.pdf"',
+    );
+    res.sendFile(pdfPath);
+    return;
+  }
+  res.status(404).json({ error: "Archivo PDF no encontrado" });
+});
+
 app.use("/api", async (req, res) => {
   try {
     const protocol = req.protocol || "http";

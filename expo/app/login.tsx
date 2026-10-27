@@ -7,7 +7,7 @@
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, Eye, EyeOff, Info } from "lucide-react-native";
+import { ChevronRight, Eye, EyeOff, FileDown, Info } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -24,6 +24,7 @@ import { ROLE_LABEL } from "@/constants/labels";
 import { brand, gfonts, gShadow, gwarm, warmAccent } from "@/constants/theme";
 import { GICON, ILU } from "@/constants/illustrations";
 import { api, ApiError } from "@/lib/api";
+import { exportManualTestingPdf } from "@/lib/manualTestingPdf";
 import { useApp } from "@/providers/AppProvider";
 import { useResponsive } from "@/hooks/useResponsive";
 import type { PublicConfig, Role } from "@/types";
@@ -264,6 +265,28 @@ export default function LoginScreen(): React.ReactElement {
           </View>
         </PopIn>
       ) : null}
+
+      <PopIn delay={220}>
+        <PressableScale
+          onPress={() => void exportManualTestingPdf()}
+          accessibilityLabel="Descargar Manual de Pruebas Manuales en PDF"
+          style={styles.manualPdfCard}
+          testID="btn-download-manual-pdf"
+        >
+          <View style={styles.manualPdfIcon}>
+            <FileDown size={20} color={gwarm.tealDeep} />
+          </View>
+          <View style={styles.demoInfo}>
+            <Text style={styles.manualPdfTitle}>
+              Guía de Pruebas Manuales (PDF)
+            </Text>
+            <Text style={styles.manualPdfSub}>
+              Pasos y capturas para validar los Issues #37 al #50
+            </Text>
+          </View>
+          <ChevronRight size={18} color={gwarm.tealDeep} />
+        </PressableScale>
+      </PopIn>
 
       <View style={styles.footer}>
         <Illustration source={ILU.flores} width={92} height={30} />
@@ -541,5 +564,37 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 17,
     color: gwarm.inkFaint,
+  },
+  manualPdfCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: gwarm.tealSoft,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: gwarm.tealMid,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    ...gShadow,
+  },
+  manualPdfIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: gwarm.surface,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  manualPdfTitle: {
+    fontFamily: gfonts.hand,
+    fontSize: 17,
+    lineHeight: 22,
+    color: gwarm.tealDeep,
+  },
+  manualPdfSub: {
+    fontFamily: gfonts.handBody,
+    fontSize: 13,
+    lineHeight: 17,
+    color: gwarm.inkSoft,
   },
 });

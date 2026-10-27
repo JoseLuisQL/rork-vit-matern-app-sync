@@ -295,8 +295,8 @@ export function ChatThread({
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 96 : 84}
+      behavior="padding"
+      keyboardVerticalOffset={Platform.OS === "ios" ? 96 : 80}
     >
       <FlatList
         ref={listRef}

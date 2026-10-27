@@ -202,5 +202,49 @@ describe("WhatsApp Client — Open-WA HTTP Service", () => {
     expect(status.status).toBe("connected");
     expect(calledUrls.some((u) => u.includes("/sessions/cliente1/start"))).toBe(true);
   });
+
+  it("resolves session name (e.g. cliente1) to its UUID via GET /api/sessions when sending text (Issue #45)", async () => {
+    const calledUrls: string[] = [];
+    globalThis.fetch = mock(async (url, init) => {
+      const urlStr = String(url);
+      calledUrls.push(`${init?.method ?? "GET"} ${urlStr}`);
+      if (urlStr.includes("/sessions/cliente1/messages/send-text")) {
+        return new Response("Not Found", { status: 404 });
+      }
+      if (urlStr.endsWith("/api/sessions") && (!init?.method || init.method === "GET")) {
+        return new Response(
+          JSON.stringify([
+            {
+              id: "19024686-72a5-42f7-adec-969d324e064f",
+              name: "cliente1",
+              status: "ready",
+            },
+          ]),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      if (urlStr.includes("/sessions/19024686-72a5-42f7-adec-969d324e064f/messages/send-text")) {
+        return new Response(
+          JSON.stringify({ messageId: "uuid-resolved-msg-001" }),
+          { status: 201, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response("Not Found", { status: 404 });
+    }) as unknown as typeof fetch;
+
+    const res = await sendWhatsAppText(
+      { ...activeConfig, sessionId: "cliente1" },
+      "917405094",
+      "Prueba con resolución de UUID",
+    );
+    expect(res.ok).toBe(true);
+    expect(res.messageId).toBe("uuid-resolved-msg-001");
+    expect(
+      calledUrls.some((u) =>
+        u.includes("/sessions/19024686-72a5-42f7-adec-969d324e064f/messages/send-text"),
+      ),
+    ).toBe(true);
+  });
 });
+
 

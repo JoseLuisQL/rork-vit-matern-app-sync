@@ -27,6 +27,7 @@ import { useResponsive } from "@/hooks/useResponsive";
 import { ApiError } from "@/lib/api";
 import { confirmAction } from "@/lib/confirm";
 import { tiempoRelativo } from "@/lib/format";
+import { exportManualTestingPdf } from "@/lib/manualTestingPdf";
 import { useApp } from "@/providers/AppProvider";
 import { AppButton } from "@/components/AppButton";
 import { Card } from "@/components/Card";
@@ -530,6 +531,23 @@ export default function SistemaScreen(): React.ReactElement {
           </Card>
         </PopIn>
       ) : null}
+
+      <PopIn delay={180}>
+        <SectionHeader title="Manual de Pruebas para el Cliente (PDF)" />
+        <Card style={styles.card}>
+          <Text style={styles.note}>
+            Descarga el documento PDF ilustrado con las capturas comparativas (Antes vs. Después),
+            credenciales de acceso y pasos detallados para probar manualmente los Issues #37 al #50.
+          </Text>
+          <AppButton
+            title="Descargar Manual de Pruebas (PDF) — Issues #37 al #50"
+            onPress={() => void exportManualTestingPdf()}
+            color={gwarm.tealDeep}
+            variant="solid"
+            testID="btn-sistema-manual-pdf"
+          />
+        </Card>
+      </PopIn>
     </View>
   );
 
