@@ -48,6 +48,9 @@ if ! docker network ls | grep -q "sivac_net"; then
 fi
 
 # 4. Construir imágenes con los últimos cambios y levantar servicios
+if [ -f expo/Dockerfile.web ]; then
+    sed -i 's/COPY package.json bun.lock \.\//COPY package.json .\//g' expo/Dockerfile.web
+fi
 echo "📦 Construyendo imágenes (api + web) y levantando servicios..."
 docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build --remove-orphans
 

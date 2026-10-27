@@ -5,9 +5,9 @@
 FROM node:20-bookworm-slim AS build
 WORKDIR /app
 
-# Bun instala las dependencias respetando bun.lock; Node ejecuta el export.
+# Bun instala las dependencias; Node ejecuta el export.
 RUN npm install -g bun@1
-COPY package.json bun.lock ./
+COPY package.json ./
 RUN bun install
 COPY . .
 
