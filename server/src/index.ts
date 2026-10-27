@@ -25,6 +25,7 @@ import {
   handleAvatarImage,
   handleCreateUser,
   handleDeletePushToken,
+  handleDeleteUser,
   handleLogin,
   handleObstetraAssignArticle,
   handlePublicConfig,
@@ -115,6 +116,7 @@ app.post("/api/user/avatar", handleSetAvatar);
 app.post("/api/user/profile", handleUpdateProfile);
 app.post("/api/user/auto-controls", handleSetAutoControls);
 app.post("/api/admin/create-user", handleCreateUser);
+app.post("/api/admin/delete-user", handleDeleteUser);
 app.post("/api/admin/set-active", handleSetActive);
 app.post("/api/admin/config", handleAdminConfig);
 app.post("/api/admin/reset", handleReset);

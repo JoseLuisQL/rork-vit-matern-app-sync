@@ -1,0 +1,7 @@
+{
+  "name": "VitMaterna",
+  "description": "Plataforma digital de salud prenatal para gestantes de zonas rurales andinas (C.S. Talavera, Andahuaylas) con seguimiento de controles prenatales, suplementación, alertas clínicas y modo offline-first.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

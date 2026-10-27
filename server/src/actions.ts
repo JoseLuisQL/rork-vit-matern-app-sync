@@ -535,7 +535,25 @@ export async function applyAction(
       }
       if (f.bpSys !== undefined) set("bp_sys", Math.max(70, Math.min(240, Math.round(f.bpSys))));
       if (f.bpDia !== undefined) set("bp_dia", Math.max(40, Math.min(140, Math.round(f.bpDia))));
-      if (f.imc !== undefined) set("imc", Math.max(12, Math.min(60, Math.round(f.imc * 10) / 10)));
+      if (f.weight !== undefined) {
+        set("weight", Math.max(30, Math.min(200, Math.round(f.weight * 10) / 10)));
+      }
+      if (f.height !== undefined) {
+        const rawH = f.height > 3 ? f.height / 100 : f.height;
+        set("height", Math.max(1.2, Math.min(2.2, Math.round(rawH * 100) / 100)));
+      }
+      if (f.weight !== undefined && f.height !== undefined) {
+        const w = Math.max(30, Math.min(200, f.weight));
+        const rawH = f.height > 3 ? f.height / 100 : f.height;
+        const h = Math.max(1.2, Math.min(2.2, rawH));
+        const computedImc = Math.round((w / (h * h)) * 10) / 10;
+        set("imc", Math.max(12, Math.min(60, computedImc)));
+      } else if (f.imc !== undefined) {
+        set("imc", Math.max(12, Math.min(60, Math.round(f.imc * 10) / 10)));
+      }
+      if (f.obstetraDni !== undefined && f.obstetraDni.trim().length > 0) {
+        set("obstetra_dni", f.obstetraDni.trim());
+      }
       if (f.age !== undefined) set("age", Math.max(12, Math.min(60, Math.round(f.age))));
       if (f.gestas !== undefined) set("gestas", Math.max(1, Math.min(20, Math.round(f.gestas))));
       if (f.cesareas !== undefined) {

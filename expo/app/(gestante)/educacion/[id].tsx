@@ -96,6 +96,28 @@ export default function ArticuloScreen(): React.ReactElement {
             ))}
           </View>
 
+          {article.mediaUrl ? (
+            <Pressable
+              onPress={() => handleOpenLink(article.mediaUrl!)}
+              style={[styles.linkCard, { marginTop: spacing.md2, borderColor: gwarm.teal }]}
+              testID="btn-abrir-recurso-principal"
+            >
+              <View style={styles.flex}>
+                <Text style={styles.linkLabel}>
+                  {article.mediaType === "video"
+                    ? "Ver video educativo"
+                    : article.mediaType === "pdf"
+                      ? "Abrir documento PDF"
+                      : "Ver imagen / infografía completa"}
+                </Text>
+                <Text style={styles.linkUrl} numberOfLines={1}>
+                  {article.mediaUrl}
+                </Text>
+              </View>
+              <ExternalLink size={18} color={gwarm.teal} />
+            </Pressable>
+          ) : null}
+
           {/* Enlaces externos o videos recomendados */}
           {article.links && article.links.length > 0 ? (
             <View style={styles.linksSection}>

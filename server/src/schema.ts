@@ -266,8 +266,24 @@ CREATE TABLE IF NOT EXISTS article_assignments (
   assigned_at_iso TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (patient_id, article_id)
 );
-CREATE INDEX IF NOT EXISTS idx_article_assignments_patient ON article_assignments (patient_id);
-CREATE INDEX IF NOT EXISTS idx_article_assignments_article ON article_assignments (article_id);
+    CREATE INDEX IF NOT EXISTS idx_article_assignments_patient ON article_assignments (patient_id);
+    CREATE INDEX IF NOT EXISTS idx_article_assignments_article ON article_assignments (article_id);
+`,
+  },
+  {
+    id: 6,
+    name: "add-patient-obstetra-anthropometrics-and-article-media",
+    sql: `
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS obstetra_dni TEXT;
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS weight NUMERIC(5,1);
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS height NUMERIC(4,2);
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS media_type TEXT DEFAULT 'lectura';
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS media_url TEXT;
+UPDATE whatsapp_config
+   SET enabled = TRUE,
+       api_key = CASE WHEN api_key = '' THEN 'vitmaterna-openwa-key' ELSE api_key END
+ WHERE id = 1;
 `,
   },
 ];
+

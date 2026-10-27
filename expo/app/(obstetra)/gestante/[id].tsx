@@ -7,6 +7,7 @@
  */
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
+  Baby,
   BookOpen,
   CalendarPlus,
   HelpCircle,
@@ -15,16 +16,18 @@ import {
   Pencil,
   Phone,
   Plus,
+  Trash2,
   UserRound,
   type LucideIcon,
 } from "lucide-react-native";
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { gfonts, gShadow, gwarm, risk, warmBlue, warmPlum } from "@/constants/theme";
 import { ANEMIA_LABEL } from "@/constants/labels";
 import { ILU } from "@/constants/illustrations";
 import { useResponsive } from "@/hooks/useResponsive";
-import { avatarUri } from "@/lib/api";
+import { ApiError, avatarUri } from "@/lib/api";
+import { confirmAction, showNotice } from "@/lib/confirm";
 import { countDoses, dayDoseTotals, timesLabel, timesPerDayOf } from "@/lib/doses";
 import { fechaCompleta, fechaCorta, horaAmigable } from "@/lib/format";
 import { medIllustration } from "@/lib/medIllustration";
@@ -98,9 +101,10 @@ function DatePill({ dateKey, color, soft }: { dateKey: string; color: string; so
 export default function FichaGestante(): React.ReactElement {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { view, todayKey } = useApp();
+  const { view, todayKey, adminDeleteUser, online } = useApp();
   const patient = usePatient(id);
   const { isDesktop, isTablet } = useResponsive();
+  const [deleting, setDeleting] = useState<boolean>(false);
 
   const isWide = isDesktop || isTablet;
 
@@ -110,6 +114,12 @@ export default function FichaGestante(): React.ReactElement {
   );
   const todayIntakes = view?.intakes[id ?? ""]?.[todayKey] ?? [];
   const doseTotals = dayDoseTotals(supplements, todayIntakes, todayKey);
+
+  const assignedObstetraName = useMemo(() => {
+    if (!patient?.obstetraDni) return "Sin asignar";
+    const found = (view?.users ?? []).find((u) => u.dni === patient.obstetraDni);
+    return found ? `Obst. ${found.firstName} ${found.lastName}` : `DNI ${patient.obstetraDni}`;
+  }, [patient?.obstetraDni, view?.users]);
 
   const upcoming = useMemo(() => {
     const list = (view?.appointments ?? []).filter(
@@ -134,6 +144,41 @@ export default function FichaGestante(): React.ReactElement {
     const list = (view?.visits ?? []).filter((v) => v.patientId === id);
     return [...list].sort((a, b) => b.dateKey.localeCompare(a.dateKey));
   }, [view?.visits, id]);
+
+  const handleDeletePatient = useCallback(async () => {
+    if (!patient) return;
+    if (!online) {
+      showNotice("Sin conexión", "Necesitas conexión para eliminar una gestante.");
+      return;
+    }
+    const ok = await confirmAction({
+      title: "Eliminar gestante",
+      message: `¿Estás segura de que deseas eliminar a ${patient.firstName} ${patient.lastName}? Se eliminarán su cuenta, ficha clínica, citas y registros asociados.`,
+      confirmText: "Eliminar gestante",
+      destructive: true,
+    });
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      await adminDeleteUser(patient.dni);
+      showNotice(
+        "Gestante eliminada",
+        `La ficha de ${patient.firstName} ${patient.lastName} fue dada de baja correctamente.`,
+      );
+      router.replace("/(obstetra)/(tabs)/gestantes");
+    } catch (e) {
+      showNotice(
+        "No se pudo eliminar",
+        e instanceof ApiError && e.status === 0
+          ? "Sin conexión con el servidor."
+          : e instanceof Error
+            ? e.message
+            : "Error desconocido",
+      );
+    } finally {
+      setDeleting(false);
+    }
+  }, [adminDeleteUser, online, patient, router]);
 
   if (!patient || !view) {
     return (
@@ -165,7 +210,25 @@ export default function FichaGestante(): React.ReactElement {
 
   const renderClinicalSummary = () => (
     <View style={styles.colSection}>
+      {/* Banner destacado de Fecha Probable de Parto (FPP) */}
       <PopIn delay={0}>
+        <Card style={styles.fppBannerCard}>
+          <View style={styles.fppIconCircle}>
+            <Baby size={22} color={accent.main} />
+          </View>
+          <View style={styles.fppTextCol}>
+            <Text style={styles.fppBannerLabel}>Fecha Probable de Parto (FPP)</Text>
+            <Text style={styles.fppBannerDate} testID="fpp-fecha-destacada">
+              {fechaCompleta(patient.fppKey)} ({fechaCorta(patient.fppKey)})
+            </Text>
+            <Text style={styles.fppBannerSub}>
+              Edad gestacional: Semana {patient.weeks}+{patient.daysExtra} · FUM {fechaCorta(patient.fumKey)}
+            </Text>
+          </View>
+        </Card>
+      </PopIn>
+
+      <PopIn delay={30}>
         <View style={styles.actionsRow}>
           <ActionTile
             icon={MessageCircle}
@@ -282,14 +345,27 @@ export default function FichaGestante(): React.ReactElement {
               value={`${patient.bpSys}/${patient.bpDia}`}
               alert={patient.bpSys >= 140 || patient.bpDia >= 90}
             />
-            <DataItem label="IMC" value={`${patient.imc}`} />
-            <DataItem label="Edad" value={`${patient.age} años`} />
             <DataItem
-              label="G · C · A"
-              value={`${patient.gestas} · ${patient.cesareas} · ${patient.abortos}`}
+              label="Peso"
+              value={patient.weight ? `${patient.weight} kg` : "—"}
             />
+            <DataItem
+              label="Talla"
+              value={patient.height ? `${patient.height} m` : "—"}
+            />
+            <DataItem
+              label="IMC (Peso/Talla²)"
+              value={`${patient.imc} kg/m²`}
+              alert={patient.imc < 18.5 || patient.imc >= 30}
+            />
+            <DataItem label="Edad" value={`${patient.age} años`} />
+            <DataItem label="Dirección" value={patient.community} />
+            <DataItem label="Gestaciones" value={`${patient.gestas}`} />
+            <DataItem label="Cesáreas" value={`${patient.cesareas}`} alert={patient.cesareas > 0} />
+            <DataItem label="Abortos" value={`${patient.abortos}`} alert={patient.abortos >= 2} />
             <DataItem label="FUM" value={fechaCorta(patient.fumKey)} />
             <DataItem label="FPP" value={fechaCorta(patient.fppKey)} />
+            <DataItem label="Obstetra" value={assignedObstetraName} />
           </View>
           <PressableScale
             onPress={() => Linking.openURL(`tel:${patient.phone.replace(/\s/g, "")}`).catch(() => {})}
@@ -306,6 +382,16 @@ export default function FichaGestante(): React.ReactElement {
             variant="soft"
             icon={Pencil}
             testID="btn-actualizar-datos"
+          />
+          <AppButton
+            title="Eliminar gestante"
+            onPress={() => void handleDeletePatient()}
+            color={gwarm.rose}
+            variant="outline"
+            icon={Trash2}
+            small
+            loading={deleting}
+            testID="btn-eliminar-gestante"
           />
           <Text style={styles.footNote}>
             Hb medida {patient.hbObserved} g/dL, ajustada por la altitud del centro (
@@ -502,7 +588,7 @@ export default function FichaGestante(): React.ReactElement {
       <WebContainer size="dashboard">
         <ScreenHeader
           title={`${patient.firstName} ${patient.lastName}`}
-          subtitle={`Semana ${patient.weeks} · ${patient.community}`}
+          subtitle={`Semana ${patient.weeks} · FPP: ${fechaCorta(patient.fppKey)} · ${patient.community}`}
           showBack
           fallbackHref="/(obstetra)/(tabs)/gestantes"
           right={
@@ -564,6 +650,43 @@ const styles = StyleSheet.create({
   },
   colSection: {
     gap: 12,
+  },
+  fppBannerCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: accent.soft,
+    borderColor: accent.main,
+    borderWidth: 1.5,
+  },
+  fppIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  fppTextCol: {
+    flex: 1,
+    gap: 2,
+  },
+  fppBannerLabel: {
+    fontFamily: gfonts.hand,
+    fontSize: 13.5,
+    color: accent.deep,
+  },
+  fppBannerDate: {
+    fontFamily: gfonts.hand,
+    fontSize: 18,
+    lineHeight: 23,
+    color: gwarm.ink,
+  },
+  fppBannerSub: {
+    fontFamily: gfonts.handBody,
+    fontSize: 12.5,
+    color: gwarm.inkSoft,
   },
   sectionWrap: {
     gap: 8,

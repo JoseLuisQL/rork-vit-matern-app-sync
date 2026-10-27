@@ -225,7 +225,22 @@ export function applyOutbox(snapshot: Snapshot, actions: ClientAction[], user: U
         if (f.abortos !== undefined) p.abortos = Math.round(f.abortos);
         if (f.bpSys !== undefined) p.bpSys = Math.round(f.bpSys);
         if (f.bpDia !== undefined) p.bpDia = Math.round(f.bpDia);
-        if (f.imc !== undefined) p.imc = Math.round(f.imc * 10) / 10;
+        if (f.weight !== undefined) p.weight = Math.round(f.weight * 10) / 10;
+        if (f.height !== undefined) {
+          const hMeters = f.height > 3 ? f.height / 100 : f.height;
+          p.height = Math.round(hMeters * 100) / 100;
+        }
+        if (f.imc !== undefined) {
+          p.imc = Math.round(f.imc * 10) / 10;
+        } else if (
+          (f.weight !== undefined || f.height !== undefined) &&
+          p.weight &&
+          p.height &&
+          p.height > 0
+        ) {
+          p.imc = Math.round((p.weight / (p.height * p.height)) * 10) / 10;
+        }
+        if (f.obstetraDni !== undefined) p.obstetraDni = f.obstetraDni.trim() || undefined;
         if (f.hbObserved !== undefined) {
           p.hbObserved = Math.round(f.hbObserved * 10) / 10;
           p.hbCorrected = correctedHbLocal(p.hbObserved, s.center.hbFactor);

@@ -117,6 +117,10 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
     }
     setSubmitting(true);
     try {
+      const parsedWeight = parseFloat(weight.replace(",", "."));
+      let parsedHeight = parseFloat(height.replace(",", "."));
+      if (parsedHeight > 3) parsedHeight = parsedHeight / 100;
+
       await createUser({
         dni,
         password,
@@ -134,8 +138,11 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
                 hbObserved: parseFloat(hb) || 13,
                 bpSys: parseInt(bpSys, 10) || 110,
                 bpDia: parseInt(bpDia, 10) || 70,
+                weight: parsedWeight > 0 ? Number(parsedWeight.toFixed(1)) : undefined,
+                height: parsedHeight > 0 ? Number(parsedHeight.toFixed(2)) : undefined,
                 imc: parseFloat(imc) || 24,
                 gestas: parseInt(gestas, 10) || 1,
+                obstetraDni: obstetraDni || undefined,
               }
             : undefined,
       });
@@ -169,6 +176,8 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
     hb,
     bpSys,
     bpDia,
+    weight,
+    height,
     imc,
     gestas,
     createUser,

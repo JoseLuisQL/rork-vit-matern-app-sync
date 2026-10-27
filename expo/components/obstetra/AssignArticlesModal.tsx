@@ -5,12 +5,14 @@
 import { Image } from "expo-image";
 import {
   BookOpen,
-  Check,
   CheckCheck,
-  CheckSquare,
   Clock,
-  ExternalLink,
+  FileText,
+  Image as ImageIcon,
+  Link as LinkIcon,
+  Plus,
   Square,
+  Video,
   X,
 } from "lucide-react-native";
 import React, { useMemo, useState } from "react";
@@ -24,13 +26,29 @@ import {
   View,
 } from "react-native";
 import { CATEGORY_ILU, GICON } from "@/constants/illustrations";
-import { gShadow, gfonts, gwarm, warmBlue, withAlpha } from "@/constants/theme";
+import { gShadow, gfonts, gwarm, warmBlue, warmPlum, withAlpha } from "@/constants/theme";
 import { useApp, useArticleAssignments, useArticles } from "@/providers/AppProvider";
-import type { Article } from "@/types";
+import type { Article, ArticleMediaType } from "@/types";
 import { AppButton } from "@/components/AppButton";
 import { EmptyState } from "@/components/EmptyState";
 import { Illustration } from "@/components/gestante/Illustration";
 import { useToast } from "@/components/Toast";
+import { ArticleEditorModal } from "@/components/admin/ArticleEditorModal";
+
+const MEDIA_FILTERS: { key: "todos" | ArticleMediaType; label: string }[] = [
+  { key: "todos", label: "Todos" },
+  { key: "lectura", label: "Lecturas" },
+  { key: "video", label: "Videos" },
+  { key: "pdf", label: "PDFs" },
+  { key: "imagen", label: "Imágenes" },
+];
+
+const MEDIA_BADGE: Record<ArticleMediaType, { label: string; color: string; bg: string }> = {
+  lectura: { label: "LECTURA", color: warmBlue.main, bg: withAlpha(warmBlue.main, 0.12) },
+  video: { label: "VIDEO", color: gwarm.rose, bg: gwarm.redSoft },
+  pdf: { label: "PDF", color: warmPlum.main, bg: warmPlum.soft },
+  imagen: { label: "IMAGEN", color: gwarm.tealDeep, bg: gwarm.tealSoft },
+};
 
 interface AssignArticlesModalProps {
   visible: boolean;
@@ -51,6 +69,8 @@ export function AssignArticlesModal({
   const { show: showToast } = useToast();
 
   const [selectedCategory, setSelectedCategory] = useState<string>("Todas");
+  const [selectedMedia, setSelectedMedia] = useState<"todos" | ArticleMediaType>("todos");
+  const [editorVisible, setEditorVisible] = useState<boolean>(false);
 
   // Artículos activos disponibles
   const activeArticles = useMemo(
@@ -78,9 +98,13 @@ export function AssignArticlesModal({
   }, [activeArticles]);
 
   const filteredArticles = useMemo(() => {
-    if (selectedCategory === "Todas") return activeArticles;
-    return activeArticles.filter((a) => a.category === selectedCategory);
-  }, [activeArticles, selectedCategory]);
+    return activeArticles.filter((a) => {
+      if (selectedCategory !== "Todas" && a.category !== selectedCategory) return false;
+      const mType: ArticleMediaType = a.mediaType ?? "lectura";
+      if (selectedMedia !== "todos" && mType !== selectedMedia) return false;
+      return true;
+    });
+  }, [activeArticles, selectedCategory, selectedMedia]);
 
   const allAssigned =
     activeArticles.length > 0 &&
@@ -91,8 +115,8 @@ export function AssignArticlesModal({
     assignArticle(patientId, articleId, !isCurrentlyAssigned);
     showToast(
       !isCurrentlyAssigned
-        ? "Lectura asignada a la gestante"
-        : "Lectura retirada de la gestante",
+        ? "Material educativo asignado a la gestante"
+        : "Material educativo retirado de la gestante",
       "info"
     );
   };
@@ -102,8 +126,8 @@ export function AssignArticlesModal({
     assignAllArticles(patientId, newStatus);
     showToast(
       newStatus
-        ? "Todas las lecturas asignadas"
-        : "Se retiraron todas las lecturas",
+        ? "Todos los materiales educativos asignados"
+        : "Se retiraron todos los materiales educativos",
       "info"
     );
   };
@@ -130,7 +154,7 @@ export function AssignArticlesModal({
                 <Text style={styles.title}>Asignar Contenidos Educativos</Text>
                 <Text style={styles.subtitle} numberOfLines={1}>
                   Paciente: {patientName} · {assignedArticleIds.size} de{" "}
-                  {activeArticles.length} lecturas activas asignadas
+                  {activeArticles.length} recursos asignados (Lecturas, Videos, PDFs, Imágenes)
                 </Text>
               </View>
             </View>
@@ -145,32 +169,73 @@ export function AssignArticlesModal({
             </Pressable>
           </View>
 
-          {/* Quick Actions & Category Filter */}
+          {/* Quick Actions & Filters */}
           <View style={styles.toolbar}>
-            <Pressable
-              onPress={handleToggleAll}
-              style={[
-                styles.selectAllBtn,
-                allAssigned && styles.selectAllBtnActive,
-              ]}
-              testID="btn-toggle-all-articles"
-            >
-              {allAssigned ? (
-                <CheckCheck size={16} color={warmBlue.main} />
-              ) : (
-                <Square size={16} color={gwarm.inkSoft} />
-              )}
-              <Text
+            <View style={styles.toolbarTopRow}>
+              <Pressable
+                onPress={handleToggleAll}
                 style={[
-                  styles.selectAllText,
-                  allAssigned && styles.selectAllTextActive,
+                  styles.selectAllBtn,
+                  allAssigned && styles.selectAllBtnActive,
                 ]}
+                testID="btn-toggle-all-articles"
               >
-                {allAssigned ? "Desasignar todas" : "Asignar todas las lecturas"}
-              </Text>
-            </Pressable>
+                {allAssigned ? (
+                  <CheckCheck size={16} color={warmBlue.main} />
+                ) : (
+                  <Square size={16} color={gwarm.inkSoft} />
+                )}
+                <Text
+                  style={[
+                    styles.selectAllText,
+                    allAssigned && styles.selectAllTextActive,
+                  ]}
+                >
+                  {allAssigned ? "Desasignar todos" : "Asignar todos"}
+                </Text>
+              </Pressable>
 
-            {/* Categorías */}
+              <Pressable
+                onPress={() => setEditorVisible(true)}
+                style={styles.newMaterialBtn}
+                testID="btn-agregar-material-educativo"
+              >
+                <Plus size={15} color="#FFFFFF" />
+                <Text style={styles.newMaterialBtnText}>
+                  Agregar material (Video, PDF, Imagen)
+                </Text>
+              </Pressable>
+            </View>
+
+            {/* Filtro por Formato (Todos, Lecturas, Videos, PDFs, Imágenes) */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.catScroll}
+            >
+              {MEDIA_FILTERS.map((mf) => {
+                const active = selectedMedia === mf.key;
+                return (
+                  <Pressable
+                    key={mf.key}
+                    onPress={() => setSelectedMedia(mf.key)}
+                    style={[styles.catChip, active && styles.catChipActive]}
+                    testID={`filtro-media-${mf.key}`}
+                  >
+                    <Text
+                      style={[
+                        styles.catChipText,
+                        active && styles.catChipTextActive,
+                      ]}
+                    >
+                      {mf.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+
+            {/* Categorías temáticas */}
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -207,12 +272,15 @@ export function AssignArticlesModal({
             {filteredArticles.length === 0 ? (
               <EmptyState
                 icon={BookOpen}
-                title="No hay lecturas disponibles"
-                text="El administrador aún no ha publicado lecturas en esta categoría."
+                title="No hay recursos en este filtro"
+                text="Prueba con otra categoría o agrega un nuevo video, PDF o imagen."
               />
             ) : (
               filteredArticles.map((art) => {
                 const isAssigned = assignedArticleIds.has(art.id);
+                const mType: ArticleMediaType = art.mediaType ?? "lectura";
+                const mBadge = MEDIA_BADGE[mType] ?? MEDIA_BADGE.lectura;
+                const linkCount = art.links?.length ?? 0;
                 return (
                   <Pressable
                     key={art.id}
@@ -230,6 +298,12 @@ export function AssignArticlesModal({
                           style={styles.thumbImage}
                           contentFit="cover"
                         />
+                      ) : mType === "video" ? (
+                        <Video size={24} color={gwarm.rose} />
+                      ) : mType === "pdf" ? (
+                        <FileText size={24} color={warmPlum.main} />
+                      ) : mType === "imagen" ? (
+                        <ImageIcon size={24} color={gwarm.tealDeep} />
                       ) : (
                         <Illustration
                           source={CATEGORY_ILU[art.category] ?? GICON.libro}
@@ -241,6 +315,11 @@ export function AssignArticlesModal({
 
                     <View style={styles.articleInfo}>
                       <View style={styles.metaRow}>
+                        <View style={[styles.catBadge, { backgroundColor: mBadge.bg }]}>
+                          <Text style={[styles.catBadgeText, { color: mBadge.color }]}>
+                            {mBadge.label}
+                          </Text>
+                        </View>
                         <View style={styles.catBadge}>
                           <Text style={styles.catBadgeText}>{art.category}</Text>
                         </View>
@@ -250,6 +329,14 @@ export function AssignArticlesModal({
                             {art.minutes || 3} min
                           </Text>
                         </View>
+                        {linkCount > 0 ? (
+                          <View style={styles.timeBadge}>
+                            <LinkIcon size={11} color={gwarm.tealDeep} />
+                            <Text style={[styles.timeBadgeText, { color: gwarm.tealDeep }]}>
+                              {linkCount} {linkCount === 1 ? "recurso" : "recursos"}
+                            </Text>
+                          </View>
+                        ) : null}
                       </View>
                       <Text style={styles.articleTitle} numberOfLines={2}>
                         {art.title}
@@ -295,6 +382,12 @@ export function AssignArticlesModal({
           </View>
         </View>
       </View>
+
+      <ArticleEditorModal
+        visible={editorVisible}
+        article={null}
+        onClose={() => setEditorVisible(false)}
+      />
     </Modal>
   );
 }
@@ -372,6 +465,28 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: gwarm.border,
     gap: 10,
+  },
+  toolbarTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  newMaterialBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: warmBlue.main,
+    minHeight: 40,
+  },
+  newMaterialBtnText: {
+    fontFamily: gfonts.hand,
+    fontSize: 13.5,
+    color: "#FFFFFF",
   },
   selectAllBtn: {
     flexDirection: "row",

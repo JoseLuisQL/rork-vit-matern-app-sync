@@ -27,13 +27,26 @@ const FILTERS: ("todos" | Role)[] = ["todos", "gestante", "obstetra", "admin"];
 
 export default function UsuariosScreen(): React.ReactElement {
   const router = useRouter();
-  const { view, user: me, adminSetActive, adminDeleteUser, online } = useApp();
+  const { view, user: me, adminSetActive, adminDeleteUser, updatePatient, online } = useApp();
   const [query, setQuery] = useState<string>("");
   const [filter, setFilter] = useState<"todos" | Role>("todos");
   const [busyDni, setBusyDni] = useState<string | null>(null);
   const { isDesktop, isTablet } = useResponsive();
 
   const isWide = isDesktop || isTablet;
+
+  const obstetras = useMemo(
+    () => (view?.users ?? []).filter((u) => u.role === "obstetra" && u.active),
+    [view?.users],
+  );
+
+  const patientByDni = useMemo(() => {
+    const map = new Map<string, (typeof view.patients)[number]>();
+    for (const p of view?.patients ?? []) {
+      map.set(p.dni, p);
+    }
+    return map;
+  }, [view?.patients]);
 
   const users = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -117,6 +130,14 @@ export default function UsuariosScreen(): React.ReactElement {
     [adminDeleteUser, me?.dni, online],
   );
 
+  const assignObstetra = useCallback(
+    (patientId: string, obstetraDni: string, obstetraName: string) => {
+      updatePatient(patientId, { obstetraDni });
+      showNotice("Obstetra asignada", `Se asignó a ${obstetraName} como responsable de la gestante.`);
+    },
+    [updatePatient],
+  );
+
   return (
     <View style={styles.container}>
       <WebContainer size="dashboard">
@@ -190,6 +211,7 @@ export default function UsuariosScreen(): React.ReactElement {
               {users.map((u) => {
                 const roleColors = warmAccent(u.role);
                 const isMe = u.dni === me?.dni;
+                const pat = u.role === "gestante" ? patientByDni.get(u.dni) : undefined;
                 return (
                   <View
                     key={u.dni}
@@ -219,6 +241,35 @@ export default function UsuariosScreen(): React.ReactElement {
                         <Text style={styles.dniText}>DNI {u.dni}</Text>
                         {u.phone ? <Text style={styles.dniText}>· Tel: {u.phone}</Text> : null}
                       </View>
+                      {pat && obstetras.length > 0 ? (
+                        <View style={styles.obstetraRow}>
+                          <Text style={styles.obstetraLabel}>Obstetra:</Text>
+                          {obstetras.map((ob) => {
+                            const selected = pat.obstetraDni === ob.dni;
+                            return (
+                              <PressableScale
+                                key={ob.dni}
+                                onPress={() =>
+                                  assignObstetra(pat.id, ob.dni, `${ob.firstName} ${ob.lastName}`)
+                                }
+                                style={[
+                                  styles.obstetraPill,
+                                  selected && styles.obstetraPillActive,
+                                ]}
+                              >
+                                <Text
+                                  style={[
+                                    styles.obstetraPillText,
+                                    selected && styles.obstetraPillTextActive,
+                                  ]}
+                                >
+                                  {ob.firstName}
+                                </Text>
+                              </PressableScale>
+                            );
+                          })}
+                        </View>
+                      ) : null}
                     </View>
                     <View style={styles.actionsWrap}>
                       <View style={styles.switchWrap}>
@@ -240,6 +291,7 @@ export default function UsuariosScreen(): React.ReactElement {
                           disabled={busyDni === u.dni}
                           style={styles.deleteBtn}
                           accessibilityLabel={`Eliminar a ${u.firstName}`}
+                          testID={`eliminar-usuario-${u.dni}`}
                         >
                           <Trash2 size={18} color={gwarm.rose} />
                         </PressableScale>
@@ -254,6 +306,7 @@ export default function UsuariosScreen(): React.ReactElement {
               {users.map((u, index) => {
                 const roleColors = warmAccent(u.role);
                 const isMe = u.dni === me?.dni;
+                const pat = u.role === "gestante" ? patientByDni.get(u.dni) : undefined;
                 return (
                   <View key={u.dni} style={[styles.row, index > 0 && styles.rowBorder]}>
                     <Avatar
@@ -268,8 +321,37 @@ export default function UsuariosScreen(): React.ReactElement {
                         {isMe ? " (tú)" : ""}
                       </Text>
                       <Text style={[styles.roleText, { color: roleColors.main }]}>
-                        {ROLE_LABEL[u.role]}
+                        {ROLE_LABEL[u.role]} · DNI {u.dni}
                       </Text>
+                      {pat && obstetras.length > 0 ? (
+                        <View style={styles.obstetraRow}>
+                          <Text style={styles.obstetraLabel}>Obstetra:</Text>
+                          {obstetras.map((ob) => {
+                            const selected = pat.obstetraDni === ob.dni;
+                            return (
+                              <PressableScale
+                                key={ob.dni}
+                                onPress={() =>
+                                  assignObstetra(pat.id, ob.dni, `${ob.firstName} ${ob.lastName}`)
+                                }
+                                style={[
+                                  styles.obstetraPill,
+                                  selected && styles.obstetraPillActive,
+                                ]}
+                              >
+                                <Text
+                                  style={[
+                                    styles.obstetraPillText,
+                                    selected && styles.obstetraPillTextActive,
+                                  ]}
+                                >
+                                  {ob.firstName}
+                                </Text>
+                              </PressableScale>
+                            );
+                          })}
+                        </View>
+                      ) : null}
                     </View>
                     <View style={styles.mobileActions}>
                       <Switch
@@ -286,6 +368,7 @@ export default function UsuariosScreen(): React.ReactElement {
                           disabled={busyDni === u.dni}
                           style={styles.deleteBtn}
                           accessibilityLabel={`Eliminar a ${u.firstName}`}
+                          testID={`eliminar-usuario-${u.dni}`}
                         >
                           <Trash2 size={18} color={gwarm.rose} />
                         </PressableScale>
@@ -445,5 +528,37 @@ const styles = StyleSheet.create({
     color: gwarm.inkFaint,
     textAlign: "center",
     marginTop: 12,
+  },
+  obstetraRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 4,
+  },
+  obstetraLabel: {
+    fontFamily: gfonts.handBody,
+    fontSize: 12,
+    color: gwarm.inkSoft,
+  },
+  obstetraPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: gwarm.border,
+    backgroundColor: gwarm.surfaceSoft,
+  },
+  obstetraPillActive: {
+    backgroundColor: accent.main,
+    borderColor: accent.main,
+  },
+  obstetraPillText: {
+    fontFamily: gfonts.hand,
+    fontSize: 12,
+    color: gwarm.inkSoft,
+  },
+  obstetraPillTextActive: {
+    color: "#FFFFFF",
   },
 });

@@ -17,12 +17,12 @@ export function resolveBaseUrl(): string {
   const rorkCloud = process.env.EXPO_PUBLIC_RORK_FUNCTIONS_URL?.trim();
   if (rorkCloud) return rorkCloud.replace(/\/+$/, "");
 
-  // Si estamos en entorno web en localhost (ej. Expo Web en localhost:8081)
+  // Si estamos en entorno web en localhost:8081 (Metro standalone)
   if (
     Platform.OS === "web" &&
     typeof window !== "undefined" &&
     (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") &&
-    window.location.port !== "8080"
+    window.location.port === "8081"
   ) {
     return `${window.location.protocol}//${window.location.hostname}:8080`;
   }

@@ -1,0 +1,33 @@
+{
+  "name": "vitmaterna-root",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "expo"
+  ],
+  "scripts": {
+    "build:web": "npm --workspace=expo run build:web",
+    "build": "npm run build:web",
+    "dev": "tsx server.ts",
+    "start": "tsx server.ts",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.0",
+    "babel-preset-expo": "~54.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "~5.9.2"
+  },
+  "overrides": {
+    "axios": "1.13.2"
+  }
+}

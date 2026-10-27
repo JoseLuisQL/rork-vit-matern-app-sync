@@ -7,9 +7,9 @@
  * Adaptado con arquitectura responsiva Web (contenedor centrado en escritorio).
  */
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { CalendarCheck2, Check, HousePlus, Stethoscope, WifiOff } from "lucide-react-native";
+import { CalendarCheck2, Check, Clock, HousePlus, Stethoscope, WifiOff } from "lucide-react-native";
 import React, { useCallback, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { gfonts, gShadow, gwarm, risk, warmBlue } from "@/constants/theme";
 import { AGENDA_SLOTS } from "@/constants/labels";
 import { ILU } from "@/constants/illustrations";
@@ -18,6 +18,7 @@ import { addDaysToKey, capitalize, fechaLarga } from "@/lib/format";
 import { useApp, usePatients } from "@/providers/AppProvider";
 import { AppButton } from "@/components/AppButton";
 import { Avatar } from "@/components/Avatar";
+import { DatePickerField } from "@/components/DatePickerField";
 import { DayStrip } from "@/components/DayStrip";
 import { Field } from "@/components/Field";
 import { Illustration } from "@/components/gestante/Illustration";
@@ -85,15 +86,19 @@ export default function ProgramarScreen(): React.ReactElement {
     params.date && params.date >= todayKey ? params.date : todayKey,
   );
   const [slot, setSlot] = useState<string | null>(null);
+  const [customTime, setCustomTime] = useState<string>("");
   const [motivo, setMotivo] = useState<string>("");
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [serverFree, setServerFree] = useState<{ day: string; slots: string[] } | null>(null);
 
-  const days = useMemo(
-    () => Array.from({ length: 14 }, (_, i) => addDaysToKey(todayKey, i)),
-    [todayKey],
-  );
+  const days = useMemo(() => {
+    const base = Array.from({ length: 14 }, (_, i) => addDaysToKey(todayKey, i));
+    if (day && day >= todayKey && !base.includes(day)) {
+      return [...base, day].sort((a, b) => a.localeCompare(b));
+    }
+    return base;
+  }, [todayKey, day]);
 
   const sortedPatients = useMemo(
     () => [...patients].sort((a, b) => a.firstName.localeCompare(b.firstName)),
@@ -179,6 +184,11 @@ export default function ProgramarScreen(): React.ReactElement {
           fallbackHref={patientId ? `/(obstetra)/gestante/${patientId}` : "/(obstetra)/(tabs)/agenda"}
         />
       </WebContainer>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 88 : 24}
+      >
       <ScrollView
         style={styles.flex}
         contentContainerStyle={styles.content}
@@ -319,11 +329,73 @@ export default function ProgramarScreen(): React.ReactElement {
                 accentLight={accent.soft}
               />
             </View>
+            <DatePickerField
+              label="Elegir otra fecha en el calendario (cualquier mes)"
+              value={day}
+              minDate={todayKey}
+              clearable={false}
+              onChangeDate={(d) => {
+                if (d) selectDay(d);
+              }}
+              accent={accent.main}
+              hint="Puedes elegir uno de los días rápidos de arriba o abrir el calendario para cualquier mes."
+              testID="cita-calendario"
+            />
             <Text style={styles.dayLabel}>{capitalize(fechaLarga(day))}</Text>
 
             <StepTitle n={3} title="Elige la hora" done={slot !== null} />
-            <SlotGrid taken={taken} selected={slot} onSelect={setSlot} accent={accent.main} />
-            <Text style={styles.slotHint}>Los horarios tachados ya están ocupados.</Text>
+            <SlotGrid
+              taken={taken}
+              selected={slot}
+              onSelect={(s) => {
+                setSlot(s);
+                setCustomTime(s);
+                setError(null);
+              }}
+              accent={accent.main}
+            />
+            <View style={styles.customTimeCard}>
+              <View style={styles.customTimeHeader}>
+                <Clock size={16} color={accent.main} />
+                <Text style={styles.customTimeTitle}>¿Prefieres ingresar otra hora personalizada?</Text>
+              </View>
+              <View style={styles.customTimeRow}>
+                <TextInput
+                  value={customTime}
+                  onChangeText={(txt) => {
+                    const clean = txt.replace(/[^0-9:]/g, "").slice(0, 5);
+                    let formatted = clean;
+                    if (clean.length === 2 && !clean.includes(":") && customTime.length < 2) {
+                      formatted = `${clean}:`;
+                    }
+                    setCustomTime(formatted);
+                    if (/^([01]\d|2[0-3]):[0-5]\d$/.test(formatted)) {
+                      if (taken.has(formatted)) {
+                        setError(`El horario ${formatted} ya está ocupado en esta fecha.`);
+                      } else {
+                        setSlot(formatted);
+                        setError(null);
+                      }
+                    }
+                  }}
+                  placeholder="Ej. 07:30, 13:45 o 17:15"
+                  placeholderTextColor={gwarm.inkFaint}
+                  keyboardType="numbers-and-punctuation"
+                  maxLength={5}
+                  style={styles.customTimeInput}
+                  testID="input-hora-personalizada"
+                />
+                {slot && !AGENDA_SLOTS.includes(slot) ? (
+                  <View style={[styles.customTimeBadge, { backgroundColor: accent.main }]}>
+                    <Check size={14} color="#FFFFFF" strokeWidth={2.8} />
+                    <Text style={styles.customTimeBadgeText}>{slot}</Text>
+                  </View>
+                ) : null}
+              </View>
+              <Text style={styles.slotHint}>
+                Puedes tocar un bloque rápido o escribir cualquier hora en formato 24h (HH:MM). Los horarios tachados ya están ocupados.
+              </Text>
+            </View>
 
             {mode !== "reprogramar" ? (
               <Field
@@ -377,6 +449,7 @@ export default function ProgramarScreen(): React.ReactElement {
           </View>
         </WebContainer>
       </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -386,7 +459,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: {
     padding: 16,
-    paddingBottom: 48,
+    paddingBottom: 120,
   },
   formStack: {
     gap: 12,
@@ -564,6 +637,55 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     lineHeight: 17,
     color: gwarm.inkFaint,
+  },
+  customTimeCard: {
+    backgroundColor: gwarm.surface,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: gwarm.border,
+    padding: 12,
+    gap: 8,
+  },
+  customTimeHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  customTimeTitle: {
+    fontFamily: gfonts.hand,
+    fontSize: 15,
+    lineHeight: 19,
+    color: gwarm.ink,
+  },
+  customTimeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  customTimeInput: {
+    flex: 1,
+    height: 44,
+    borderRadius: 13,
+    borderWidth: 1.5,
+    borderColor: gwarm.border,
+    backgroundColor: gwarm.surfaceSoft,
+    paddingHorizontal: 14,
+    fontFamily: gfonts.handBody,
+    fontSize: 15.5,
+    color: gwarm.ink,
+  },
+  customTimeBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 12,
+    height: 44,
+    borderRadius: 13,
+  },
+  customTimeBadgeText: {
+    fontFamily: gfonts.hand,
+    fontSize: 15.5,
+    color: "#FFFFFF",
   },
   errorBox: {
     backgroundColor: gwarm.redSoft,

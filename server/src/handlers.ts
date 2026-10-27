@@ -244,8 +244,8 @@ export async function handleSchedule(c: AppContext): Promise<Response> {
   if (dateKey < todayKey) {
     return c.json({ error: "La fecha ya pasó. Elige un día desde hoy." }, 400);
   }
-  if (!AGENDA_SLOTS.includes(time)) {
-    return c.json({ error: "Horario fuera de la agenda (08:00–16:30)" }, 400);
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
+    return c.json({ error: "Ingresa una hora válida en formato HH:MM (ej. 08:30 o 17:15)" }, 400);
   }
 
   const outcome = await withTx<ScheduleOutcome>(async (client) => {
@@ -541,12 +541,15 @@ export async function handleCreateUser(c: AppContext): Promise<Response> {
     role?: "gestante" | "obstetra" | "admin";
     phone?: string;
     patient?: {
+      obstetraDni?: string;
       age?: number;
       community?: string;
       fumKey?: string;
       hbObserved?: number;
       bpSys?: number;
       bpDia?: number;
+      weight?: number;
+      height?: number;
       imc?: number;
       gestas?: number;
       cesareas?: number;
@@ -603,11 +606,37 @@ export async function handleCreateUser(c: AppContext): Promise<Response> {
     if (role === "gestante") {
       const p = body.patient ?? {};
       patientId = `p-${crypto.randomUUID().slice(0, 8)}`;
+      const weight =
+        typeof p.weight === "number" && Number.isFinite(p.weight) && p.weight > 0
+          ? Math.max(30, Math.min(200, Math.round(p.weight * 10) / 10))
+          : undefined;
+      const rawHeight =
+        typeof p.height === "number" && Number.isFinite(p.height) && p.height > 0
+          ? p.height > 3
+            ? p.height / 100
+            : p.height
+          : undefined;
+      const height =
+        rawHeight !== undefined
+          ? Math.max(1.2, Math.min(2.2, Math.round(rawHeight * 100) / 100))
+          : undefined;
+      const calculatedImc =
+        weight !== undefined && height !== undefined && height > 0
+          ? Math.round((weight / (height * height)) * 10) / 10
+          : p.imc ?? 24;
+      let defaultObstetraDni = user.role === "obstetra" ? user.dni : (p.obstetraDni ?? "").trim();
+      if (!defaultObstetraDni) {
+        const obsRes = await client.query<{ dni: string }>(
+          "SELECT dni FROM users WHERE role = 'obstetra' AND active = TRUE ORDER BY seq LIMIT 1",
+        );
+        defaultObstetraDni = obsRes.rows[0]?.dni ?? "11111111";
+      }
       const patient: Patient = {
         id: patientId,
         dni,
         firstName,
         lastName,
+        obstetraDni: defaultObstetraDni,
         age: Math.max(12, Math.min(60, Math.round(p.age ?? 25))),
         community: (p.community ?? "Talavera").trim() || "Talavera",
         phone: (body.phone ?? "").trim(),
@@ -621,7 +650,9 @@ export async function handleCreateUser(c: AppContext): Promise<Response> {
         hbObserved: Math.max(4, Math.min(20, p.hbObserved ?? 13)),
         bpSys: Math.max(70, Math.min(240, Math.round(p.bpSys ?? 110))),
         bpDia: Math.max(40, Math.min(140, Math.round(p.bpDia ?? 70))),
-        imc: Math.max(12, Math.min(60, Math.round((p.imc ?? 24) * 10) / 10)),
+        ...(weight !== undefined ? { weight } : {}),
+        ...(height !== undefined ? { height } : {}),
+        imc: Math.max(12, Math.min(60, Math.round(calculatedImc * 10) / 10)),
         adherenceBase: 0,
       };
       await insertPatient(client, patient);
@@ -700,6 +731,95 @@ export async function handleSetActive(c: AppContext): Promise<Response> {
   });
 
   if (outcome.notFound) return c.json({ error: "Usuario no encontrado" }, 404);
+  return c.json({ snapshot: outcome.snapshot });
+}
+
+/** Elimina un usuario o paciente definitivamente (admin o obstetra sobre sus gestantes). */
+export async function handleDeleteUser(c: AppContext): Promise<Response> {
+  const user = c.get("user");
+  if (user.role !== "admin" && user.role !== "obstetra") {
+    return c.json({ error: "Acción no permitida" }, 403);
+  }
+  const body = await readJson<{ dni?: string; patientId?: string }>(c);
+  const dni = (body.dni ?? "").trim();
+  const requestedPatientId = (body.patientId ?? "").trim();
+
+  if (!dni && !requestedPatientId) {
+    return c.json({ error: "DNI o identificador de paciente requerido" }, 400);
+  }
+  if (dni && dni === user.dni) {
+    return c.json({ error: "No puedes eliminar tu propia cuenta" }, 400);
+  }
+
+  const outcome = await withTx<{
+    status: number;
+    error?: string;
+    snapshot?: Snapshot;
+  }>(async (client) => {
+    const uRes = dni
+      ? await client.query<UserRow>("SELECT * FROM users WHERE dni = $1", [dni])
+      : { rows: [] as UserRow[] };
+    const targetUser = uRes.rows[0] ? mapUser(uRes.rows[0]) : undefined;
+
+    const pRes = await client.query<PatientRow>(
+      "SELECT * FROM patients WHERE ($1 <> '' AND id = $1) OR ($2 <> '' AND dni = $2) OR ($3 <> '' AND id = $3)",
+      [requestedPatientId, dni, targetUser?.patientId ?? ""],
+    );
+    const targetPatient = pRes.rows[0] ? mapPatient(pRes.rows[0]) : undefined;
+
+    if (!targetUser && !targetPatient) {
+      return { status: 404, error: "Usuario no encontrado" };
+    }
+
+    if (user.role === "obstetra") {
+      if (targetUser && targetUser.role !== "gestante") {
+        return { status: 403, error: "La obstetra solo puede dar de baja cuentas de gestantes" };
+      }
+      if (targetPatient && targetPatient.obstetraDni && targetPatient.obstetraDni !== user.dni) {
+        return { status: 403, error: "Solo puedes eliminar gestantes asignadas a tu cargo" };
+      }
+    }
+
+    if (targetUser?.role === "admin") {
+      const adminCountRes = await client.query<{ c: string }>(
+        "SELECT COUNT(*)::text AS c FROM users WHERE role = 'admin' AND active = TRUE AND dni <> $1",
+        [targetUser.dni],
+      );
+      if (Number(adminCountRes.rows[0]?.c ?? 0) === 0) {
+        return {
+          status: 400,
+          error: "No puedes eliminar la última cuenta de administración activa",
+        };
+      }
+    }
+
+    if (targetUser) {
+      await client.query("DELETE FROM users WHERE dni = $1", [targetUser.dni]);
+    }
+    if (targetPatient) {
+      await client.query("DELETE FROM users WHERE patient_id = $1 OR dni = $2", [
+        targetPatient.id,
+        targetPatient.dni,
+      ]);
+      await client.query("DELETE FROM patients WHERE id = $1", [targetPatient.id]);
+    }
+    if (targetUser?.role === "obstetra") {
+      const fallbackRes = await client.query<{ dni: string }>(
+        "SELECT dni FROM users WHERE role = 'obstetra' AND active = TRUE ORDER BY seq LIMIT 1",
+      );
+      const fallbackDni = fallbackRes.rows[0]?.dni ?? null;
+      await client.query("UPDATE patients SET obstetra_dni = $2 WHERE obstetra_dni = $1", [
+        targetUser.dni,
+        fallbackDni,
+      ]);
+    }
+
+    return { status: 200, snapshot: await buildSnapshot(client, user) };
+  });
+
+  if (outcome.error) {
+    return c.json({ error: outcome.error }, outcome.status as 400 | 403 | 404);
+  }
   return c.json({ snapshot: outcome.snapshot });
 }
 
@@ -1042,10 +1162,12 @@ export async function handleDeletePushToken(c: AppContext): Promise<Response> {
 
 // ---------- Educación y Artículos ----------
 
-/** Crea o actualiza un artículo educativo (solo admin). */
+/** Crea o actualiza un artículo educativo (admin u obstetra). */
 export async function handleAdminSaveArticle(c: AppContext): Promise<Response> {
   const user = c.get("user");
-  if (user.role !== "admin") return c.json({ error: "Acción no permitida" }, 403);
+  if (user.role !== "admin" && user.role !== "obstetra") {
+    return c.json({ error: "Acción no permitida" }, 403);
+  }
 
   const body = await readJson<{
     id?: string;
@@ -1055,6 +1177,8 @@ export async function handleAdminSaveArticle(c: AppContext): Promise<Response> {
     body?: string[];
     minutes?: number;
     active?: boolean;
+    mediaType?: "lectura" | "video" | "imagen" | "pdf";
+    mediaUrl?: string | null;
     imageUrl?: string | null;
     links?: ArticleLink[];
   }>(c);
@@ -1065,10 +1189,19 @@ export async function handleAdminSaveArticle(c: AppContext): Promise<Response> {
   const articleBody = Array.isArray(body.body) ? body.body.map((p) => p.trim()).filter((p) => p.length > 0) : [];
   const minutes = Math.max(1, Math.min(60, Math.round(body.minutes ?? 3)));
   const active = body.active !== false;
+  const mediaType =
+    body.mediaType === "video" || body.mediaType === "imagen" || body.mediaType === "pdf"
+      ? body.mediaType
+      : "lectura";
+  const mediaUrl = body.mediaUrl ? body.mediaUrl.trim() : null;
   const imageUrl = body.imageUrl ? body.imageUrl.trim() : null;
   const links = Array.isArray(body.links)
     ? body.links
-        .map((l) => ({ label: (l.label ?? "").trim(), url: (l.url ?? "").trim() }))
+        .map((l) => ({
+          label: (l.label ?? "").trim(),
+          url: (l.url ?? "").trim(),
+          ...(l.kind ? { kind: l.kind } : {}),
+        }))
         .filter((l) => l.label.length > 0 && l.url.length > 0)
     : [];
 
@@ -1088,6 +1221,8 @@ export async function handleAdminSaveArticle(c: AppContext): Promise<Response> {
       body: articleBody,
       minutes,
       active,
+      mediaType,
+      mediaUrl,
       imageUrl,
       links,
       createdAtISO: new Date().toISOString(),

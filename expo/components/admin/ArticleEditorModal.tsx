@@ -8,9 +8,12 @@ import {
   BookOpen,
   Camera,
   ExternalLink,
+  FileText,
+  Image as ImageIcon,
   Link as LinkIcon,
   Plus,
   Trash2,
+  Video,
   X,
 } from "lucide-react-native";
 import React, { useCallback, useEffect, useState } from "react";
@@ -30,7 +33,7 @@ import { gShadow, gfonts, gwarm, semantic, spacing, warmPlum, withAlpha } from "
 import { CATEGORY_ILU, GICON } from "@/constants/illustrations";
 import { pickAvatarDataUrl } from "@/lib/photo";
 import { useApp } from "@/providers/AppProvider";
-import type { Article, ArticleLink } from "@/types";
+import type { Article, ArticleLink, ArticleMediaType } from "@/types";
 import { AppButton } from "@/components/AppButton";
 import { Illustration } from "@/components/gestante/Illustration";
 import { useToast } from "@/components/Toast";
@@ -43,6 +46,13 @@ const PRESET_CATEGORIES = [
   "Posparto",
   "Salud mental",
   "Cuidado general",
+];
+
+const MEDIA_TYPES: { key: ArticleMediaType; label: string }[] = [
+  { key: "lectura", label: "Lectura" },
+  { key: "video", label: "Video" },
+  { key: "pdf", label: "Documento PDF" },
+  { key: "imagen", label: "Imagen / Infografía" },
 ];
 
 interface ArticleEditorModalProps {
@@ -62,6 +72,8 @@ export function ArticleEditorModal({
   const [title, setTitle] = useState<string>("");
   const [category, setCategory] = useState<string>("Nutrición");
   const [customCategory, setCustomCategory] = useState<string>("");
+  const [mediaType, setMediaType] = useState<ArticleMediaType>("lectura");
+  const [mediaUrl, setMediaUrl] = useState<string>("");
   const [minutes, setMinutes] = useState<string>("3");
   const [summary, setSummary] = useState<string>("");
   const [bodyParagraphs, setBodyParagraphs] = useState<string[]>([""]);
@@ -82,6 +94,8 @@ export function ArticleEditorModal({
           setCategory("Otra");
           setCustomCategory(article.category);
         }
+        setMediaType(article.mediaType ?? "lectura");
+        setMediaUrl(article.mediaUrl ?? "");
         setMinutes(String(article.minutes || 3));
         setSummary(article.summary || "");
         setBodyParagraphs(
@@ -94,6 +108,8 @@ export function ArticleEditorModal({
         setTitle("");
         setCategory("Nutrición");
         setCustomCategory("");
+        setMediaType("lectura");
+        setMediaUrl("");
         setMinutes("3");
         setSummary("");
         setBodyParagraphs([""]);
@@ -172,11 +188,11 @@ export function ArticleEditorModal({
       .map((p) => p.trim())
       .filter((p) => p.length > 0);
     const cleanLinks = links
-      .map((l) => ({ label: l.label.trim(), url: l.url.trim() }))
+      .map((l) => ({ label: l.label.trim(), url: l.url.trim(), kind: l.kind }))
       .filter((l) => l.label.length > 0 && l.url.length > 0);
 
     if (!cleanTitle) {
-      setError("Por favor ingresa un título para la lectura.");
+      setError("Por favor ingresa un título para el material educativo.");
       return;
     }
     if (!finalCategory) {
@@ -204,6 +220,8 @@ export function ArticleEditorModal({
         minutes: cleanMinutes,
         body: cleanParagraphs,
         imageUrl,
+        mediaType,
+        mediaUrl: mediaUrl.trim() || null,
         links: cleanLinks,
         active,
       });
@@ -225,6 +243,8 @@ export function ArticleEditorModal({
     title,
     category,
     customCategory,
+    mediaType,
+    mediaUrl,
     summary,
     minutes,
     bodyParagraphs,
@@ -297,6 +317,60 @@ export function ArticleEditorModal({
                 testID="input-articulo-titulo"
               />
             </View>
+
+            {/* Tipo de recurso educativo (Lectura, Video, PDF, Imagen) */}
+            <View style={styles.fieldBlock}>
+              <Text style={styles.label}>Formato del material educativo *</Text>
+              <View style={styles.categoriesRow}>
+                {MEDIA_TYPES.map((mt) => {
+                  const selected = mediaType === mt.key;
+                  return (
+                    <Pressable
+                      key={mt.key}
+                      onPress={() => setMediaType(mt.key)}
+                      style={[
+                        styles.catChip,
+                        selected && styles.catChipSelected,
+                      ]}
+                      testID={`media-type-${mt.key}`}
+                    >
+                      <Text
+                        style={[
+                          styles.catChipText,
+                          selected && styles.catChipTextSelected,
+                        ]}
+                      >
+                        {mt.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            {mediaType !== "lectura" ? (
+              <View style={styles.fieldBlock}>
+                <Text style={styles.label}>
+                  URL del recurso ({mediaType === "video" ? "Video / YouTube" : mediaType === "pdf" ? "Documento PDF" : "Imagen / Infografía"})
+                </Text>
+                <TextInput
+                  value={mediaUrl}
+                  onChangeText={setMediaUrl}
+                  placeholder={
+                    mediaType === "video"
+                      ? "https://www.youtube.com/watch?v=..."
+                      : mediaType === "pdf"
+                        ? "https://cdn.www.gob.pe/.../guia.pdf"
+                        : "https://.../infografia.png"
+                  }
+                  placeholderTextColor={gwarm.inkFaint}
+                  autoCapitalize="none"
+                  keyboardType="url"
+                  style={styles.input}
+                  testID="input-articulo-media-url"
+                />
+              </View>
+            ) : null}
 
             {/* Categoría */}
             <View style={styles.fieldBlock}>

@@ -296,6 +296,7 @@ export default function SistemaScreen(): React.ReactElement {
         tested: true,
         ok: res.ok,
         status: res.status,
+        serverUrl: waServerUrl.trim() || "https://openwa.qware.me",
         details: res.details,
         error: res.error,
         battery: res.battery,
@@ -317,6 +318,37 @@ export default function SistemaScreen(): React.ReactElement {
       setBusy(null);
     }
   }, [adminTestWhatsAppConnection, waServerUrl, waApiKey, waSessionId, requireOnline, show]);
+
+  // Verificar automáticamente el estado de la sesión de WhatsApp al abrir la pantalla
+  useEffect(() => {
+    if (!online || !whatsappConfig?.enabled || waStatusInfo?.tested) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await adminTestWhatsAppConnection({
+          serverUrl: whatsappConfig.serverUrl || "https://openwa.qware.me",
+          apiKey: whatsappConfig.apiKey || "vitmaterna-openwa-key",
+          sessionId: whatsappConfig.sessionId || "vitmaterna",
+        });
+        if (!cancelled) {
+          setWaStatusInfo({
+            tested: true,
+            ok: res.ok,
+            status: res.status,
+            serverUrl: whatsappConfig.serverUrl || "https://openwa.qware.me",
+            details: res.details,
+            error: res.error,
+            battery: res.battery,
+          });
+        }
+      } catch {
+        // Ignorar errores silenciosos en chequeo inicial
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [online, whatsappConfig, waStatusInfo?.tested, adminTestWhatsAppConnection]);
 
   const sendTestMessage = useCallback(async () => {
     if (!requireOnline()) return;

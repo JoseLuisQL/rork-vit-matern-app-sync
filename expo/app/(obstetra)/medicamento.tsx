@@ -8,7 +8,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Check, Pill, Trash2, UserRound } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { gfonts, gShadow, gwarm, warmBlue } from "@/constants/theme";
 import { ILU } from "@/constants/illustrations";
 import { confirmAction } from "@/lib/confirm";
@@ -189,6 +189,11 @@ export default function MedicamentoScreen(): React.ReactElement {
           fallbackHref={patient ? `/(obstetra)/gestante/${patient.id}` : "/(obstetra)/(tabs)/gestantes"}
         />
       </WebContainer>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 88 : 24}
+      >
       <ScrollView
         style={styles.flex}
         contentContainerStyle={styles.content}
@@ -342,6 +347,7 @@ export default function MedicamentoScreen(): React.ReactElement {
           </View>
         </WebContainer>
       </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -351,7 +357,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: {
     padding: 16,
-    paddingBottom: 48,
+    paddingBottom: 120,
   },
   formStack: {
     gap: 12,

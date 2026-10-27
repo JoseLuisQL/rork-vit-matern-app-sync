@@ -7,12 +7,19 @@
  * Adaptado con arquitectura responsiva Web (contenedor centrado en escritorio).
  */
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Check, Sparkles, UserRound } from "lucide-react-native";
-import React, { useEffect, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Check, Sparkles, Stethoscope, UserRound } from "lucide-react-native";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { gfonts, gShadow, gwarm, warmBlue } from "@/constants/theme";
 import { ILU } from "@/constants/illustrations";
-import { dateFromKey, fechaCompleta } from "@/lib/format";
+import { fechaCompleta } from "@/lib/format";
 import { fppKeyLocal, weeksLocal } from "@/lib/optimistic";
 import { useApp, usePatient } from "@/providers/AppProvider";
 import type { PatientUpdateFields } from "@/types";
@@ -21,6 +28,7 @@ import { Card } from "@/components/Card";
 import { DatePickerField } from "@/components/DatePickerField";
 import { EmptyState } from "@/components/EmptyState";
 import { Field } from "@/components/Field";
+import { PressableScale } from "@/components/PressableScale";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Stepper } from "@/components/Stepper";
@@ -38,14 +46,21 @@ function parseNum(value: string): number | null {
 export default function ActualizarDatosScreen(): React.ReactElement {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { todayKey, dispatch, online } = useApp();
+  const { view, todayKey, dispatch, online } = useApp();
   const patient = usePatient(id);
   const { show } = useToast();
+
+  const obstetras = useMemo(
+    () => (view?.users ?? []).filter((u) => u.role === "obstetra" && u.active),
+    [view?.users],
+  );
 
   const [loadedId, setLoadedId] = useState<string | null>(null);
   const [hb, setHb] = useState<string>("");
   const [sys, setSys] = useState<string>("");
   const [dia, setDia] = useState<string>("");
+  const [weight, setWeight] = useState<string>("");
+  const [height, setHeight] = useState<string>("");
   const [imc, setImc] = useState<string>("");
   const [fumKey, setFumKey] = useState<string>("");
   const [gestas, setGestas] = useState<number>(1);
@@ -54,6 +69,7 @@ export default function ActualizarDatosScreen(): React.ReactElement {
   const [edad, setEdad] = useState<string>("");
   const [phone, setPhone] = useState<string>("");
   const [community, setCommunity] = useState<string>("");
+  const [obstetraDni, setObstetraDni] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
 
   // Prellenar el formulario una sola vez por paciente.
@@ -63,6 +79,11 @@ export default function ActualizarDatosScreen(): React.ReactElement {
     setHb(`${patient.hbObserved}`);
     setSys(`${patient.bpSys}`);
     setDia(`${patient.bpDia}`);
+    const defaultH = patient.height ?? 1.55;
+    const defaultW =
+      patient.weight ?? Math.round(patient.imc * defaultH * defaultH * 10) / 10;
+    setWeight(`${defaultW}`);
+    setHeight(`${defaultH}`);
     setImc(`${patient.imc}`);
     setFumKey(patient.fumKey);
     setGestas(patient.gestas);
@@ -71,7 +92,43 @@ export default function ActualizarDatosScreen(): React.ReactElement {
     setEdad(`${patient.age}`);
     setPhone(patient.phone);
     setCommunity(patient.community);
+    setObstetraDni(patient.obstetraDni ?? "11111111");
   }, [patient, loadedId]);
+
+  const updateComputedImc = useCallback((wStr: string, hStr: string) => {
+    const w = parseFloat(wStr.replace(",", "."));
+    let h = parseFloat(hStr.replace(",", "."));
+    if (w > 0 && h > 0) {
+      if (h > 3) h = h / 100;
+      const calculated = (w / (h * h)).toFixed(1);
+      setImc(calculated);
+    }
+  }, []);
+
+  const handleWeightChange = useCallback(
+    (val: string) => {
+      setWeight(val);
+      updateComputedImc(val, height);
+    },
+    [height, updateComputedImc],
+  );
+
+  const handleHeightChange = useCallback(
+    (val: string) => {
+      setHeight(val);
+      updateComputedImc(weight, val);
+    },
+    [weight, updateComputedImc],
+  );
+
+  const imcInfo = useMemo(() => {
+    const val = parseFloat(imc.replace(",", "."));
+    if (!val || isNaN(val) || val <= 0) return null;
+    if (val < 18.5) return { label: "Bajo peso", color: gwarm.amber };
+    if (val < 25) return { label: "Peso normal", color: gwarm.tealDeep };
+    if (val < 30) return { label: "Sobrepeso", color: gwarm.amber };
+    return { label: "Obesidad", color: gwarm.rose };
+  }, [imc]);
 
   const preview = useMemo(() => {
     if (!fumKey || fumKey > todayKey) return null;
@@ -105,9 +162,17 @@ export default function ActualizarDatosScreen(): React.ReactElement {
       setError("Presión baja (diastólica): escribe un valor entre 40 y 140.");
       return;
     }
-    const imcN = parseNum(imc);
-    if (imcN === null || imcN < 12 || imcN > 60) {
-      setError("IMC: escribe un valor entre 12 y 60.");
+    const weightN = parseNum(weight);
+    const rawHeightN = parseNum(height);
+    const heightN =
+      rawHeightN !== null ? (rawHeightN > 3 ? rawHeightN / 100 : rawHeightN) : null;
+    const computedImc =
+      weightN !== null && heightN !== null && weightN > 0 && heightN > 0
+        ? Math.round((weightN / (heightN * heightN)) * 10) / 10
+        : parseNum(imc);
+
+    if (computedImc === null || computedImc < 12 || computedImc > 60) {
+      setError("IMC: ingresa peso y talla válidos (IMC entre 12 y 60).");
       return;
     }
     const edadN = parseNum(edad);
@@ -124,7 +189,7 @@ export default function ActualizarDatosScreen(): React.ReactElement {
       return;
     }
     if (community.trim().length === 0) {
-      setError("Escribe la comunidad de la gestante.");
+      setError("Escribe la dirección de la gestante.");
       return;
     }
     setError(null);
@@ -132,7 +197,9 @@ export default function ActualizarDatosScreen(): React.ReactElement {
       hbObserved: hbN,
       bpSys: sysN,
       bpDia: diaN,
-      imc: imcN,
+      ...(weightN !== null && weightN > 0 ? { weight: weightN } : {}),
+      ...(heightN !== null && heightN > 0 ? { height: heightN } : {}),
+      imc: computedImc,
       age: edadN,
       fumKey,
       gestas,
@@ -140,6 +207,7 @@ export default function ActualizarDatosScreen(): React.ReactElement {
       abortos,
       community: community.trim(),
       phone: phone.trim(),
+      ...(obstetraDni ? { obstetraDni } : {}),
     };
     dispatch({ type: "update_patient", patientId: patient.id, fields });
     show(
@@ -161,173 +229,260 @@ export default function ActualizarDatosScreen(): React.ReactElement {
           fallbackHref={`/(obstetra)/gestante/${patient.id}`}
         />
       </WebContainer>
-      <ScrollView
+      <KeyboardAvoidingView
         style={styles.flex}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 88 : 24}
       >
-        <WebContainer size="form">
-          <View style={styles.formStack}>
-            <View style={styles.heroNote}>
-              <Illustration source={ILU.carnet} width={68} height={68} />
-              <Text style={styles.heroText}>
-                Registra lo que midas en el control. La semana, la anemia y el semáforo de riesgo
-                se recalculan solos.
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <WebContainer size="form">
+            <View style={styles.formStack}>
+              <View style={styles.heroNote}>
+                <Illustration source={ILU.carnet} width={68} height={68} />
+                <Text style={styles.heroText}>
+                  Registra lo que midas en el control. El IMC, la semana, la FPP, la anemia y el
+                  semáforo de riesgo se recalculan solos.
+                </Text>
+              </View>
+
+              <SectionHeader title="Análisis y medidas" />
+              <Card style={styles.formCard}>
+                <View style={styles.row2}>
+                  <Field
+                    label="Peso (kg)"
+                    value={weight}
+                    onChangeText={handleWeightChange}
+                    keyboardType="decimal-pad"
+                    hint="Peso actual en kg"
+                    accent={accent.main}
+                    style={styles.flex}
+                    testID="campo-peso"
+                  />
+                  <Field
+                    label="Talla (m o cm)"
+                    value={height}
+                    onChangeText={handleHeightChange}
+                    keyboardType="decimal-pad"
+                    hint="Ej. 1.56 o 156"
+                    accent={accent.main}
+                    style={styles.flex}
+                    testID="campo-talla"
+                  />
+                </View>
+                <View style={styles.row2}>
+                  <Field
+                    label="IMC (automático)"
+                    value={imc}
+                    onChangeText={setImc}
+                    keyboardType="decimal-pad"
+                    hint="Peso / talla²"
+                    accent={accent.main}
+                    style={styles.flex}
+                    testID="campo-imc"
+                  />
+                  <Field
+                    label="Hemoglobina"
+                    value={hb}
+                    onChangeText={setHb}
+                    keyboardType="decimal-pad"
+                    hint="g/dL medida en laboratorio"
+                    accent={accent.main}
+                    style={styles.flex}
+                    testID="campo-hb"
+                  />
+                </View>
+                {imcInfo ? (
+                  <View style={styles.imcBox}>
+                    <Text style={styles.imcText}>
+                      IMC calculado:{" "}
+                      <Text style={{ color: imcInfo.color, fontFamily: gfonts.hand }}>
+                        {imc} kg/m² ({imcInfo.label})
+                      </Text>
+                    </Text>
+                  </View>
+                ) : null}
+                <View style={styles.row2}>
+                  <Field
+                    label="Presión alta"
+                    value={sys}
+                    onChangeText={setSys}
+                    keyboardType="number-pad"
+                    hint="Sistólica"
+                    accent={accent.main}
+                    style={styles.flex}
+                    testID="campo-sys"
+                  />
+                  <Field
+                    label="Presión baja"
+                    value={dia}
+                    onChangeText={setDia}
+                    keyboardType="number-pad"
+                    hint="Diastólica"
+                    accent={accent.main}
+                    style={styles.flex}
+                    testID="campo-dia"
+                  />
+                </View>
+              </Card>
+
+              <SectionHeader title="Embarazo" />
+              <Card style={styles.formCard}>
+                <DatePickerField
+                  label="Fecha de última menstruación (FUM)"
+                  value={fumKey}
+                  onChangeDate={setFumKey}
+                  placeholder="Seleccionar FUM en el calendario"
+                  accent={accent.main}
+                  isFum={true}
+                  hint="Con esta fecha se calculan la semana de embarazo y la fecha probable de parto."
+                  testID="campo-fum"
+                />
+                {preview ? (
+                  <View style={styles.previewBox}>
+                    <Sparkles size={16} color={gwarm.tealDeep} />
+                    <Text style={styles.previewText}>
+                      Semana {preview.weeks} · Fecha Probable de Parto (FPP):{" "}
+                      {fechaCompleta(preview.fpp)}
+                    </Text>
+                  </View>
+                ) : null}
+              </Card>
+
+              <SectionHeader title="Su historia" />
+              <Card style={[styles.formCard, styles.historyCard]}>
+                <View style={styles.historySummaryRow}>
+                  <Text style={styles.historySummaryText}>
+                    Gestaciones: <Text style={styles.historyNum}>{gestas}</Text> · Cesáreas:{" "}
+                    <Text style={styles.historyNum}>{cesareas}</Text> · Abortos:{" "}
+                    <Text style={styles.historyNum}>{abortos}</Text>
+                  </Text>
+                </View>
+                <View style={styles.row3}>
+                  <Stepper
+                    label="Gestaciones"
+                    value={gestas}
+                    onChange={setGestas}
+                    min={1}
+                    max={20}
+                    accent={accent.main}
+                    style={styles.flex}
+                    compact
+                    testID="stepper-gestas"
+                  />
+                  <Stepper
+                    label="Cesáreas"
+                    value={cesareas}
+                    onChange={setCesareas}
+                    min={0}
+                    max={10}
+                    accent={accent.main}
+                    style={styles.flex}
+                    compact
+                    testID="stepper-cesareas"
+                  />
+                  <Stepper
+                    label="Abortos"
+                    value={abortos}
+                    onChange={setAbortos}
+                    min={0}
+                    max={10}
+                    accent={accent.main}
+                    style={styles.flex}
+                    compact
+                    testID="stepper-abortos"
+                  />
+                </View>
+              </Card>
+
+              {obstetras.length > 0 ? (
+                <>
+                  <SectionHeader title="Obstetra responsable" />
+                  <Card style={styles.formCard}>
+                    <View style={styles.obstetraList}>
+                      {obstetras.map((o) => {
+                        const active = obstetraDni === o.dni;
+                        return (
+                          <PressableScale
+                            key={o.dni}
+                            onPress={() => setObstetraDni(o.dni)}
+                            style={[styles.obstetraChip, active && styles.obstetraChipActive]}
+                          >
+                            <Stethoscope size={15} color={active ? "#FFFFFF" : accent.main} />
+                            <Text
+                              style={[
+                                styles.obstetraChipText,
+                                active && styles.obstetraChipTextActive,
+                              ]}
+                            >
+                              {o.firstName} {o.lastName}
+                            </Text>
+                          </PressableScale>
+                        );
+                      })}
+                    </View>
+                  </Card>
+                </>
+              ) : null}
+
+              <SectionHeader title="Contacto" />
+              <Card style={styles.formCard}>
+                <View style={styles.row2}>
+                  <Field
+                    label="Edad"
+                    value={edad}
+                    onChangeText={setEdad}
+                    keyboardType="number-pad"
+                    hint="Años"
+                    maxLength={2}
+                    accent={accent.main}
+                    style={styles.flex}
+                  />
+                  <Field
+                    label="Teléfono"
+                    value={phone}
+                    onChangeText={setPhone}
+                    keyboardType="phone-pad"
+                    placeholder="987 654 321"
+                    accent={accent.main}
+                    style={styles.flex}
+                  />
+                </View>
+                <Field
+                  label="Dirección"
+                  value={community}
+                  onChangeText={setCommunity}
+                  placeholder="San Juan, Talavera…"
+                  accent={accent.main}
+                  testID="campo-direccion"
+                />
+              </Card>
+
+              {error ? (
+                <View style={styles.errorBox}>
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              ) : null}
+
+              <AppButton
+                title="Guardar cambios"
+                onPress={save}
+                color={accent.main}
+                icon={Check}
+                large
+                testID="btn-guardar-datos"
+              />
+              <Text style={styles.footNote}>
+                Si no hay señal, el cambio queda guardado en el teléfono y se envía solo.
               </Text>
             </View>
-
-            <SectionHeader title="Análisis y medidas" />
-            <Card style={styles.formCard}>
-              <View style={styles.row2}>
-                <Field
-                  label="Hemoglobina"
-                  value={hb}
-                  onChangeText={setHb}
-                  keyboardType="decimal-pad"
-                  hint="g/dL medida en laboratorio"
-                  accent={accent.main}
-                  style={styles.flex}
-                  testID="campo-hb"
-                />
-                <Field
-                  label="IMC"
-                  value={imc}
-                  onChangeText={setImc}
-                  keyboardType="decimal-pad"
-                  hint="Peso / talla²"
-                  accent={accent.main}
-                  style={styles.flex}
-                  testID="campo-imc"
-                />
-              </View>
-              <View style={styles.row2}>
-                <Field
-                  label="Presión alta"
-                  value={sys}
-                  onChangeText={setSys}
-                  keyboardType="number-pad"
-                  hint="Sistólica"
-                  accent={accent.main}
-                  style={styles.flex}
-                  testID="campo-sys"
-                />
-                <Field
-                  label="Presión baja"
-                  value={dia}
-                  onChangeText={setDia}
-                  keyboardType="number-pad"
-                  hint="Diastólica"
-                  accent={accent.main}
-                  style={styles.flex}
-                  testID="campo-dia"
-                />
-              </View>
-            </Card>
-
-            <SectionHeader title="Embarazo" />
-            <Card style={styles.formCard}>
-              <DatePickerField
-                label="Fecha de última menstruación (FUM)"
-                value={fumKey}
-                onChangeDate={setFumKey}
-                placeholder="Seleccionar FUM en el calendario"
-                accent={accent.main}
-                isFum={true}
-                hint="Con esta fecha se calculan la semana de embarazo y la fecha probable de parto."
-                testID="campo-fum"
-              />
-            </Card>
-
-            <SectionHeader title="Su historia" />
-            <Card style={[styles.formCard, styles.historyCard]}>
-              <View style={styles.row3}>
-                <Stepper
-                  label="Gestas"
-                  value={gestas}
-                  onChange={setGestas}
-                  min={1}
-                  max={20}
-                  accent={accent.main}
-                  style={styles.flex}
-                  compact
-                  testID="stepper-gestas"
-                />
-                <Stepper
-                  label="Cesáreas"
-                  value={cesareas}
-                  onChange={setCesareas}
-                  min={0}
-                  max={10}
-                  accent={accent.main}
-                  style={styles.flex}
-                  compact
-                />
-                <Stepper
-                  label="Abortos"
-                  value={abortos}
-                  onChange={setAbortos}
-                  min={0}
-                  max={10}
-                  accent={accent.main}
-                  style={styles.flex}
-                  compact
-                />
-              </View>
-            </Card>
-
-            <SectionHeader title="Contacto" />
-            <Card style={styles.formCard}>
-              <View style={styles.row2}>
-                <Field
-                  label="Edad"
-                  value={edad}
-                  onChangeText={setEdad}
-                  keyboardType="number-pad"
-                  hint="Años"
-                  maxLength={2}
-                  accent={accent.main}
-                  style={styles.flex}
-                />
-                <Field
-                  label="Teléfono"
-                  value={phone}
-                  onChangeText={setPhone}
-                  keyboardType="phone-pad"
-                  placeholder="987 654 321"
-                  accent={accent.main}
-                  style={styles.flex}
-                />
-              </View>
-              <Field
-                label="Dirección"
-                value={community}
-                onChangeText={setCommunity}
-                placeholder="San Juan, Talavera…"
-                accent={accent.main}
-              />
-            </Card>
-
-            {error ? (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            ) : null}
-
-            <AppButton
-              title="Guardar cambios"
-              onPress={save}
-              color={accent.main}
-              icon={Check}
-              large
-              testID="btn-guardar-datos"
-            />
-            <Text style={styles.footNote}>
-              Si no hay señal, el cambio queda guardado en el teléfono y se envía solo.
-            </Text>
-          </View>
-        </WebContainer>
-      </ScrollView>
+          </WebContainer>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -337,7 +492,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: {
     padding: 16,
-    paddingBottom: 48,
+    paddingBottom: 120,
   },
   formStack: {
     gap: 12,
@@ -365,8 +520,69 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 14,
   },
+  historySummaryRow: {
+    backgroundColor: gwarm.surfaceSoft,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: gwarm.border,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    alignItems: "center",
+  },
+  historySummaryText: {
+    fontFamily: gfonts.handBody,
+    fontSize: 13.5,
+    color: gwarm.inkSoft,
+  },
+  historyNum: {
+    fontFamily: gfonts.hand,
+    fontSize: 15,
+    color: accent.main,
+  },
   row2: { flexDirection: "row", gap: 10 },
   row3: { flexDirection: "row", gap: 6 },
+  imcBox: {
+    backgroundColor: gwarm.surfaceSoft,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: gwarm.border,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    alignItems: "center",
+  },
+  imcText: {
+    fontFamily: gfonts.handBody,
+    fontSize: 13.5,
+    color: gwarm.ink,
+  },
+  obstetraList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  obstetraChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: gwarm.border,
+    backgroundColor: gwarm.surface,
+  },
+  obstetraChipActive: {
+    backgroundColor: accent.main,
+    borderColor: accent.main,
+  },
+  obstetraChipText: {
+    fontFamily: gfonts.hand,
+    fontSize: 14,
+    color: gwarm.ink,
+  },
+  obstetraChipTextActive: {
+    color: "#FFFFFF",
+  },
   groupLabel: {
     fontFamily: gfonts.hand,
     fontSize: 16.5,

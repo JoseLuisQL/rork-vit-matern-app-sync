@@ -4,16 +4,18 @@
  * Adaptado con arquitectura responsiva Web (rejilla adaptable en escritorio).
  */
 import { useRouter } from "expo-router";
-import { ChevronRight, Search, UserRoundPlus, Users } from "lucide-react-native";
-import React, { useMemo, useState } from "react";
+import { ChevronRight, Search, Trash2, UserRoundPlus, Users } from "lucide-react-native";
+import React, { useCallback, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { gfonts, gShadow, gwarm, risk, warmBlue } from "@/constants/theme";
-import { ANEMIA_LABEL, RISK_WORD } from "@/constants/labels";
+import { RISK_WORD } from "@/constants/labels";
 import { GICON } from "@/constants/illustrations";
 import { useResponsive } from "@/hooks/useResponsive";
-import { avatarUri } from "@/lib/api";
-import { usePatients } from "@/providers/AppProvider";
-import type { RiskLevel } from "@/types";
+import { ApiError, avatarUri } from "@/lib/api";
+import { confirmAction, showNotice } from "@/lib/confirm";
+import { fechaCorta } from "@/lib/format";
+import { useApp, usePatients } from "@/providers/AppProvider";
+import type { Patient, RiskLevel } from "@/types";
 import { AppButton } from "@/components/AppButton";
 import { Avatar } from "@/components/Avatar";
 import { EmptyState } from "@/components/EmptyState";
@@ -27,11 +29,46 @@ const accent = warmBlue;
 export default function GestantesScreen(): React.ReactElement {
   const router = useRouter();
   const patients = usePatients();
+  const { adminDeleteUser, online } = useApp();
   const [query, setQuery] = useState<string>("");
   const [filter, setFilter] = useState<"todas" | RiskLevel>("todas");
+  const [busyDni, setBusyDni] = useState<string | null>(null);
   const { isDesktop, isTablet } = useResponsive();
 
   const isWide = isDesktop || isTablet;
+
+  const handleDeletePatient = useCallback(
+    async (p: Patient) => {
+      if (!online) {
+        showNotice("Sin conexión", "Necesitas conexión para eliminar una gestante.");
+        return;
+      }
+      const ok = await confirmAction({
+        title: "Eliminar gestante",
+        message: `¿Estás segura de que deseas eliminar a ${p.firstName} ${p.lastName}? Se eliminarán su cuenta, ficha clínica, citas y registros asociados.`,
+        confirmText: "Eliminar",
+        destructive: true,
+      });
+      if (!ok) return;
+      setBusyDni(p.dni);
+      try {
+        await adminDeleteUser(p.dni);
+        showNotice("Gestante eliminada", `La ficha de ${p.firstName} fue eliminada correctamente.`);
+      } catch (e) {
+        showNotice(
+          "No se pudo eliminar",
+          e instanceof ApiError && e.status === 0
+            ? "Sin conexión con el servidor."
+            : e instanceof Error
+              ? e.message
+              : "Error desconocido",
+        );
+      } finally {
+        setBusyDni(null);
+      }
+    },
+    [adminDeleteUser, online],
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -71,7 +108,7 @@ export default function GestantesScreen(): React.ReactElement {
             <TextInput
               value={query}
               onChangeText={setQuery}
-              placeholder="Buscar por nombre, DNI o comunidad"
+              placeholder="Buscar por nombre, DNI o dirección"
               placeholderTextColor={gwarm.inkFaint}
               style={styles.searchInput}
               testID="buscar-gestante"
@@ -158,12 +195,25 @@ export default function GestantesScreen(): React.ReactElement {
                           {RISK_WORD[p.riskLevel]}
                         </Text>
                       </View>
+                      <PressableScale
+                        onPress={() => void handleDeletePatient(p)}
+                        disabled={busyDni === p.dni}
+                        accessibilityLabel={`Eliminar a ${p.firstName}`}
+                        style={styles.deleteBtn}
+                        testID={`eliminar-gestante-${p.id}`}
+                      >
+                        <Trash2 size={16} color={gwarm.rose} />
+                      </PressableScale>
                     </View>
 
                     <View style={styles.desktopCardStats}>
                       <View style={styles.desktopStatItem}>
                         <Text style={styles.statLabel}>Gestación</Text>
                         <Text style={styles.statValue}>Semana {p.weeks}</Text>
+                      </View>
+                      <View style={styles.desktopStatItem}>
+                        <Text style={styles.statLabel}>FPP</Text>
+                        <Text style={styles.statValue}>{fechaCorta(p.fppKey)}</Text>
                       </View>
                       <View style={styles.desktopStatItem}>
                         <Text style={styles.statLabel}>Hemoglobina</Text>
@@ -211,12 +261,21 @@ export default function GestantesScreen(): React.ReactElement {
                       {p.firstName} {p.lastName}
                     </Text>
                     <Text style={styles.meta} numberOfLines={1}>
-                      Semana {p.weeks} · {p.community}
+                      Semana {p.weeks} · FPP {fechaCorta(p.fppKey)} · {p.community}
                     </Text>
                   </View>
                   <Text style={[styles.riskWord, { color: risk[p.riskLevel].solid }]}>
                     {RISK_WORD[p.riskLevel]}
                   </Text>
+                  <PressableScale
+                    onPress={() => void handleDeletePatient(p)}
+                    disabled={busyDni === p.dni}
+                    accessibilityLabel={`Eliminar a ${p.firstName}`}
+                    style={styles.deleteBtn}
+                    testID={`eliminar-gestante-${p.id}`}
+                  >
+                    <Trash2 size={15} color={gwarm.rose} />
+                  </PressableScale>
                   <ChevronRight size={16} color={gwarm.inkFaint} />
                 </PressableScale>
               ))}
@@ -350,6 +409,17 @@ const styles = StyleSheet.create({
     fontFamily: gfonts.hand,
     fontSize: 15,
     lineHeight: 19,
+    flexShrink: 0,
+  },
+  deleteBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: gwarm.redSoft,
+    borderWidth: 1,
+    borderColor: gwarm.redMid,
+    alignItems: "center",
+    justifyContent: "center",
     flexShrink: 0,
   },
 });

@@ -5,6 +5,10 @@
  */
 export { VitmaternaStore } from "./store";
 
+interface Fetcher {
+  fetch(request: Request): Promise<Response>;
+}
+
 type Env = { DO: Fetcher };
 
 const CORS_HEADERS: Record<string, string> = {
@@ -42,4 +46,4 @@ export default {
 
     return withCors(Response.json({ error: "not found" }, { status: 404 }));
   },
-} satisfies ExportedHandler<Env>;
+};

@@ -99,6 +99,8 @@ export interface Patient {
   hbObserved: number;
   bpSys: number;
   bpDia: number;
+  weight?: number;
+  height?: number;
   imc: number;
   /** Adherencia base (%) para pacientes sin registro diario. */
   adherenceBase: number;
@@ -250,9 +252,12 @@ export interface ReportBlock {
   asistenciaSemanal: WeeklyAttendance[];
 }
 
+export type ArticleMediaType = "lectura" | "video" | "imagen" | "pdf";
+
 export interface ArticleLink {
   label: string;
   url: string;
+  kind?: ArticleMediaType;
 }
 
 export interface Article {
@@ -263,6 +268,8 @@ export interface Article {
   body: string[];
   minutes: number;
   active: boolean;
+  mediaType?: ArticleMediaType;
+  mediaUrl?: string | null;
   imageUrl?: string | null;
   links: ArticleLink[];
   createdAtISO: string;
@@ -325,7 +332,10 @@ export interface PatientUpdateFields {
   hbObserved?: number;
   bpSys?: number;
   bpDia?: number;
+  weight?: number;
+  height?: number;
   imc?: number;
+  obstetraDni?: string;
 }
 
 /** Acciones encolables (offline-first). Idempotentes por id. */

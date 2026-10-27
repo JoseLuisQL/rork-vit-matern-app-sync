@@ -4,7 +4,8 @@
  * alertas, visitas y usuarios. Aplica acciones offline de forma idempotente,
  * valida la agenda sin cruces y genera alertas tempranas automáticas.
  */
-import { DurableObject } from "cloudflare:workers";
+import { sendWhatsAppText, testWhatsAppConnection } from "../server/src/whatsapp/client";
+import { templateTestMessage } from "../server/src/whatsapp/templates";
 import {
   addDaysToKey,
   AGENDA_SLOTS,
@@ -53,7 +54,43 @@ import type {
   SupplementFields,
   Visit,
   WeeklyAttendance,
+  WhatsAppConfig,
 } from "./types";
+
+class InMemoryStorage {
+  private map = new Map<string, unknown>();
+
+  async get<T>(key: string): Promise<T | undefined> {
+    return this.map.get(key) as T | undefined;
+  }
+
+  async put(key: string, value: unknown): Promise<void> {
+    this.map.set(key, value);
+  }
+
+  async delete(keyOrKeys: string | string[]): Promise<void> {
+    if (Array.isArray(keyOrKeys)) {
+      for (const k of keyOrKeys) this.map.delete(k);
+    } else {
+      this.map.delete(keyOrKeys);
+    }
+  }
+
+  async list(opts?: { prefix?: string }): Promise<Map<string, unknown>> {
+    const out = new Map<string, unknown>();
+    const prefix = opts?.prefix ?? "";
+    for (const [k, v] of this.map.entries()) {
+      if (k.startsWith(prefix)) out.set(k, v);
+    }
+    return out;
+  }
+}
+
+class DurableObjectBase {
+  protected ctx = {
+    storage: new InMemoryStorage(),
+  };
+}
 
 const STATE_KEY = "state";
 const ACTIVE_APPT_STATES = ["programada", "confirmada", "solicitud_reprogramacion"] as const;
@@ -134,10 +171,23 @@ function sanitizeSupplementFields(
   };
 }
 
-export class VitmaternaStore extends DurableObject {
+export class VitmaternaStore extends DurableObjectBase {
   private db: DBState | null = null;
   /** Última conexión y "escribiendo" por DNI (no se persiste a propósito). */
   private presence = new Map<string, PresenceRecord>();
+  private whatsappConfig: WhatsAppConfig = {
+    enabled: true,
+    serverUrl: "https://openwa.qware.me",
+    apiKey: "vitmaterna-openwa-key",
+    sessionId: "vitmaterna",
+    notifyAppointments: true,
+    notifySupplements: true,
+    remindAppointments: true,
+    remindSupplements: true,
+    chatOfflineFallback: true,
+    sosOfflineAlerts: true,
+    updatedAtISO: new Date().toISOString(),
+  };
 
   private async load(): Promise<DBState> {
     if (this.db) return this.db;
@@ -146,8 +196,11 @@ export class VitmaternaStore extends DurableObject {
       // Migración suave: estados guardados antes de existir la configuración.
       if (!stored.config) {
         stored.config = defaultConfig("demo");
-        await this.ctx.storage.put(STATE_KEY, stored);
       }
+      stored.patients.forEach((p) => {
+        if (!p.obstetraDni) p.obstetraDni = "11111111";
+      });
+      await this.ctx.storage.put(STATE_KEY, stored);
       this.db = stored;
     } else {
       this.db = buildSeed();
@@ -163,7 +216,7 @@ export class VitmaternaStore extends DurableObject {
     }
   }
 
-  override async fetch(request: Request): Promise<Response> {
+  async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
     try {
@@ -214,6 +267,15 @@ export class VitmaternaStore extends DurableObject {
           return await this.handleAdminConfig(request, db, user);
         case "/api/admin/reset":
           return await this.handleReset(db, user);
+        case "/api/push-token":
+        case "/api/push-token/delete":
+          return json({ ok: true });
+        case "/api/admin/whatsapp/config":
+          return await this.handleAdminWhatsAppConfig(request, db, user);
+        case "/api/admin/whatsapp/test-connection":
+          return await this.handleAdminWhatsAppTestConnection(request, user);
+        case "/api/admin/whatsapp/send-test":
+          return await this.handleAdminWhatsAppSendTest(request, user);
         case "/api/admin/article/save":
           return await this.handleAdminSaveArticle(request, db, user);
         case "/api/admin/article/toggle-active":
@@ -521,7 +583,24 @@ export class VitmaternaStore extends DurableObject {
         }
         if (f.bpSys !== undefined) patient.bpSys = Math.max(70, Math.min(240, Math.round(f.bpSys)));
         if (f.bpDia !== undefined) patient.bpDia = Math.max(40, Math.min(140, Math.round(f.bpDia)));
-        if (f.imc !== undefined) patient.imc = Math.max(12, Math.min(60, Math.round(f.imc * 10) / 10));
+        if (f.weight !== undefined && Number.isFinite(f.weight) && f.weight > 0) {
+          patient.weight = Math.max(25, Math.min(200, Math.round(f.weight * 10) / 10));
+        }
+        if (f.height !== undefined && Number.isFinite(f.height) && f.height > 0) {
+          const hMeters = f.height > 3 ? f.height / 100 : f.height;
+          patient.height = Math.max(1.0, Math.min(2.2, Math.round(hMeters * 100) / 100));
+        }
+        if (f.imc !== undefined && Number.isFinite(f.imc)) {
+          patient.imc = Math.max(12, Math.min(60, Math.round(f.imc * 10) / 10));
+        } else if (
+          (f.weight !== undefined || f.height !== undefined) &&
+          patient.weight &&
+          patient.height &&
+          patient.height > 0
+        ) {
+          const calcImc = patient.weight / (patient.height * patient.height);
+          patient.imc = Math.max(12, Math.min(60, Math.round(calcImc * 10) / 10));
+        }
         if (f.age !== undefined) patient.age = Math.max(12, Math.min(60, Math.round(f.age)));
         if (f.gestas !== undefined) patient.gestas = Math.max(1, Math.min(20, Math.round(f.gestas)));
         if (f.cesareas !== undefined) patient.cesareas = Math.max(0, Math.min(10, Math.round(f.cesareas)));
@@ -530,6 +609,9 @@ export class VitmaternaStore extends DurableObject {
           patient.community = f.community.trim().slice(0, 60);
         }
         if (f.phone !== undefined) patient.phone = f.phone.trim().slice(0, 20);
+        if (f.obstetraDni !== undefined) {
+          patient.obstetraDni = f.obstetraDni.trim() || undefined;
+        }
         return null;
       }
       case "assign_article": {
@@ -641,7 +723,11 @@ export class VitmaternaStore extends DurableObject {
     const nowMs = Date.now();
     const result: Record<string, PresenceView> = {};
     if (user.role === "gestante") {
-      const obstetras = db.users.filter((u) => u.role === "obstetra" && u.active).map((u) => u.dni);
+      const myPatient = db.patients.find((p) => p.id === user.patientId);
+      const assignedDni = myPatient?.obstetraDni;
+      const obstetras = assignedDni
+        ? [assignedDni]
+        : db.users.filter((u) => u.role === "obstetra" && u.active).map((u) => u.dni);
       result.obstetra = this.presenceViewOf(obstetras, user.patientId ?? "", nowMs);
     } else {
       db.patients.forEach((p) => {
@@ -787,12 +873,14 @@ export class VitmaternaStore extends DurableObject {
       motivo?: string;
     };
     const todayKey = peruDayKey();
-    const dateKey = body.dateKey ?? "";
-    const time = body.time ?? "";
+    const dateKey = (body.dateKey ?? "").trim();
+    const time = (body.time ?? "").trim();
 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return json({ error: "Fecha no válida" }, 400);
     if (dateKey < todayKey) return json({ error: "La fecha ya pasó. Elige un día desde hoy." }, 400);
-    if (!AGENDA_SLOTS.includes(time)) return json({ error: "Horario fuera de la agenda (08:00–16:30)" }, 400);
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
+      return json({ error: "Horario no válido. Ingresa una hora en formato HH:MM (ej. 08:30)." }, 400);
+    }
 
     const conflictResponse = (ignoreId?: string) =>
       json(
@@ -934,6 +1022,98 @@ export class VitmaternaStore extends DurableObject {
     return json({ snapshot: this.snapshotFor(freshUser, current) });
   }
 
+  private async handleAdminWhatsAppConfig(
+    request: Request,
+    db: DBState,
+    user: StoredUser,
+  ): Promise<Response> {
+    if (user.role !== "admin") return json({ error: "Acción no permitida" }, 403);
+    const body = (await request.json()) as Partial<WhatsAppConfig>;
+    const cur = this.whatsappConfig;
+    this.whatsappConfig = {
+      enabled: body.enabled !== undefined ? Boolean(body.enabled) : cur.enabled,
+      serverUrl:
+        body.serverUrl !== undefined
+          ? body.serverUrl.trim() || "https://openwa.qware.me"
+          : cur.serverUrl,
+      apiKey: body.apiKey !== undefined ? body.apiKey.trim() : cur.apiKey,
+      sessionId:
+        body.sessionId !== undefined ? body.sessionId.trim() || "vitmaterna" : cur.sessionId,
+      notifyAppointments:
+        body.notifyAppointments !== undefined
+          ? Boolean(body.notifyAppointments)
+          : cur.notifyAppointments,
+      notifySupplements:
+        body.notifySupplements !== undefined
+          ? Boolean(body.notifySupplements)
+          : cur.notifySupplements,
+      remindAppointments:
+        body.remindAppointments !== undefined
+          ? Boolean(body.remindAppointments)
+          : cur.remindAppointments,
+      remindSupplements:
+        body.remindSupplements !== undefined
+          ? Boolean(body.remindSupplements)
+          : cur.remindSupplements,
+      chatOfflineFallback:
+        body.chatOfflineFallback !== undefined
+          ? Boolean(body.chatOfflineFallback)
+          : cur.chatOfflineFallback,
+      sosOfflineAlerts:
+        body.sosOfflineAlerts !== undefined ? Boolean(body.sosOfflineAlerts) : cur.sosOfflineAlerts,
+      updatedAtISO: new Date().toISOString(),
+    };
+    return json({ snapshot: this.snapshotFor(user, db) });
+  }
+
+  private async handleAdminWhatsAppTestConnection(
+    request: Request,
+    user: StoredUser,
+  ): Promise<Response> {
+    if (user.role !== "admin") return json({ error: "Acción no permitida" }, 403);
+    const body = (await request.json()) as Partial<WhatsAppConfig>;
+    const testCfg: WhatsAppConfig = {
+      ...this.whatsappConfig,
+      serverUrl: body.serverUrl?.trim() || this.whatsappConfig.serverUrl,
+      apiKey: body.apiKey?.trim() || this.whatsappConfig.apiKey,
+      sessionId: body.sessionId?.trim() || this.whatsappConfig.sessionId,
+    };
+    const status = await testWhatsAppConnection(testCfg);
+    return json(status);
+  }
+
+  private async handleAdminWhatsAppSendTest(
+    request: Request,
+    user: StoredUser,
+  ): Promise<Response> {
+    if (user.role !== "admin") return json({ error: "Acción no permitida" }, 403);
+    const body = (await request.json()) as { phone?: string; message?: string };
+    const phone = (body.phone ?? "").trim();
+    if (!phone) {
+      return json({ error: "Ingresa un número de celular de prueba" }, 400);
+    }
+    if (!this.whatsappConfig.serverUrl || !this.whatsappConfig.apiKey) {
+      return json(
+        { error: "Primero debes configurar la URL del servidor y la API Key de Open-WA" },
+        400,
+      );
+    }
+    const message =
+      body.message?.trim() ||
+      templateTestMessage({
+        adminName: `${user.firstName} ${user.lastName}`.trim(),
+        timestamp: new Date().toLocaleString("es-PE", { timeZone: "America/Lima" }),
+      });
+    const res = await sendWhatsAppText({ ...this.whatsappConfig, enabled: true }, phone, message);
+    if (!res.ok) {
+      return json(
+        { error: res.error || "No se pudo entregar el mensaje de prueba a WhatsApp" },
+        500,
+      );
+    }
+    return json({ ok: true, message: "Mensaje de prueba enviado con éxito" });
+  }
+
   // ---------- Administración ----------
 
   /** Admin crea cualquier rol; la obstetra solo puede registrar gestantes. */
@@ -956,10 +1136,13 @@ export class VitmaternaStore extends DurableObject {
         hbObserved?: number;
         bpSys?: number;
         bpDia?: number;
+        weight?: number;
+        height?: number;
         imc?: number;
         gestas?: number;
         cesareas?: number;
         abortos?: number;
+        obstetraDni?: string;
       };
     };
 
@@ -989,12 +1172,31 @@ export class VitmaternaStore extends DurableObject {
       const todayKey = peruDayKey();
       if (p.fumKey > todayKey) return json({ error: "La FUM no puede ser una fecha futura" }, 400);
       patientId = `p-${crypto.randomUUID().slice(0, 8)}`;
+
+      const rawWeight = p.weight !== undefined && Number.isFinite(p.weight) && p.weight > 0
+        ? Math.max(25, Math.min(200, Math.round(p.weight * 10) / 10))
+        : undefined;
+      const rawHeight = p.height !== undefined && Number.isFinite(p.height) && p.height > 0
+        ? Math.max(1.0, Math.min(2.2, Math.round((p.height > 3 ? p.height / 100 : p.height) * 100) / 100))
+        : undefined;
+      const computedImc =
+        rawWeight && rawHeight && rawHeight > 0
+          ? Math.round((rawWeight / (rawHeight * rawHeight)) * 10) / 10
+          : p.imc ?? 24;
+
+      const assignedObstetraDni =
+        body.obstetraDni?.trim() ||
+        p.obstetraDni?.trim() ||
+        (user.role === "obstetra"
+          ? user.dni
+          : db.users.find((u) => u.role === "obstetra" && u.active)?.dni);
+
       const patient: Patient = {
         id: patientId,
         dni,
         firstName,
         lastName,
-        obstetraDni: body.obstetraDni?.trim() || undefined,
+        obstetraDni: assignedObstetraDni || undefined,
         age: Math.max(12, Math.min(60, Math.round(p.age ?? 25))),
         community: (p.community ?? "Talavera").trim() || "Talavera",
         phone: (body.phone ?? "").trim(),
@@ -1008,7 +1210,9 @@ export class VitmaternaStore extends DurableObject {
         hbObserved: Math.max(4, Math.min(20, p.hbObserved ?? 13)),
         bpSys: Math.max(70, Math.min(240, Math.round(p.bpSys ?? 110))),
         bpDia: Math.max(40, Math.min(140, Math.round(p.bpDia ?? 70))),
-        imc: Math.max(12, Math.min(60, Math.round((p.imc ?? 24) * 10) / 10)),
+        ...(rawWeight !== undefined ? { weight: rawWeight } : {}),
+        ...(rawHeight !== undefined ? { height: rawHeight } : {}),
+        imc: Math.max(12, Math.min(60, Math.round(computedImc * 10) / 10)),
         adherenceBase: 0,
       };
       db.patients.push(patient);
@@ -1071,29 +1275,82 @@ export class VitmaternaStore extends DurableObject {
   }
 
   private async handleDeleteUser(request: Request, db: DBState, user: StoredUser): Promise<Response> {
-    if (user.role !== "admin") return json({ error: "Acción no permitida" }, 403);
-    const body = (await request.json()) as { dni?: string };
-    if (!body.dni) return json({ error: "DNI requerido" }, 400);
-    if (body.dni === user.dni) return json({ error: "No puedes eliminar tu propia cuenta" }, 400);
+    if (user.role !== "admin" && user.role !== "obstetra") {
+      return json({ error: "Acción no permitida" }, 403);
+    }
+    const body = (await request.json()) as { dni?: string; patientId?: string };
+    const targetDni = (body.dni ?? "").trim();
+    const targetPatientId = (body.patientId ?? "").trim();
 
-    const targetIdx = db.users.findIndex((u) => u.dni === body.dni);
-    if (targetIdx === -1) return json({ error: "Usuario no encontrado" }, 404);
-
-    const target = db.users[targetIdx];
-    Object.keys(db.sessions).forEach((t) => {
-      if (db.sessions[t].dni === target.dni) delete db.sessions[t];
-    });
-
-    if (target.patientId) {
-      db.appointments.forEach((a) => {
-        if (a.patientId === target.patientId && (a.estado === "programada" || a.estado === "confirmada")) {
-          a.estado = "no_asistida";
-        }
-      });
-      db.patients = db.patients.filter((p) => p.id !== target.patientId && p.dni !== target.dni);
+    if (!targetDni && !targetPatientId) {
+      return json({ error: "DNI o ID de paciente requerido" }, 400);
+    }
+    if (targetDni && targetDni === user.dni) {
+      return json({ error: "No puedes eliminar tu propia cuenta" }, 400);
     }
 
-    db.users.splice(targetIdx, 1);
+    const targetUserIdx = db.users.findIndex(
+      (u) => (targetDni && u.dni === targetDni) || (targetPatientId && u.patientId === targetPatientId),
+    );
+    const targetUser = targetUserIdx >= 0 ? db.users[targetUserIdx] : undefined;
+
+    const targetPatient = db.patients.find(
+      (p) =>
+        (targetPatientId && p.id === targetPatientId) ||
+        (targetDni && p.dni === targetDni) ||
+        (targetUser?.patientId && p.id === targetUser.patientId),
+    );
+
+    if (!targetUser && !targetPatient) {
+      return json({ error: "Usuario no encontrado" }, 404);
+    }
+
+    if (user.role === "obstetra") {
+      if (targetUser && targetUser.role !== "gestante") {
+        return json({ error: "La obstetra solo puede dar de baja cuentas de gestantes" }, 403);
+      }
+      if (targetPatient && targetPatient.obstetraDni && targetPatient.obstetraDni !== user.dni) {
+        return json({ error: "Solo puedes eliminar gestantes asignadas a tu cargo" }, 403);
+      }
+    }
+
+    const dniToClean = targetUser?.dni ?? targetPatient?.dni;
+    if (dniToClean) {
+      Object.keys(db.sessions).forEach((t) => {
+        if (db.sessions[t].dni === dniToClean) delete db.sessions[t];
+      });
+      await this.ctx.storage.delete(`${AVATAR_PREFIX}${dniToClean}`);
+    }
+
+    // Si se elimina un obstetra, desasignar o reasignar sus pacientes
+    if (targetUser?.role === "obstetra") {
+      const fallbackObstetra = db.users.find(
+        (u) => u.role === "obstetra" && u.active && u.dni !== targetUser.dni,
+      );
+      db.patients.forEach((p) => {
+        if (p.obstetraDni === targetUser.dni) {
+          p.obstetraDni = fallbackObstetra?.dni;
+        }
+      });
+    }
+
+    const pidToClean = targetPatient?.id ?? targetUser?.patientId;
+    if (pidToClean) {
+      db.patients = db.patients.filter((p) => p.id !== pidToClean && p.dni !== dniToClean);
+      db.appointments = db.appointments.filter((a) => a.patientId !== pidToClean);
+      db.supplements = db.supplements.filter((s) => s.patientId !== pidToClean);
+      delete db.intakes[pidToClean];
+      db.messages = db.messages.filter((m) => m.convId !== pidToClean);
+      db.alerts = db.alerts.filter((a) => a.patientId !== pidToClean);
+      db.visits = db.visits.filter((v) => v.patientId !== pidToClean);
+      db.articleAssignments = (db.articleAssignments ?? []).filter((a) => a.patientId !== pidToClean);
+    }
+
+    if (targetUserIdx >= 0) {
+      db.users.splice(targetUserIdx, 1);
+    }
+
+    this.regenerateAutoAlerts(db);
     await this.save();
     return json({ snapshot: this.snapshotFor(user, db) });
   }
@@ -1122,7 +1379,9 @@ export class VitmaternaStore extends DurableObject {
   // ---------- Educación y Artículos ----------
 
   private async handleAdminSaveArticle(request: Request, db: DBState, user: StoredUser): Promise<Response> {
-    if (user.role !== "admin") return json({ error: "Acción no permitida" }, 403);
+    if (user.role !== "admin" && user.role !== "obstetra") {
+      return json({ error: "Acción no permitida" }, 403);
+    }
     const body = (await request.json()) as {
       id?: string;
       category?: string;
@@ -1131,8 +1390,10 @@ export class VitmaternaStore extends DurableObject {
       body?: string[];
       minutes?: number;
       active?: boolean;
+      mediaType?: "lectura" | "video" | "imagen" | "pdf";
+      mediaUrl?: string | null;
       imageUrl?: string | null;
-      links?: { label: string; url: string }[];
+      links?: { label: string; url: string; kind?: "lectura" | "video" | "imagen" | "pdf" }[];
     };
     const title = (body.title ?? "").trim();
     const category = (body.category ?? "").trim();
@@ -1140,10 +1401,16 @@ export class VitmaternaStore extends DurableObject {
     const articleBody = Array.isArray(body.body) ? body.body.map((p) => p.trim()).filter((p) => p.length > 0) : [];
     const minutes = Math.max(1, Math.min(60, Math.round(body.minutes ?? 3)));
     const active = body.active !== false;
+    const mediaType = body.mediaType ?? "lectura";
+    const mediaUrl = body.mediaUrl ? body.mediaUrl.trim() : null;
     const imageUrl = body.imageUrl ? body.imageUrl.trim() : null;
     const links = Array.isArray(body.links)
       ? body.links
-          .map((l) => ({ label: (l.label ?? "").trim(), url: (l.url ?? "").trim() }))
+          .map((l) => ({
+            label: (l.label ?? "").trim(),
+            url: (l.url ?? "").trim(),
+            ...(l.kind ? { kind: l.kind } : {}),
+          }))
           .filter((l) => l.label.length > 0 && l.url.length > 0)
       : [];
 
@@ -1164,6 +1431,8 @@ export class VitmaternaStore extends DurableObject {
       body: articleBody,
       minutes,
       active,
+      mediaType,
+      mediaUrl,
       imageUrl,
       links,
       createdAtISO: existingIndex >= 0 ? db.articles[existingIndex].createdAtISO : now,
@@ -1405,23 +1674,40 @@ export class VitmaternaStore extends DurableObject {
   private snapshotFor(user: StoredUser, db: DBState): Snapshot {
     const todayKey = peruDayKey();
     const isGestante = user.role === "gestante";
+    const isObstetra = user.role === "obstetra";
     const pid = user.patientId;
 
     const avatarByDni = new Map<string, number | undefined>(
       db.users.map((u) => [u.dni, u.avatarVersion]),
     );
+    const activeObstetras = db.users.filter((u) => u.role === "obstetra" && u.active);
     const patients = db.patients
-      .filter((p) => (isGestante ? p.id === pid : true))
+      .filter((p) => {
+        if (isGestante) return p.id === pid;
+        if (isObstetra) {
+          if (p.obstetraDni) return p.obstetraDni === user.dni;
+          return activeObstetras.length <= 1 || activeObstetras[0]?.dni === user.dni;
+        }
+        return true;
+      })
       .map((p) => {
         const view = this.computePatient(p, db, todayKey);
         const avatarVersion = avatarByDni.get(p.dni);
         return avatarVersion ? { ...view, avatarVersion } : view;
       });
 
-    const scopeById = <T extends { patientId: string }>(items: T[]): T[] =>
-      isGestante ? items.filter((i) => i.patientId === pid) : items;
+    const visiblePatientIds = new Set(patients.map((p) => p.id));
+    const scopeById = <T extends { patientId: string }>(items: T[]): T[] => {
+      if (isGestante) return items.filter((i) => i.patientId === pid);
+      if (isObstetra) return items.filter((i) => visiblePatientIds.has(i.patientId));
+      return items;
+    };
 
-    const obstetraUser = db.users.find((u) => u.role === "obstetra" && u.active);
+    const myPatient = isGestante ? db.patients.find((p) => p.id === pid) : undefined;
+    const obstetraUser =
+      (myPatient?.obstetraDni
+        ? db.users.find((u) => u.role === "obstetra" && u.active && u.dni === myPatient.obstetraDni)
+        : undefined) ?? db.users.find((u) => u.role === "obstetra" && u.active);
     const obstetrician = isGestante && obstetraUser ? publicUser(obstetraUser) : undefined;
 
     const allArticles = db.articles ?? [];
@@ -1436,7 +1722,17 @@ export class VitmaternaStore extends DurableObject {
       );
       scopedArticles = allArticles.filter((a) => a.active && assignedIds.has(a.id));
       scopedAssignments = allAssignments.filter((a) => a.patientId === pid);
+    } else if (isObstetra) {
+      scopedAssignments = allAssignments.filter((a) => visiblePatientIds.has(a.patientId));
     }
+
+    const scopedIntakes = isGestante && pid
+      ? { [pid]: db.intakes[pid] ?? {} }
+      : isObstetra
+        ? Object.fromEntries(
+            Object.entries(db.intakes).filter(([k]) => visiblePatientIds.has(k)),
+          )
+        : db.intakes;
 
     const snapshot: Snapshot = {
       serverTimeISO: new Date().toISOString(),
@@ -1446,8 +1742,12 @@ export class VitmaternaStore extends DurableObject {
       patients,
       appointments: scopeById(db.appointments),
       supplements: scopeById(db.supplements),
-      intakes: isGestante && pid ? { [pid]: db.intakes[pid] ?? {} } : db.intakes,
-      messages: isGestante ? db.messages.filter((m) => m.convId === pid) : db.messages,
+      intakes: scopedIntakes,
+      messages: isGestante
+        ? db.messages.filter((m) => m.convId === pid)
+        : isObstetra
+          ? db.messages.filter((m) => visiblePatientIds.has(m.convId))
+          : db.messages,
       alerts: scopeById(db.alerts),
       visits: scopeById(db.visits),
       articles: scopedArticles,
@@ -1459,10 +1759,13 @@ export class VitmaternaStore extends DurableObject {
 
     if (user.role === "admin") {
       snapshot.users = db.users.map(publicUser);
+      snapshot.whatsappConfig = this.whatsappConfig;
       snapshot.reports = {
         d30: this.buildReport(db, todayKey, 30),
         total: this.buildReport(db, todayKey, 100000),
       };
+    } else if (user.role === "obstetra") {
+      snapshot.users = db.users.map(publicUser);
     }
     return snapshot;
   }

@@ -33,9 +33,14 @@ export function Stepper({
 
   return (
     <View style={[styles.container, style]} testID={testID}>
-      <Text style={[styles.label, compact && styles.labelCompact]} numberOfLines={1}>
-        {label}
-      </Text>
+      <View style={styles.labelRow}>
+        <Text style={[styles.label, compact && styles.labelCompact]} numberOfLines={1}>
+          {label}
+        </Text>
+        <View style={[styles.countPill, { backgroundColor: `${accent}18`, borderColor: `${accent}40` }]}>
+          <Text style={[styles.countPillText, { color: accent }]}>{value}</Text>
+        </View>
+      </View>
       <View style={[styles.row, compact && styles.rowCompact]}>
         <PressableScale
           onPress={() => canDown && onChange(value - 1)}
@@ -44,11 +49,16 @@ export function Stepper({
           accessibilityLabel={`Restar ${label}`}
           style={[styles.button, compact && styles.buttonCompact, !canDown && styles.buttonOff]}
         >
-          <Minus size={compact ? 13 : 16} color={canDown ? accent : gwarm.inkFaint} strokeWidth={2.8} />
+          <Minus size={compact ? 14 : 16} color={canDown ? accent : gwarm.inkFaint} strokeWidth={2.8} />
         </PressableScale>
-        <Text style={[styles.value, compact && styles.valueCompact]} numberOfLines={1}>
-          {value}
-        </Text>
+        <View style={styles.valueWrap}>
+          <Text
+            style={[styles.value, compact && styles.valueCompact, { color: accent }]}
+            numberOfLines={1}
+          >
+            {String(value)}
+          </Text>
+        </View>
         <PressableScale
           onPress={() => canUp && onChange(value + 1)}
           disabled={!canUp}
@@ -56,7 +66,7 @@ export function Stepper({
           accessibilityLabel={`Sumar ${label}`}
           style={[styles.button, compact && styles.buttonCompact, !canUp && styles.buttonOff]}
         >
-          <Plus size={compact ? 13 : 16} color={canUp ? accent : gwarm.inkFaint} strokeWidth={2.8} />
+          <Plus size={compact ? 14 : 16} color={canUp ? accent : gwarm.inkFaint} strokeWidth={2.8} />
         </PressableScale>
       </View>
     </View>
@@ -64,21 +74,42 @@ export function Stepper({
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 5 },
+  container: { gap: 6 },
+  labelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+  },
   label: {
     fontFamily: gfonts.handBody,
     fontSize: 14,
     lineHeight: 19,
-    color: gwarm.inkSoft,
+    color: gwarm.ink,
     textAlign: "center",
   },
   labelCompact: {
-    fontSize: 12.5,
+    fontSize: 13,
+    lineHeight: 17,
+  },
+  countPill: {
+    minWidth: 22,
+    height: 20,
+    paddingHorizontal: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  countPillText: {
+    fontFamily: gfonts.hand,
+    fontSize: 13,
     lineHeight: 16,
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     backgroundColor: gwarm.surfaceSoft,
     borderWidth: 1.5,
     borderColor: gwarm.border,
@@ -87,8 +118,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   rowCompact: {
-    height: 40,
-    paddingHorizontal: 3,
+    height: 42,
+    paddingHorizontal: 4,
     borderRadius: 12,
   },
   button: {
@@ -102,23 +133,27 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   buttonCompact: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+    width: 30,
+    height: 30,
+    borderRadius: 9,
   },
   buttonOff: { backgroundColor: gwarm.surfaceSoft },
-  value: {
+  valueWrap: {
     flex: 1,
+    minWidth: 28,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  value: {
     textAlign: "center",
     fontFamily: gfonts.hand,
-    fontSize: 20,
-    lineHeight: 25,
+    fontSize: 21,
+    lineHeight: 26,
     color: gwarm.ink,
-    minWidth: 18,
+    fontWeight: "700",
   },
   valueCompact: {
-    fontSize: 16,
-    lineHeight: 20,
-    minWidth: 16,
+    fontSize: 18,
+    lineHeight: 22,
   },
 });

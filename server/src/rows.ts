@@ -55,6 +55,7 @@ export interface PatientRow {
   dni: string;
   first_name: string;
   last_name: string;
+  obstetra_dni?: string | null;
   age: number;
   community: string;
   phone: string;
@@ -68,6 +69,8 @@ export interface PatientRow {
   hb_observed: number;
   bp_sys: number;
   bp_dia: number;
+  weight?: number | null;
+  height?: number | null;
   imc: number;
   adherence_base: number;
 }
@@ -167,6 +170,7 @@ export function mapPatient(r: PatientRow): Patient {
     dni: r.dni,
     firstName: r.first_name,
     lastName: r.last_name,
+    ...(r.obstetra_dni ? { obstetraDni: r.obstetra_dni } : {}),
     age: r.age,
     community: r.community,
     phone: r.phone,
@@ -177,10 +181,12 @@ export function mapPatient(r: PatientRow): Patient {
     obitoFetal: r.obito_fetal,
     rhSensibilizado: r.rh_sensibilizado,
     antecedentes: r.antecedentes,
-    hbObserved: r.hb_observed,
+    hbObserved: Number(r.hb_observed),
     bpSys: r.bp_sys,
     bpDia: r.bp_dia,
-    imc: r.imc,
+    ...(r.weight != null ? { weight: Number(r.weight) } : {}),
+    ...(r.height != null ? { height: Number(r.height) } : {}),
+    imc: Number(r.imc),
     adherenceBase: r.adherence_base,
   };
 }
@@ -293,9 +299,9 @@ export async function loadWhatsAppConfig(db: Queryable): Promise<WhatsAppConfig>
     const row = res.rows[0];
     if (!row) {
       return {
-        enabled: false,
+        enabled: true,
         serverUrl: "https://openwa.qware.me",
-        apiKey: "",
+        apiKey: "vitmaterna-openwa-key",
         sessionId: "vitmaterna",
         notifyAppointments: true,
         notifySupplements: true,
@@ -310,9 +316,9 @@ export async function loadWhatsAppConfig(db: Queryable): Promise<WhatsAppConfig>
   } catch {
     // Si la tabla aún no se ha migrado (durante bootstrap)
     return {
-      enabled: false,
+      enabled: true,
       serverUrl: "https://openwa.qware.me",
-      apiKey: "",
+      apiKey: "vitmaterna-openwa-key",
       sessionId: "vitmaterna",
       notifyAppointments: true,
       notifySupplements: true,
@@ -374,6 +380,8 @@ export interface ArticleRow {
   body: string[];
   minutes: number;
   active: boolean;
+  media_type?: "lectura" | "video" | "imagen" | "pdf" | null;
+  media_url?: string | null;
   image_url: string | null;
   links: string | ArticleLink[];
   created_at_iso: string;
@@ -406,6 +414,8 @@ export function mapArticle(r: ArticleRow): Article {
     body: Array.isArray(r.body) ? r.body : [],
     minutes: Number(r.minutes) || 3,
     active: r.active !== false,
+    mediaType: r.media_type ?? "lectura",
+    mediaUrl: r.media_url ?? null,
     imageUrl: r.image_url ?? null,
     links,
     createdAtISO: r.created_at_iso,

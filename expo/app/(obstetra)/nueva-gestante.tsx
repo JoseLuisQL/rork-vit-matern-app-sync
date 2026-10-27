@@ -6,7 +6,7 @@
  */
 import { useRouter } from "expo-router";
 import { UserRoundPlus, WifiOff } from "lucide-react-native";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -25,6 +25,7 @@ import { DatePickerField } from "@/components/DatePickerField";
 import { Field } from "@/components/Field";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SectionHeader } from "@/components/SectionHeader";
+import { Stepper } from "@/components/Stepper";
 import { WebContainer } from "@/components/web/WebContainer";
 
 const accent = warmBlue;
@@ -45,11 +46,50 @@ export default function NuevaGestanteScreen(): React.ReactElement {
   const [hb, setHb] = useState<string>("13.0");
   const [bpSys, setBpSys] = useState<string>("110");
   const [bpDia, setBpDia] = useState<string>("70");
-  const [imc, setImc] = useState<string>("24.0");
-  const [gestas, setGestas] = useState<string>("1");
+  const [weight, setWeight] = useState<string>("58.0");
+  const [height, setHeight] = useState<string>("1.55");
+  const [imc, setImc] = useState<string>("24.1");
+  const [gestas, setGestas] = useState<number>(1);
+  const [cesareas, setCesareas] = useState<number>(0);
+  const [abortos, setAbortos] = useState<number>(0);
 
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  const updateComputedImc = useCallback((wStr: string, hStr: string) => {
+    const w = parseFloat(wStr.replace(",", "."));
+    let h = parseFloat(hStr.replace(",", "."));
+    if (w > 0 && h > 0) {
+      if (h > 3) h = h / 100;
+      const calculated = (w / (h * h)).toFixed(1);
+      setImc(calculated);
+    }
+  }, []);
+
+  const handleWeightChange = useCallback(
+    (val: string) => {
+      setWeight(val);
+      updateComputedImc(val, height);
+    },
+    [height, updateComputedImc],
+  );
+
+  const handleHeightChange = useCallback(
+    (val: string) => {
+      setHeight(val);
+      updateComputedImc(weight, val);
+    },
+    [weight, updateComputedImc],
+  );
+
+  const imcInfo = useMemo(() => {
+    const val = parseFloat(imc.replace(",", "."));
+    if (!val || isNaN(val) || val <= 0) return null;
+    if (val < 18.5) return { label: "Bajo peso", color: gwarm.amber };
+    if (val < 25) return { label: "Peso normal", color: gwarm.tealDeep };
+    if (val < 30) return { label: "Sobrepeso", color: gwarm.amber };
+    return { label: "Obesidad", color: gwarm.rose };
+  }, [imc]);
 
   const submit = useCallback(async () => {
     setError(null);
@@ -69,6 +109,10 @@ export default function NuevaGestanteScreen(): React.ReactElement {
       setError("La FUM debe tener el formato AAAA-MM-DD, por ejemplo 2026-05-10.");
       return;
     }
+    const parsedWeight = parseFloat(weight.replace(",", "."));
+    let parsedHeight = parseFloat(height.replace(",", "."));
+    if (parsedHeight > 3) parsedHeight = parsedHeight / 100;
+
     setSubmitting(true);
     try {
       await createUser({
@@ -78,15 +122,21 @@ export default function NuevaGestanteScreen(): React.ReactElement {
         lastName: lastName.trim(),
         role: "gestante",
         phone: phone.trim() || undefined,
+        obstetraDni: user?.dni,
         patient: {
+          obstetraDni: user?.dni,
           fumKey,
           age: parseInt(age, 10) || 25,
           community: community.trim() || "Talavera",
-          hbObserved: parseFloat(hb) || 13,
+          hbObserved: parseFloat(hb.replace(",", ".")) || 13,
           bpSys: parseInt(bpSys, 10) || 110,
           bpDia: parseInt(bpDia, 10) || 70,
-          imc: parseFloat(imc) || 24,
-          gestas: parseInt(gestas, 10) || 1,
+          weight: Number.isFinite(parsedWeight) && parsedWeight > 0 ? parsedWeight : undefined,
+          height: Number.isFinite(parsedHeight) && parsedHeight > 0 ? parsedHeight : undefined,
+          imc: parseFloat(imc.replace(",", ".")) || 24,
+          gestas,
+          cesareas,
+          abortos,
         },
       });
       const isAuto = user?.autoControls !== false;
@@ -106,7 +156,29 @@ export default function NuevaGestanteScreen(): React.ReactElement {
     } finally {
       setSubmitting(false);
     }
-  }, [dni, firstName, lastName, password, phone, fumKey, age, community, hb, bpSys, bpDia, imc, gestas, createUser, router, user?.autoControls]);
+  }, [
+    dni,
+    firstName,
+    lastName,
+    password,
+    phone,
+    fumKey,
+    age,
+    community,
+    hb,
+    bpSys,
+    bpDia,
+    weight,
+    height,
+    imc,
+    gestas,
+    cesareas,
+    abortos,
+    createUser,
+    router,
+    user?.autoControls,
+    user?.dni,
+  ]);
 
   return (
     <View style={styles.container}>
@@ -120,7 +192,8 @@ export default function NuevaGestanteScreen(): React.ReactElement {
       </WebContainer>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 88 : 24}
       >
         <ScrollView
           style={styles.flex}
@@ -223,13 +296,46 @@ export default function NuevaGestanteScreen(): React.ReactElement {
                     label="Dirección"
                     value={community}
                     onChangeText={setCommunity}
-                    placeholder="Ej. Talavera"
+                    placeholder="Ej. Jr. Apurímac, Talavera"
                     autoCapitalize="words"
                     accent={accent.main}
                     style={styles.flex}
                   />
                 </View>
                 <View style={styles.row2}>
+                  <Field
+                    label="Peso (kg)"
+                    value={weight}
+                    onChangeText={handleWeightChange}
+                    placeholder="Ej. 58.0"
+                    keyboardType="decimal-pad"
+                    hint="Se usa para calcular IMC"
+                    accent={accent.main}
+                    style={styles.flex}
+                    testID="ng-peso"
+                  />
+                  <Field
+                    label="Talla (m o cm)"
+                    value={height}
+                    onChangeText={handleHeightChange}
+                    placeholder="Ej. 1.55 o 155"
+                    keyboardType="decimal-pad"
+                    hint="En metros o cm"
+                    accent={accent.main}
+                    style={styles.flex}
+                    testID="ng-talla"
+                  />
+                </View>
+                <View style={styles.row2}>
+                  <Field
+                    label="IMC automático (peso / talla²)"
+                    value={imc}
+                    onChangeText={setImc}
+                    keyboardType="decimal-pad"
+                    accent={accent.main}
+                    style={styles.flex}
+                    testID="ng-imc"
+                  />
                   <Field
                     label="Hb observada (g/dL)"
                     value={hb}
@@ -238,15 +344,17 @@ export default function NuevaGestanteScreen(): React.ReactElement {
                     accent={accent.main}
                     style={styles.flex}
                   />
-                  <Field
-                    label="IMC"
-                    value={imc}
-                    onChangeText={setImc}
-                    keyboardType="decimal-pad"
-                    accent={accent.main}
-                    style={styles.flex}
-                  />
                 </View>
+                {imcInfo ? (
+                  <View style={styles.imcBox}>
+                    <Text style={styles.imcText}>
+                      IMC calculado automáticamente:{" "}
+                      <Text style={{ color: imcInfo.color, fontFamily: gfonts.hand }}>
+                        {imc} kg/m² ({imcInfo.label})
+                      </Text>
+                    </Text>
+                  </View>
+                ) : null}
                 <View style={styles.row2}>
                   <Field
                     label="Presión sistólica"
@@ -265,13 +373,49 @@ export default function NuevaGestanteScreen(): React.ReactElement {
                     style={styles.flex}
                   />
                 </View>
-                <Field
-                  label="Número de gestas"
-                  value={gestas}
-                  onChangeText={setGestas}
-                  keyboardType="number-pad"
-                  accent={accent.main}
-                />
+              </Card>
+
+              <SectionHeader title="Su historia" />
+              <Card style={[styles.formCard, styles.historyCard]}>
+                <View style={styles.historySummaryRow}>
+                  <Text style={styles.historySummaryText}>
+                    Gestaciones: <Text style={styles.historyNum}>{gestas}</Text> · Cesáreas:{" "}
+                    <Text style={styles.historyNum}>{cesareas}</Text> · Abortos:{" "}
+                    <Text style={styles.historyNum}>{abortos}</Text>
+                  </Text>
+                </View>
+                <View style={styles.row3}>
+                  <Stepper
+                    label="Gestaciones"
+                    value={gestas}
+                    onChange={setGestas}
+                    min={1}
+                    max={20}
+                    accent={accent.main}
+                    style={styles.flex}
+                    compact
+                  />
+                  <Stepper
+                    label="Cesáreas"
+                    value={cesareas}
+                    onChange={setCesareas}
+                    min={0}
+                    max={10}
+                    accent={accent.main}
+                    style={styles.flex}
+                    compact
+                  />
+                  <Stepper
+                    label="Abortos"
+                    value={abortos}
+                    onChange={setAbortos}
+                    min={0}
+                    max={10}
+                    accent={accent.main}
+                    style={styles.flex}
+                    compact
+                  />
+                </View>
               </Card>
 
               {error ? (
@@ -290,7 +434,7 @@ export default function NuevaGestanteScreen(): React.ReactElement {
                 testID="btn-registrar-gestante"
               />
               <Text style={styles.footNote}>
-                La cuenta queda activa al instante y aparece en tu lista de gestantes.
+                La cuenta queda activa al instante y asignada a tu cargo ({user?.firstName ?? "Obstetra"}).
               </Text>
             </View>
           </WebContainer>
@@ -305,7 +449,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: {
     padding: 16,
-    paddingBottom: 48,
+    paddingBottom: 120,
   },
   formStack: {
     gap: 12,
@@ -328,7 +472,45 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   formCard: { gap: 12 },
+  historyCard: {
+    paddingHorizontal: 10,
+    paddingVertical: 14,
+  },
+  historySummaryRow: {
+    backgroundColor: gwarm.surfaceSoft,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: gwarm.border,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    alignItems: "center",
+  },
+  historySummaryText: {
+    fontFamily: gfonts.handBody,
+    fontSize: 13.5,
+    color: gwarm.inkSoft,
+  },
+  historyNum: {
+    fontFamily: gfonts.hand,
+    fontSize: 15,
+    color: accent.main,
+  },
   row2: { flexDirection: "row", gap: 12 },
+  row3: { flexDirection: "row", gap: 6 },
+  imcBox: {
+    backgroundColor: gwarm.surfaceSoft,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: gwarm.border,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    alignItems: "center",
+  },
+  imcText: {
+    fontFamily: gfonts.handBody,
+    fontSize: 13.5,
+    color: gwarm.ink,
+  },
   errorBox: {
     backgroundColor: gwarm.redSoft,
     borderRadius: 16,

@@ -44,6 +44,8 @@ export const DEFAULT_ARTICLES: Article[] = [
     category: "Nutrición",
     title: "Alimentación en el embarazo andino",
     minutes: 4,
+    mediaType: "pdf",
+    mediaUrl: "https://www.gob.pe/institucion/minsa/informes-publicaciones",
     summary: "Quinua, habas, sangrecita: combate la anemia con lo que tienes en casa.",
     body: [
       "En la altura, tu cuerpo necesita más hierro que en la costa. La buena noticia: los alimentos de tu chacra son grandes aliados.",
@@ -54,7 +56,8 @@ export const DEFAULT_ARTICLES: Article[] = [
     ],
     active: true,
     links: [
-      { label: "Guía nutricional materno-infantil MINSA", url: "https://www.gob.pe/minsa" },
+      { label: "Guía nutricional materno-infantil MINSA (PDF)", url: "https://www.gob.pe/minsa", kind: "pdf" },
+      { label: "Video: Recetas ricas en hierro con sangrecita", url: "https://www.youtube.com/results?search_query=minsa+recetas+embarazo+hierro", kind: "video" },
     ],
     createdAtISO: new Date().toISOString(),
     updatedAtISO: new Date().toISOString(),
@@ -64,6 +67,8 @@ export const DEFAULT_ARTICLES: Article[] = [
     category: "Urgencias",
     title: "Signos de alarma: cuándo acudir YA",
     minutes: 3,
+    mediaType: "video",
+    mediaUrl: "https://www.youtube.com/results?search_query=signos+de+alarma+en+el+embarazo+minsa",
     summary: "Reconoce las señales que no pueden esperar hasta tu próximo control.",
     body: [
       "Hay molestias normales del embarazo, pero otras son señales de peligro para ti y tu bebé.",
@@ -74,7 +79,8 @@ export const DEFAULT_ARTICLES: Article[] = [
     ],
     active: true,
     links: [
-      { label: "Protocolo de emergencias obstétricas", url: "https://www.gob.pe/minsa" },
+      { label: "Video ilustrativo: Signos de alarma MINSA", url: "https://www.youtube.com/results?search_query=signos+de+alarma+en+el+embarazo+minsa", kind: "video" },
+      { label: "Protocolo de emergencias obstétricas (PDF)", url: "https://www.gob.pe/minsa", kind: "pdf" },
     ],
     createdAtISO: new Date().toISOString(),
     updatedAtISO: new Date().toISOString(),
@@ -84,6 +90,7 @@ export const DEFAULT_ARTICLES: Article[] = [
     category: "Tratamiento",
     title: "Hierro y ácido fólico: por qué cada día cuenta",
     minutes: 3,
+    mediaType: "imagen",
     summary: "La anemia en la altura se esconde. Tus pastillas son tu escudo.",
     body: [
       "A 2 900 metros de altura, un análisis de hemoglobina puede parecer normal y aún así haber anemia. Por eso tu obstetra corrige el resultado según la altitud.",
@@ -94,7 +101,8 @@ export const DEFAULT_ARTICLES: Article[] = [
     ],
     active: true,
     links: [
-      { label: "Norma técnica de prevención de anemia", url: "https://www.gob.pe/minsa" },
+      { label: "Infografía: Cómo tomar el sulfato ferroso", url: "https://www.gob.pe/minsa", kind: "imagen" },
+      { label: "Norma técnica de prevención de anemia (PDF)", url: "https://www.gob.pe/minsa", kind: "pdf" },
     ],
     createdAtISO: new Date().toISOString(),
     updatedAtISO: new Date().toISOString(),
@@ -104,6 +112,7 @@ export const DEFAULT_ARTICLES: Article[] = [
     category: "Preparación",
     title: "Tu plan de parto: decide con tiempo",
     minutes: 4,
+    mediaType: "pdf",
     summary: "Dónde dar a luz, cómo llegar, quién te acompaña. Todo listo antes de la semana 37.",
     body: [
       "Un plan de parto es un acuerdo con tu familia y tu centro de salud para que el día del parto nada te tome por sorpresa.",
@@ -114,7 +123,7 @@ export const DEFAULT_ARTICLES: Article[] = [
     ],
     active: true,
     links: [
-      { label: "Plan de Parto Institucional MINSA", url: "https://www.gob.pe/minsa" },
+      { label: "Cartilla de Plan de Parto Institucional MINSA (PDF)", url: "https://www.gob.pe/minsa", kind: "pdf" },
     ],
     createdAtISO: new Date().toISOString(),
     updatedAtISO: new Date().toISOString(),
@@ -124,6 +133,7 @@ export const DEFAULT_ARTICLES: Article[] = [
     category: "Posparto",
     title: "Lactancia: la primera hora de oro",
     minutes: 3,
+    mediaType: "video",
     summary: "El calostro es la primera vacuna de tu bebé. Así te preparas desde ahora.",
     body: [
       "La leche materna es el mejor alimento: protege a tu bebé de infecciones y lo abriga por dentro en el frío de la sierra.",
@@ -134,7 +144,8 @@ export const DEFAULT_ARTICLES: Article[] = [
     ],
     active: true,
     links: [
-      { label: "Beneficios de la lactancia materna exclusiva", url: "https://www.gob.pe/minsa" },
+      { label: "Video: Posiciones correctas para dar de lactar", url: "https://www.youtube.com/results?search_query=lactancia+materna+exclusiva+minsa", kind: "video" },
+      { label: "Beneficios de la lactancia materna exclusiva", url: "https://www.gob.pe/minsa", kind: "lectura" },
     ],
     createdAtISO: new Date().toISOString(),
     updatedAtISO: new Date().toISOString(),
@@ -144,6 +155,7 @@ export const DEFAULT_ARTICLES: Article[] = [
     category: "Salud mental",
     title: "Cuidar tu ánimo también es cuidar tu embarazo",
     minutes: 3,
+    mediaType: "lectura",
     summary: "Tristeza, preocupación o miedo: hablar a tiempo hace la diferencia.",
     body: [
       "El embarazo trae emociones fuertes: alegría, pero también miedo o preocupación. Todas son normales.",
@@ -154,7 +166,7 @@ export const DEFAULT_ARTICLES: Article[] = [
     ],
     active: true,
     links: [
-      { label: "Línea 113 Salud Mental MINSA", url: "https://www.gob.pe/113" },
+      { label: "Línea 113 Salud Mental MINSA", url: "https://www.gob.pe/113", kind: "lectura" },
     ],
     createdAtISO: new Date().toISOString(),
     updatedAtISO: new Date().toISOString(),
@@ -273,6 +285,7 @@ function buildPatients(todayKey: string): Patient[] {
       dni: "33333333",
       firstName: "Ana",
       lastName: "Quispe Mamani",
+      obstetraDni: "11111111",
       age: 28,
       community: "Talavera",
       phone: "951 234 567",
@@ -286,6 +299,8 @@ function buildPatients(todayKey: string): Patient[] {
       hbObserved: 13.2,
       bpSys: 110,
       bpDia: 70,
+      weight: 58.0,
+      height: 1.55,
       imc: 24.1,
       adherenceBase: 90,
     },
@@ -294,6 +309,7 @@ function buildPatients(todayKey: string): Patient[] {
       dni: "44444444",
       firstName: "Lucía",
       lastName: "Huamán Ccorimanya",
+      obstetraDni: "11111111",
       age: 39,
       community: "Santa Rosa",
       phone: "952 345 678",
@@ -307,6 +323,8 @@ function buildPatients(todayKey: string): Patient[] {
       hbObserved: 11.5,
       bpSys: 145,
       bpDia: 95,
+      weight: 65.0,
+      height: 1.53,
       imc: 27.8,
       adherenceBase: 60,
     },
@@ -315,6 +333,7 @@ function buildPatients(todayKey: string): Patient[] {
       dni: "55555511",
       firstName: "María",
       lastName: "Condori Flores",
+      obstetraDni: "11111111",
       age: 17,
       community: "Ccoyahuacho",
       phone: "953 456 789",
@@ -328,6 +347,8 @@ function buildPatients(todayKey: string): Patient[] {
       hbObserved: 12.4,
       bpSys: 105,
       bpDia: 65,
+      weight: 49.0,
+      height: 1.51,
       imc: 21.5,
       adherenceBase: 75,
     },
@@ -336,6 +357,7 @@ function buildPatients(todayKey: string): Patient[] {
       dni: "55555522",
       firstName: "Rosa",
       lastName: "Ccahuana Torres",
+      obstetraDni: "11111111",
       age: 31,
       community: "Talavera",
       phone: "954 567 890",
@@ -349,6 +371,8 @@ function buildPatients(todayKey: string): Patient[] {
       hbObserved: 13.6,
       bpSys: 115,
       bpDia: 75,
+      weight: 60.0,
+      height: 1.54,
       imc: 25.3,
       adherenceBase: 88,
     },
@@ -357,6 +381,7 @@ function buildPatients(todayKey: string): Patient[] {
       dni: "55555533",
       firstName: "Yolanda",
       lastName: "Mamani Puma",
+      obstetraDni: "11111111",
       age: 42,
       community: "San Juan",
       phone: "955 678 901",
@@ -370,6 +395,8 @@ function buildPatients(todayKey: string): Patient[] {
       hbObserved: 12.9,
       bpSys: 125,
       bpDia: 80,
+      weight: 64.0,
+      height: 1.5,
       imc: 28.4,
       adherenceBase: 42,
     },
@@ -378,6 +405,7 @@ function buildPatients(todayKey: string): Patient[] {
       dni: "55555544",
       firstName: "Silvia",
       lastName: "Pachari Nina",
+      obstetraDni: "11111111",
       age: 24,
       community: "Talavera",
       phone: "956 789 012",
@@ -391,6 +419,8 @@ function buildPatients(todayKey: string): Patient[] {
       hbObserved: 13.9,
       bpSys: 108,
       bpDia: 68,
+      weight: 56.0,
+      height: 1.57,
       imc: 22.7,
       adherenceBase: 95,
     },
@@ -704,15 +734,16 @@ export async function wipeData(client: PoolClient): Promise<void> {
 export async function insertPatient(client: PoolClient, p: Patient): Promise<void> {
   await client.query(
     `INSERT INTO patients (
-       id, dni, first_name, last_name, age, community, phone, fum_key,
+       id, dni, first_name, last_name, obstetra_dni, age, community, phone, fum_key,
        gestas, cesareas, abortos, obito_fetal, rh_sensibilizado, antecedentes,
-       hb_observed, bp_sys, bp_dia, imc, adherence_base
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
+       hb_observed, bp_sys, bp_dia, weight, height, imc, adherence_base
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)`,
     [
       p.id,
       p.dni,
       p.firstName,
       p.lastName,
+      p.obstetraDni ?? null,
       p.age,
       p.community,
       p.phone,
@@ -726,6 +757,8 @@ export async function insertPatient(client: PoolClient, p: Patient): Promise<voi
       p.hbObserved,
       p.bpSys,
       p.bpDia,
+      p.weight ?? null,
+      p.height ?? null,
       p.imc,
       p.adherenceBase,
     ],
@@ -799,8 +832,8 @@ export async function insertVisitRow(client: PoolClient, v: Visit): Promise<void
 
 export async function insertArticle(client: PoolClient, art: Article): Promise<void> {
   await client.query(
-    `INSERT INTO articles (id, category, title, summary, body, minutes, active, image_url, links, created_at_iso, updated_at_iso)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+    `INSERT INTO articles (id, category, title, summary, body, minutes, active, media_type, media_url, image_url, links, created_at_iso, updated_at_iso)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
      ON CONFLICT (id) DO UPDATE SET
        category = EXCLUDED.category,
        title = EXCLUDED.title,
@@ -808,6 +841,8 @@ export async function insertArticle(client: PoolClient, art: Article): Promise<v
        body = EXCLUDED.body,
        minutes = EXCLUDED.minutes,
        active = EXCLUDED.active,
+       media_type = EXCLUDED.media_type,
+       media_url = EXCLUDED.media_url,
        image_url = EXCLUDED.image_url,
        links = EXCLUDED.links,
        updated_at_iso = EXCLUDED.updated_at_iso`,
@@ -819,6 +854,8 @@ export async function insertArticle(client: PoolClient, art: Article): Promise<v
       art.body,
       art.minutes,
       art.active,
+      art.mediaType ?? "lectura",
+      art.mediaUrl ?? null,
       art.imageUrl ?? null,
       JSON.stringify(art.links ?? []),
       art.createdAtISO || new Date().toISOString(),

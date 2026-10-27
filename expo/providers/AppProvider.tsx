@@ -86,6 +86,8 @@ export interface CreateUserParams {
     hbObserved?: number;
     bpSys?: number;
     bpDia?: number;
+    weight?: number;
+    height?: number;
     imc?: number;
     gestas?: number;
     cesareas?: number;

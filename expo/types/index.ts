@@ -77,6 +77,7 @@ export interface Patient {
   dni: string;
   firstName: string;
   lastName: string;
+  obstetraDni?: string;
   age: number;
   community: string;
   phone: string;
@@ -91,6 +92,8 @@ export interface Patient {
   hbObserved: number;
   bpSys: number;
   bpDia: number;
+  weight?: number;
+  height?: number;
   imc: number;
   adherenceBase: number;
 }
@@ -244,9 +247,12 @@ export interface ReportBlock {
   asistenciaSemanal: WeeklyAttendance[];
 }
 
+export type ArticleMediaType = "lectura" | "video" | "imagen" | "pdf";
+
 export interface ArticleLink {
   label: string;
   url: string;
+  kind?: ArticleMediaType;
 }
 
 export interface Article {
@@ -257,6 +263,8 @@ export interface Article {
   summary: string;
   body: string[];
   active?: boolean;
+  mediaType?: ArticleMediaType;
+  mediaUrl?: string | null;
   imageUrl?: string | null;
   links?: ArticleLink[];
   createdAtISO?: string;
@@ -319,7 +327,10 @@ export interface PatientUpdateFields {
   hbObserved?: number;
   bpSys?: number;
   bpDia?: number;
+  weight?: number;
+  height?: number;
   imc?: number;
+  obstetraDni?: string;
 }
 
 /** Acciones encolables offline (idempotentes por id en el servidor). */
@@ -422,15 +433,6 @@ export interface LoginResponse {
   token: string;
   user: User;
   snapshot: Snapshot;
-}
-
-export interface Article {
-  id: string;
-  category: string;
-  title: string;
-  minutes: number;
-  summary: string;
-  body: string[];
 }
 
 export interface AlarmSign {

@@ -173,23 +173,43 @@ export function snapshotFor(
 ): Snapshot {
   const todayKey = peruDayKey();
   const isGestante = user.role === "gestante";
+  const isObstetra = user.role === "obstetra";
   const pid = user.patientId;
 
   const avatarByDni = new Map<string, number | null>(
     data.users.map((u) => [u.dni, u.avatarVersion]),
   );
   const patients = data.patients
-    .filter((p) => (isGestante ? p.id === pid : true))
+    .filter((p) => {
+      if (isGestante) return p.id === pid;
+      if (isObstetra) {
+        return p.obstetraDni ? p.obstetraDni === user.dni : true;
+      }
+      return true;
+    })
     .map((p) => {
       const view = computePatient(p, data, todayKey);
       const avatarVersion = avatarByDni.get(p.dni);
       return avatarVersion ? { ...view, avatarVersion } : view;
     });
 
-  const scopeById = <T extends { patientId: string }>(items: T[]): T[] =>
-    isGestante ? items.filter((i) => i.patientId === pid) : items;
+  const visiblePatientIds = new Set(patients.map((p) => p.id));
 
-  const obstetraUser = data.users.find((u) => u.role === "obstetra" && u.active);
+  const scopeById = <T extends { patientId: string }>(items: T[]): T[] => {
+    if (isGestante) return items.filter((i) => i.patientId === pid);
+    if (isObstetra) return items.filter((i) => visiblePatientIds.has(i.patientId));
+    return items;
+  };
+
+  const myPatient = isGestante ? data.patients.find((p) => p.id === pid) : undefined;
+  const assignedObstetra =
+    myPatient?.obstetraDni
+      ? data.users.find(
+          (u) => u.role === "obstetra" && u.active && u.dni === myPatient.obstetraDni,
+        )
+      : undefined;
+  const obstetraUser =
+    assignedObstetra ?? data.users.find((u) => u.role === "obstetra" && u.active);
   const obstetrician = isGestante && obstetraUser ? publicUser(obstetraUser) : undefined;
 
   const allArticles = data.articles ?? [];
@@ -204,6 +224,19 @@ export function snapshotFor(
     );
     scopedArticles = allArticles.filter((a) => a.active && assignedIds.has(a.id));
     scopedAssignments = allAssignments.filter((a) => a.patientId === pid);
+  } else if (isObstetra) {
+    scopedAssignments = allAssignments.filter((a) => visiblePatientIds.has(a.patientId));
+  }
+
+  const scopedIntakes: typeof data.intakes = {};
+  if (isGestante && pid) {
+    scopedIntakes[pid] = data.intakes[pid] ?? {};
+  } else if (isObstetra) {
+    for (const id of visiblePatientIds) {
+      if (data.intakes[id]) scopedIntakes[id] = data.intakes[id];
+    }
+  } else {
+    Object.assign(scopedIntakes, data.intakes);
   }
 
   const snapshot: Snapshot = {
@@ -214,8 +247,12 @@ export function snapshotFor(
     patients,
     appointments: scopeById(data.appointments),
     supplements: scopeById(data.supplements),
-    intakes: isGestante && pid ? { [pid]: data.intakes[pid] ?? {} } : data.intakes,
-    messages: isGestante ? data.messages.filter((m) => m.convId === pid) : data.messages,
+    intakes: scopedIntakes,
+    messages: isGestante
+      ? data.messages.filter((m) => m.convId === pid)
+      : isObstetra
+        ? data.messages.filter((m) => visiblePatientIds.has(m.convId))
+        : data.messages,
     alerts: scopeById(data.alerts),
     visits: scopeById(data.visits),
     articles: scopedArticles,
@@ -225,8 +262,11 @@ export function snapshotFor(
     config: data.config,
   };
 
-  if (user.role === "admin") {
+  if (user.role === "admin" || user.role === "obstetra") {
     snapshot.users = data.users.map(publicUser);
+  }
+
+  if (user.role === "admin") {
     snapshot.reports = {
       d30: buildReport(data, todayKey, 30),
       total: buildReport(data, todayKey, 100000),
