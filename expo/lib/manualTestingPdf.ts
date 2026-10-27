@@ -1,11 +1,12 @@
 /**
  * Generador del Manual de Pruebas Manuales para el Cliente (Issues #37 al #50) — VitMaterna.
- * Incluye portada ejecutiva, credenciales de prueba, matriz de trazabilidad,
- * capturas visuales de interfaz ("Antes" vs "Después") y pasos numerados
- * detallados para validar manualmente cada corrección en Web y APK Android.
+ * Incrusta las CAPTURAS DE PANTALLA REALES del frontend (capturadas con Chromium/Playwright
+ * directamente de la aplicación en vivo) con marcadores numerados (1), (2), (3),
+ * tabla de credenciales reales de demostración, pasos detallados y resultados esperados.
  */
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { REAL_ISSUE_SCREENSHOTS } from "./manualScreenshotsData";
 
 export interface IssueManualEntry {
   number: number;
@@ -18,186 +19,188 @@ export interface IssueManualEntry {
   expectedResult: string;
   beforeCaption: string;
   afterCaption: string;
+  isMobileCapture?: boolean;
 }
 
 export const ISSUES_MANUAL_DATA: IssueManualEntry[] = [
   {
     number: 37,
-    title: "Persistencia de sesión al cambiar de ventana o minimizar el navegador/app",
+    title: "Persistencia de sesion al cambiar de ventana o minimizar el navegador/app",
     role: "Todos (Admin / Obstetra / Gestante)",
-    screenPath: "Inicio de sesión -> Cualquier pantalla -> Cambiar de pestaña/ventana",
+    screenPath: "Inicio de sesion -> Gestantes / Agenda -> Recargar (F5) o minimizar",
     problemSummary:
-      "Al minimizar el navegador o cambiar de ventana/aplicación, la sesión se cerraba o redirigía inesperadamente al login.",
+      "Al minimizar el navegador o cambiar de ventana/aplicacion, la sesion se cerraba o redirigia inesperadamente al login.",
     solutionSummary:
-      "Se implementó hidratación síncrona en Web (localStorage vitmaterna:session:v3) y respaldo persistente en móvil (AsyncStorage), ignorando desconexiones transitorias y manteniendo la sesión activa hasta que el usuario pulse 'Cerrar sesión'.",
+      "Se implemento hidratacion sincrona en Web (localStorage vitmaterna:session:v3) y respaldo persistente en movil (AsyncStorage), manteniendo la sesion activa hasta pulsar 'Cerrar sesion'.",
     steps: [
-      "1. Ingrese a la aplicación con la cuenta de Obstetra (DNI: 43000100, Contraseña: Test@1234).",
-      "2. Navegue a la pestaña 'Gestantes' o 'Agenda'.",
-      "3. Cambie a otra pestaña del navegador, minimice la ventana o recargue la página con F5.",
-      "4. Regrese a la ventana de VitMaterna.",
+      "1. Ingrese como Obstetra Carmen Rojas (DNI: 11111111, Clave: Test@1234).",
+      "2. Entre a la pestana 'Gestantes' (marcador 1 en la captura real).",
+      "3. Cambie de pestana del navegador, minimice la ventana o pulse F5.",
+      "4. Verifique que la sesion y el padron de gestantes siguen abiertos (marcador 2).",
     ],
     expectedResult:
-      "El usuario permanece autenticado en su sesión sin ser expulsado a la pantalla de inicio de sesión.",
-    beforeCaption: "Antes: Cambio de ventana perdía token en memoria",
-    afterCaption: "Después: Sesión persistente en localStorage / AsyncStorage",
+      "El usuario permanece autenticado en su sesion activa sin ser expulsado a la pantalla de login.",
+    beforeCaption: "Antes: Al minimizar o cambiar de pestana se perdia la sesion activa.",
+    afterCaption: "Captura Real Frontend: Sesion persistente activa tras recargar/minimizar",
   },
   {
     number: 38,
-    title: "Relación entre Obstetra y Gestante (Asignación y transferencia de responsable)",
-    role: "Administración y Obstetra",
-    screenPath: "Admin > Usuarios > Nuevo usuario / Obstetra > Ficha de Gestante",
+    title: "Relacion entre Obstetra y Gestante (Asignacion y transferencia de responsable)",
+    role: "Administracion y Obstetra",
+    screenPath: "Admin > Usuarios > Nuevo usuario / Obstetra > Actualizar datos",
     problemSummary:
-      "No existía vínculo entre la gestante y su obstetra responsable, impidiendo asignar o transferir pacientes entre obstetras.",
+      "No existia vinculo entre la gestante y su obstetra responsable, impidiendo asignar o transferir pacientes entre obstetras.",
     solutionSummary:
-      "Se añadió el campo 'Obstetra responsable' (obstetraDni) al crear gestantes desde Administración, asignación automática al obstetra que registra una nueva gestante, y un botón 'Cambiar' en la ficha clínica para transferir la paciente a otro obstetra.",
+      "Se anadio el selector 'Obstetra responsable' (obstetraDni) al crear/editar usuarios y en la ficha clinica para asignar o transferir gestantes entre obstetras.",
     steps: [
-      "1. Inicie sesión como Administrador (DNI: 41000200, Contraseña: Test@1234).",
-      "2. Vaya a 'Usuarios' -> '+ Nuevo usuario' y seleccione el rol 'Gestante'.",
-      "3. Verifique el selector 'Obstetra responsable' y elija a 'Rosa Quispe' (43000100) o 'Marco Huamán' (43000101).",
-      "4. Luego inicie sesión como Obstetra (DNI: 43000100), abra cualquier gestante y pulse el botón 'Cambiar' en la tarjeta 'Obstetra responsable'.",
+      "1. Inicie sesion como Administradora Patricia Salas (DNI: 22222222, Clave: Test@1234).",
+      "2. Vaya a 'Usuarios' -> '+ Nuevo usuario' (rol Gestante).",
+      "3. En 'Obstetra responsable' (marcador 1), elija 'Carmen Rojas Paredes' o 'Marco Huaman Quispe'.",
+      "4. En 'Usuarios' o 'Actualizar datos', cambie la obstetra asignada con un clic.",
     ],
     expectedResult:
-      "La gestante queda vinculada al obstetra elegido y puede ser reasignada en cualquier momento desde su ficha clínica.",
-    beforeCaption: "Antes: Sin campo de obstetra asignado",
-    afterCaption: "Después: Selector y modal de Obstetra Responsable",
+      "La gestante queda vinculada al obstetra elegido y puede ser transferida en cualquier momento.",
+    beforeCaption: "Antes: No existia selector para vincular una gestante con su obstetra.",
+    afterCaption: "Captura Real Frontend: Selector 'Obstetra responsable' en Nuevo Usuario",
   },
   {
     number: 39,
-    title: "Opción para eliminar gestantes con confirmación de seguridad",
-    role: "Obstetra y Administración",
+    title: "Opcion para eliminar gestantes con confirmacion de seguridad",
+    role: "Obstetra y Administracion",
     screenPath: "Obstetra > Gestantes > [Seleccionar gestante] > Eliminar gestante",
     problemSummary:
-      "No existía una opción en la ficha de la gestante para dar de baja o eliminar un registro creado por error o duplicado.",
+      "No existia una opcion en la ficha de la gestante para dar de baja o eliminar un registro creado por error o duplicado.",
     solutionSummary:
-      "Se incorporó el botón 'Eliminar gestante' al final de la ficha clínica de la gestante con un cuadro de diálogo de confirmación que elimina en cascada sus citas, alertas y mensajes.",
+      "Se incorporo el boton rojo 'Eliminar gestante' en la ficha clinica y padron con un modal de confirmacion que elimina en cascada sus citas, alertas y registros.",
     steps: [
-      "1. Inicie sesión como Obstetra (DNI: 43000100, Contraseña: Test@1234).",
-      "2. Vaya a la pestaña 'Gestantes' y abra la ficha de una gestante de prueba.",
-      "3. Deslice hasta el final de la pantalla y pulse el botón rojo 'Eliminar gestante'.",
-      "4. Confirme la acción en el modal pulsando 'Sí, eliminar'.",
+      "1. Inicie sesion como Obstetra Carmen Rojas (DNI: 11111111, Clave: Test@1234).",
+      "2. Vaya a 'Gestantes' y abra la ficha de una gestante (ej. Ana Quispe).",
+      "3. Deslice hacia abajo y pulse el boton rojo 'Eliminar gestante' (marcador 1).",
+      "4. Confirme en el dialogo emergente pulsando 'Eliminar gestante' (marcador 2).",
     ],
     expectedResult:
-      "Se muestra el mensaje 'Gestante eliminada correctamente' y la paciente desaparece de inmediato del padrón.",
-    beforeCaption: "Antes: Ficha sin botón de eliminación",
-    afterCaption: "Después: Botón 'Eliminar gestante' con modal de confirmación",
+      "Se elimina la gestante junto con sus registros asociados y desaparece inmediatamente del padron.",
+    beforeCaption: "Antes: No habia boton de eliminacion en la ficha clinica de la gestante.",
+    afterCaption: "Captura Real Frontend: Modal de confirmacion 'Eliminar gestante'",
   },
   {
     number: 40,
-    title: "Cálculo automático del IMC a partir de Peso (kg) y Talla (m o cm)",
-    role: "Obstetra y Administración",
-    screenPath: "Obstetra > Nueva Gestante / Actualizar datos clínicos",
+    title: "Calculo automatico del IMC a partir de Peso (kg) y Talla (m o cm)",
+    role: "Obstetra y Administracion",
+    screenPath: "Obstetra > Nueva Gestante / Actualizar datos clinicos",
     problemSummary:
-      "El sistema pedía digitar el IMC manualmente sin campos de Peso ni Talla, obligando al personal a calcularlo con calculadora externa.",
+      "El sistema pedia digitar el IMC manualmente sin campos de Peso ni Talla, obligando al personal a usar calculadora externa.",
     solutionSummary:
-      "Se agregaron los campos 'Peso pregestacional (kg)' y 'Talla (m o cm)' con soporte automático para metros (ej. 1.55) o centímetros (ej. 155), calculando en vivo IMC = Peso / Talla² y su clasificación nutricional (Bajo peso, Normal, Sobrepeso, Obesidad).",
+      "Se agregaron los campos 'Peso (kg)' y 'Talla (m o cm)' con soporte para metros (1.55) o centimetros (155), calculando en vivo IMC = Peso / Talla^2 y su clasificacion nutricional.",
     steps: [
-      "1. Entre como Obstetra (DNI: 43000100) y pulse '+ Nueva gestante' (o en una gestante pulse 'Actualizar datos').",
-      "2. En la sección antropométrica, escriba Peso = 60 y Talla = 1.55 (o 155).",
-      "3. Observe el recuadro inferior 'IMC pregestacional (calculado automáticamente)'.",
-      "4. Guarde el formulario y verifique el IMC en la ficha de la gestante.",
+      "1. Entre como Obstetra (DNI: 11111111) y pulse '+ Nueva gestante'.",
+      "2. En 'Ficha clinica', digite Peso = 60 y Talla = 1.55 o 155 (marcador 1).",
+      "3. Observe el indicador inferior 'IMC calculado automaticamente: 25.0 kg/m2 (Sobrepeso)' (marcador 2).",
+      "4. Guarde y verifique el peso, talla e IMC en la ficha de la gestante.",
     ],
     expectedResult:
-      "El sistema muestra instantáneamente '25.0 kg/m² · Sobrepeso' sin necesidad de escribir el IMC a mano.",
-    beforeCaption: "Antes: Campo manual de IMC sin Peso ni Talla",
-    afterCaption: "Después: Peso + Talla calculan IMC = 25.0 kg/m² en vivo",
+      "El sistema calcula instantaneamente '25.0 kg/m2 (Sobrepeso)' al escribir Peso y Talla.",
+    beforeCaption: "Antes: Solo existia campo manual de IMC sin registrar Peso ni Talla.",
+    afterCaption: "Captura Real Frontend: Peso (60) y Talla (1.55) calculando IMC 25.0 en vivo",
   },
   {
     number: 41,
-    title: "Visibilidad de números en contadores de Gestas, Cesáreas y Abortos en móvil",
-    role: "Obstetra y Administración",
-    screenPath: "Obstetra > Actualizar datos clínicos / Nueva gestante (Vista móvil)",
+    title: "Visibilidad de numeros en contadores de Gestaciones, Cesareas y Abortos en movil",
+    role: "Obstetra y Administracion",
+    screenPath: "Obstetra > Gestante > Actualizar datos -> Seccion 'Su historia' (Movil)",
     problemSummary:
-      "En pantallas de celular, al colocar 3 contadores en una sola fila horizontal, el número central quedaba comprimido e invisible.",
+      "En pantallas de celular, al colocar los 3 contadores en una fila estrecha, el numero central quedaba comprimido e invisible.",
     solutionSummary:
-      "Se rediseñó el componente Stepper con una insignia central amplia (minWidth: 42px, fuente de 22px en negrita) y se dispusieron los contadores de Gestas, Cesáreas y Abortos en tarjetas de ancho completo apiladas verticalmente.",
+      "Se rediseno el componente Stepper con resumen superior claro, insignias numericas junto a cada etiqueta y numero central grande en negrita.",
     steps: [
-      "1. Abra la aplicación desde el celular (o reduzca el ancho del navegador a vista móvil).",
-      "2. Entre como Obstetra (DNI: 43000100) -> abra una gestante -> pulse 'Actualizar datos'.",
-      "3. Ubique la sección 'Antecedentes obstétricos' (Gestas, Cesáreas previas, Abortos).",
-      "4. Pulse los botones '+' y '−' en cada fila.",
+      "1. Abra la app en vista movil e inicie sesion como Obstetra (DNI: 11111111).",
+      "2. Entre a una gestante (Ana Quispe) y pulse 'Actualizar datos'.",
+      "3. En 'Su historia' (marcador 3), observe los contadores de Gestaciones, Cesareas y Abortos.",
+      "4. Pulse '-' y '+' y compruebe que los numeros se ven claros y completos.",
     ],
     expectedResult:
-      "Los números (0, 1, 2, 3...) se visualizan grandes, centrados y perfectamente legibles en cualquier tamaño de pantalla.",
-    beforeCaption: "Antes: 3 columnas estrechas ocultaban el número",
-    afterCaption: "Después: Filas amplias con marcador numérico de 22px",
+      "Los numeros de Gestaciones, Cesareas y Abortos se visualizan grandes, centrados y legibles en movil.",
+    beforeCaption: "Antes: En movil el numero entre '-' y '+' quedaba truncado o oculto.",
+    afterCaption: "Captura Real Movil: Contadores de Gestaciones, Cesareas y Abortos visibles",
+    isMobileCapture: true,
   },
   {
     number: 42,
-    title: "Cambio de etiqueta 'Comunidad' por 'Dirección' en formularios y fichas",
-    role: "Todos (Obstetra / Administración / Gestante)",
+    title: "Cambio de etiqueta 'Comunidad' por 'Direccion' en formularios y fichas",
+    role: "Todos (Obstetra / Administracion / Gestante)",
     screenPath: "Nueva gestante / Actualizar datos / Ficha de gestante / Nuevo usuario",
     problemSummary:
-      "El campo de domicilio figuraba únicamente como 'Comunidad', causando confusión al registrar direcciones urbanas o jirones/avenidas.",
+      "El campo de domicilio figuraba unicamente como 'Comunidad', causando confusion al registrar direcciones urbanas o jirones.",
     solutionSummary:
-      "Se actualizó la etiqueta a 'Dirección' (con ejemplo 'Ej. Jr. Apurímac 245 / Ccaccacha') en todos los formularios de registro, edición y tarjetas de perfil.",
+      "Se actualizo la etiqueta a 'Direccion' en todos los formularios de registro, actualizacion de datos, filtros de busqueda y fichas de paciente.",
     steps: [
-      "1. Entre como Obstetra (DNI: 43000100) y pulse '+ Nueva gestante'.",
-      "2. Verifique que el campo de ubicación diga 'Dirección' en lugar de 'Comunidad'.",
-      "3. Abra la ficha de cualquier gestante y pulse 'Actualizar datos' para verificar también allí la etiqueta 'Dirección'.",
+      "1. Entre como Obstetra (DNI: 11111111) y pulse '+ Nueva gestante'.",
+      "2. Verifique en 'Ficha clinica' que el campo junto a Edad diga 'Direccion' (marcador 1).",
+      "3. Entre tambien a la ficha de una gestante y verifique la etiqueta 'Direccion' en 'Su salud'.",
     ],
     expectedResult:
-      "Todos los formularios y vistas de paciente muestran claramente la etiqueta 'Dirección'.",
-    beforeCaption: "Antes: Etiqueta decía 'Comunidad'",
-    afterCaption: "Después: Etiqueta actualizada a 'Dirección'",
+      "Todos los formularios, buscadores y fichas muestran la etiqueta 'Direccion' en lugar de 'Comunidad'.",
+    beforeCaption: "Antes: Los formularios mostraban 'Comunidad' en vez de 'Direccion'.",
+    afterCaption: "Captura Real Frontend: Campo 'Direccion' en el formulario de gestante",
   },
   {
     number: 43,
-    title: "Corrección de eliminación de usuarios en Administración ('Ruta no encontrada')",
-    role: "Administración",
-    screenPath: "Admin > Usuarios > Icono de papelera (Eliminar)",
+    title: "Correccion de eliminacion de usuarios en Administracion ('Ruta no encontrada')",
+    role: "Administracion",
+    screenPath: "Admin > Usuarios > Boton de papelera (Eliminar)",
     problemSummary:
-      "En el panel de Administrador, no se podía eliminar usuarios o aparecía el error 'Ruta no encontrada' al intentar borrarlos.",
+      "En el panel de Administrador, no se podia eliminar usuarios o aparecia el error 'Ruta no encontrada' al intentar borrarlos.",
     solutionSummary:
-      "Se habilitaron las rutas POST /api/admin/users/delete y POST /api/obstetra/patients/delete además del respaldo directo en POST /api/action (delete_user / delete_patient), junto con el botón de papelera y diálogo de confirmación en la lista de usuarios.",
+      "Se habilitaron las rutas POST /api/admin/delete-user y /api/admin/users/delete junto con el boton de papelera y modal de confirmacion en cada tarjeta de usuario.",
     steps: [
-      "1. Inicie sesión como Administrador (DNI: 41000200, Contraseña: Test@1234).",
-      "2. Vaya a la pestaña 'Usuarios' y cree un usuario de prueba con '+ Nuevo usuario'.",
-      "3. En la tarjeta del usuario recién creado, pulse el botón rojo con el icono de papelera (Eliminar).",
-      "4. En el modal de confirmación, pulse 'Eliminar'.",
+      "1. Inicie sesion como Administradora Patricia Salas (DNI: 22222222, Clave: Test@1234).",
+      "2. Vaya a la pestana 'Usuarios' (marcadores 1 y 2 en la captura real).",
+      "3. Cree un usuario de prueba con '+ Nuevo usuario' y pulse el icono rojo de papelera.",
+      "4. Confirme la eliminacion en el modal y verifique que desaparece sin error 404.",
     ],
     expectedResult:
-      "El usuario se elimina inmediatamente sin errores de ruta y aparece la confirmación 'Usuario eliminado correctamente'.",
-    beforeCaption: "Antes: Error 404 'Ruta no encontrada'",
-    afterCaption: "Después: Eliminación instantánea con confirmación",
+      "El usuario se elimina al instante sin errores de ruta y la lista se actualiza inmediatamente.",
+    beforeCaption: "Antes: Al intentar borrar un usuario devolvia error HTTP 404 'Ruta no encontrada'.",
+    afterCaption: "Captura Real Frontend: Panel de Usuarios con botones de papelera y reasignacion",
   },
   {
     number: 44,
-    title: "Visualización destacada de la Fecha Probable de Parto (FPP) en el perfil",
+    title: "Visualizacion destacada de la Fecha Probable de Parto (FPP) en el perfil",
     role: "Obstetra",
     screenPath: "Obstetra > Gestantes > [Seleccionar gestante]",
     problemSummary:
-      "Al entrar al perfil de la gestante no se visualizaba de forma clara y directa su Fecha Probable de Parto (FPP) ni su FUM de referencia.",
+      "Al entrar al perfil de la gestante no se visualizaba de forma clara y directa su Fecha Probable de Parto (FPP) ni su FUM.",
     solutionSummary:
-      "Se añadió una tarjeta destacada 'Fecha Probable de Parto (FPP)' en la parte superior del expediente de la gestante, mostrando la fecha completa calculada por Regla de Naegele (FUM + 280 días), la FUM registrada y las semanas actuales.",
+      "Se anadio una tarjeta superior destacada 'Fecha Probable de Parto (FPP)' en el perfil de la gestante mostrando la fecha completa, edad gestacional y FUM.",
     steps: [
-      "1. Inicie sesión como Obstetra (DNI: 43000100, Contraseña: Test@1234).",
-      "2. Vaya a 'Gestantes' y seleccione a 'Luzmila Ayquipa' (o cualquier gestante).",
-      "3. Observe la tarjeta superior con icono de calendario debajo de los datos principales.",
+      "1. Inicie sesion como Obstetra Carmen Rojas (DNI: 11111111, Clave: Test@1234).",
+      "2. Vaya a 'Gestantes' y abra el perfil de 'Ana Quispe Mamani'.",
+      "3. Observe la tarjeta azul destacada 'Fecha Probable de Parto (FPP)' arriba a la izquierda (marcador 1).",
     ],
     expectedResult:
-      "Se muestra de forma prominente la 'Fecha Probable de Parto (FPP)', la FUM de origen y las semanas de gestación.",
-    beforeCaption: "Antes: FPP oculta o difícil de ubicar",
-    afterCaption: "Después: Tarjeta destacada con FPP, FUM y Semanas",
+      "Se visualiza en primer plano la Fecha Probable de Parto (FPP), las semanas + dias y la FUM.",
+    beforeCaption: "Antes: La FPP no aparecia destacada al abrir el expediente de la gestante.",
+    afterCaption: "Captura Real Frontend: Tarjeta destacada de Fecha Probable de Parto (FPP)",
   },
   {
     number: 45,
-    title: "Integración de WhatsApp (Open-WA) con resolución automática de sesión",
-    role: "Administración",
+    title: "Integracion de WhatsApp (Open-WA) con resolucion automatica de sesion",
+    role: "Administracion",
     screenPath: "Admin > Sistema > Notificaciones por WhatsApp (Open-WA)",
     problemSummary:
-      "Al colocar el ID de sesión como nombre ('vitmaterna' o 'cliente1') en lugar del UUID interno de Open-WA, el envío de prueba fallaba con error 404 Session not found.",
+      "Al usar el nombre de sesion ('vitmaterna' o 'cliente1') en lugar del UUID interno de Open-WA, fallaba con error 404 Session not found.",
     solutionSummary:
-      "El cliente Open-WA ahora consulta automáticamente GET /api/sessions, resuelve el nombre amigable ('cliente1'/'vitmaterna') al UUID activo de la sesión en https://openwa.qware.me, reinicia la sesión si está detenida y persiste las credenciales al probar conexión o enviar mensaje.",
+      "El cliente Open-WA consulta automaticamente GET /api/sessions, resuelve el nombre de sesion a su UUID activo en https://openwa.qware.me y reintenta reconexion.",
     steps: [
-      "1. Inicie sesión como Administrador (DNI: 41000200, Contraseña: Test@1234) y vaya a 'Sistema'.",
-      "2. En 'Notificaciones por WhatsApp (Open-WA)', verifique URL: https://openwa.qware.me y sesión: cliente1 (o vitmaterna).",
-      "3. Pulse 'Probar conexión' y verifique el estado 'Conectado a https://openwa.qware.me'.",
-      "4. Ingrese un número de celular de 9 dígitos en 'Enviar Mensaje de Prueba' y pulse 'Enviar prueba'.",
+      "1. Entre como Administradora (DNI: 22222222) y abra la pestana 'Sistema'.",
+      "2. Ubique 'Notificaciones por WhatsApp (Open-WA)' (marcador 1 en la captura real).",
+      "3. Verifique URL: https://openwa.qware.me e ID de Sesion: vitmaterna (o cliente1).",
+      "4. Pulse 'Probar conexion' (marcador 2) y use 'Enviar Mensaje de Prueba'.",
     ],
     expectedResult:
-      "La conexión reporta estado 'working' con nivel de batería y el mensaje de WhatsApp llega al teléfono indicado.",
-    beforeCaption: "Antes: Error 404 al usar nombre de sesión",
-    afterCaption: "Después: Resolución automática de UUID y envío real",
+      "El sistema resuelve automaticamente el UUID de la sesion en Open-WA y envia los mensajes reales.",
+    beforeCaption: "Antes: Error 404 cuando se colocaba el nombre de sesion en vez del UUID.",
+    afterCaption: "Captura Real Frontend: Modulo de WhatsApp (Open-WA) en Admin > Sistema",
   },
   {
     number: 46,
@@ -205,639 +208,173 @@ export const ISSUES_MANUAL_DATA: IssueManualEntry[] = [
     role: "Obstetra",
     screenPath: "Obstetra > Inicio / Gestantes / Agenda / Alertas / Chat",
     problemSummary:
-      "Todos los obstetras veían mezcladas a todas las gestantes del centro de salud, incluso las asignadas a otros colegas.",
+      "Todos los obstetras veian mezcladas a todas las gestantes del centro de salud, incluso las asignadas a otros colegas.",
     solutionSummary:
-      "Tanto el backend como el frontend filtran el padrón de gestantes, agenda de citas, alertas y conversaciones de chat según el DNI del obstetra autenticado (mientras que el Administrador conserva vista global).",
+      "Tanto el backend como el frontend filtran el padron de gestantes, agenda, alertas y chat exclusivamente por el DNI del obstetra autenticado.",
     steps: [
-      "1. Inicie sesión con la Obstetra 1: Rosa Quispe (DNI: 43000100, Contraseña: Test@1234) y observe su lista de gestantes.",
-      "2. Abra una gestante, pulse 'Cambiar' en 'Obstetra responsable' y asígnela a 'Marco Huamán' (DNI: 43000101).",
-      "3. Verifique que esa gestante ya no aparece en la lista de Rosa Quispe.",
-      "4. Cierre sesión e ingrese como Obstetra 2: Marco Huamán (DNI: 43000101, Contraseña: Test@1234) y compruebe que la gestante aparece en su padrón.",
+      "1. Entre como Obstetra 1: Carmen Rojas (DNI: 11111111) y vea sus gestantes en seguimiento (marcadores 1 y 2).",
+      "2. Transfiera una gestante a 'Marco Huaman Quispe' desde 'Actualizar datos' -> 'Obstetra responsable'.",
+      "3. Cierre sesion e ingrese como Obstetra 2: Marco Huaman (DNI: 12121212, Clave: Test@1234).",
+      "4. Compruebe que cada obstetra ve unicamente las gestantes asignadas a su cargo.",
     ],
     expectedResult:
-      "Cada obstetra visualiza y gestiona únicamente las gestantes que tiene asignadas bajo su responsabilidad.",
-    beforeCaption: "Antes: Lista global sin separar por obstetra",
-    afterCaption: "Después: Bandeja exclusiva para cada obstetra",
+      "Cada obstetra visualiza y gestiona exclusivamente su propia cartera de gestantes asignadas.",
+    beforeCaption: "Antes: El padron mostraba pacientes de otros obstetras sin filtrar.",
+    afterCaption: "Captura Real Frontend: Padron filtrado por la Obstetra autenticada",
   },
   {
     number: 47,
-    title: "Ajuste automático de pantalla cuando aparece el teclado en móvil (Chat y Formularios)",
+    title: "Ajuste automatico de pantalla cuando aparece el teclado en movil (Chat y Formularios)",
     role: "Gestante y Obstetra",
-    screenPath: "Chat de Gestante / Chat de Obstetra / Programar cita (Móvil)",
+    screenPath: "Gestante > Mensajes (Chat) / Obstetra > Chat y Programar cita (Movil)",
     problemSummary:
-      "En dispositivos móviles, al tocar la caja de texto para escribir un mensaje de chat o una nota de cita, el teclado virtual tapaba el campo de escritura.",
+      "En dispositivos moviles, al tocar la caja de texto para escribir un mensaje de chat, el teclado virtual tapaba el campo de escritura.",
     solutionSummary:
-      "Se corrigió KeyboardAvoidingView usando behavior='padding' en Android/iOS, se configuró softwareKeyboardLayoutMode='resize' en app.json y se añadió desplazamiento automático al abrir el teclado.",
+      "Se configuro KeyboardAvoidingView y desplazamiento automatico al enfocar el input en Chat y formularios para mantener la caja de texto siempre visible.",
     steps: [
-      "1. Desde el celular, inicie sesión como Gestante (DNI: 45100001) o como Obstetra (DNI: 43000100).",
-      "2. Entre a la pestaña 'Chat' (o 'Conversar') y toque el campo 'Escribe tu mensaje…'.",
-      "3. Verifique que la barra de escritura sube por encima del teclado virtual.",
-      "4. Entre también a 'Programar cita' como Obstetra y toque el campo 'Nota o indicación'.",
+      "1. Desde el celular, inicie sesion como Gestante Ana Quispe (DNI: 33333333, Clave: Test@1234).",
+      "2. Entre a la pestana 'Mensajes' (Chat con tu obstetra).",
+      "3. Toque la barra de mensaje inferior y escriba un texto (marcador 1 en la captura movil).",
+      "4. Compruebe que la caja de texto y el boton de enviar permanecen visibles sobre el teclado.",
     ],
     expectedResult:
-      "El campo de texto y el botón de enviar permanecen siempre visibles sobre el teclado del celular.",
-    beforeCaption: "Antes: El teclado ocultaba la barra de chat",
-    afterCaption: "Después: La barra de chat se eleva sobre el teclado",
+      "La barra de escritura de chat y el boton de enviar se mantienen siempre visibles al escribir en movil.",
+    beforeCaption: "Antes: El teclado virtual de Android/iOS cubria la barra de chat.",
+    afterCaption: "Captura Real Movil: Chat de Gestante con barra de escritura visible",
+    isMobileCapture: true,
   },
   {
     number: 48,
     title: "Calendario mensual completo para programar citas en meses futuros",
     role: "Obstetra",
-    screenPath: "Obstetra > Agenda > Programar cita > Botón 'Calendario'",
+    screenPath: "Obstetra > Agenda > Programar cita > Elegir otra fecha en el calendario",
     problemSummary:
-      "Al programar una cita solo se mostraban los próximos 14 días en una tira horizontal, impidiendo agendar controles para el mes siguiente o trimestres futuros.",
+      "Al programar una cita solo se mostraban los proximos 14 dias en una tira horizontal, impidiendo agendar controles en meses futuros.",
     solutionSummary:
-      "Se añadió el botón 'Calendario' junto al selector de fecha que abre un calendario mensual interactivo completo, permitiendo navegar mes a mes hasta 9 meses hacia adelante.",
+      "Se agrego el selector 'Elegir otra fecha en el calendario (cualquier mes)' que abre un calendario mensual interactivo completo con navegacion libre de meses.",
     steps: [
-      "1. Inicie sesión como Obstetra (DNI: 43000100, Contraseña: Test@1234).",
-      "2. Vaya a 'Agenda' -> pulse '+ Programar cita' (o desde la ficha de una gestante pulse 'Cita').",
-      "3. En la sección '¿Qué día?', pulse el botón 'Calendario' (esquina superior derecha de la tira de días).",
-      "4. Use las flechas '<' y '>' del calendario modal para avanzar al próximo mes y toque cualquier día.",
+      "1. Inicie sesion como Obstetra (DNI: 11111111) y entre a 'Programar cita' (Nueva cita).",
+      "2. En el paso 2 ('Elige el dia'), pulse 'Elegir otra fecha en el calendario (cualquier mes)'.",
+      "3. En el calendario modal emergente (marcador 1), navegue con '<' y '>' a cualquier mes futuro.",
+      "4. Seleccione el dia deseado y pulse 'Confirmar' (marcador 2).",
     ],
     expectedResult:
-      "La fecha futura seleccionada se incorpora a la tira de días y permite guardar la cita en cualquier mes del embarazo.",
-    beforeCaption: "Antes: Limitado a solo 14 días próximos",
-    afterCaption: "Después: Modal de Calendario mensual hasta +9 meses",
+      "El calendario mensual permite elegir cualquier fecha futura y la incorpora inmediatamente a la cita.",
+    beforeCaption: "Antes: Solo permitia elegir dentro de una tira fija de 14 dias.",
+    afterCaption: "Captura Real Frontend: Modal de Calendario Mensual interactivo abierto",
   },
   {
     number: 49,
-    title: "Asignación de contenido educativo multimedia (Lectura, Video, PDF, Imagen)",
-    role: "Obstetra y Administración",
-    screenPath: "Obstetra > Ficha de Gestante > Asignar lecturas / Admin > Educación",
+    title: "Asignacion de contenido educativo multimedia (Lectura, Video, PDF, Imagen)",
+    role: "Obstetra y Administracion",
+    screenPath: "Obstetra > Ficha de Gestante > Boton 'Educacion' (Asignar Contenidos)",
     problemSummary:
-      "El modal de 'Asignar lecturas' aparecía vacío en móvil por un colapso de altura de FlatList y no permitía crear ni asignar materiales multimedia (videos, PDFs o infografías).",
+      "El modal de 'Asignar lecturas' aparecia vacio en movil y no permitia crear ni filtrar materiales multimedia (Videos, PDFs, Imagenes).",
     solutionSummary:
-      "Se reemplazó el contenedor por ScrollView con altura garantizada, se añadió soporte para 4 formatos ('lectura', 'video', 'pdf', 'imagen') con enlaces externos y se integró el botón '+ Crear nuevo contenido educativo' directamente para el obstetra.",
+      "Se rediseño el modal 'Asignar Contenidos Educativos' con filtros por tipo (Lecturas, Videos, PDFs, Imagenes), boton '+ Agregar material' y switches de asignacion.",
     steps: [
-      "1. Inicie sesión como Obstetra (DNI: 43000100) y abra la ficha de una gestante.",
-      "2. En la sección 'Educación asignada', pulse 'Asignar o quitar lecturas'.",
-      "3. Marque o desmarque las tarjetas educativas y pulse '+ Crear nuevo contenido educativo' para agregar un Video o PDF.",
-      "4. Pulse 'Guardar cambios' y verifique en la cuenta de la Gestante (DNI: 45100001) sus lecturas personalizadas.",
+      "1. Entre como Obstetra (DNI: 11111111) y abra la ficha de 'Ana Quispe Mamani'.",
+      "2. Pulse el boton 'Educacion' debajo de la tarjeta de FPP.",
+      "3. Observe las tarjetas con etiquetas PDF (marcador 1), VIDEO (marcador 2) e IMAGEN, y el boton '+ Agregar material'.",
+      "4. Active los switches de los materiales deseados y pulse 'Listo'.",
     ],
     expectedResult:
-      "El modal muestra todos los contenidos con sus etiquetas (Lectura/Video/PDF/Imagen) y guarda la selección al instante.",
-    beforeCaption: "Antes: Modal vacío y sin soporte multimedia",
-    afterCaption: "Después: Lista completa + creador de Video/PDF/Imagen",
+      "El modal muestra todos los recursos multimedia (PDF, Video, Imagen, Lectura) y permite crear o asignar nuevos.",
+    beforeCaption: "Antes: Lista vacia en movil y sin soporte para Videos, PDFs ni Imagenes.",
+    afterCaption: "Captura Real Frontend: Modal 'Asignar Contenidos' Multimedia",
   },
   {
     number: 50,
-    title: "Horario ampliado (07:00 a 20:00) y hora personalizada (HH:MM) en citas",
+    title: "Horario ampliado y hora personalizada (HH:MM) al programar citas",
     role: "Obstetra",
-    screenPath: "Obstetra > Programar cita > ¿A qué hora?",
+    screenPath: "Obstetra > Programar cita (Nueva cita) > Paso 3: Elige la hora",
     problemSummary:
-      "Al programar una cita solo existían 7 horarios fijos y no se podía registrar una hora específica (por ejemplo, 07:45 o 18:15).",
+      "Al programar una cita solo existian bloques fijos y no se podia registrar una hora especifica (por ejemplo, 07:45 o 17:15).",
     solutionSummary:
-      "Se amplió la cuadrícula de horarios desde las 07:00 hasta las 20:00 y se incorporó el botón '+ Otra hora (HH:MM)' para digitar cualquier hora exacta en formato 24h.",
+      "Se incorporo la grilla completa de horarios y la tarjeta '¿Prefieres ingresar otra hora personalizada?' que valida cualquier hora exacta en formato 24h (HH:MM).",
     steps: [
-      "1. Inicie sesión como Obstetra (DNI: 43000100) y entre a 'Programar cita'.",
-      "2. En la sección '¿A qué hora?', observe los horarios rápidos desde 07:00 hasta 20:00.",
-      "3. Pulse el botón '+ Otra hora (HH:MM)' debajo de la cuadrícula.",
-      "4. Escriba una hora específica como '07:45' o '18:15', pulse 'Usar 07:45' y guarde la cita.",
+      "1. Inicie sesion como Obstetra (DNI: 11111111) y abra 'Nueva cita' (Programar cita).",
+      "2. Deslice al Paso 3 ('Elige la hora') y ubique '¿Prefieres ingresar otra hora personalizada?' (marcador 1).",
+      "3. Escriba una hora exacta como '07:45' y verifique la insignia azul de confirmacion '07:45' (marcador 2).",
+      "4. Pulse 'Guardar cita · 07:45' en la parte inferior.",
     ],
     expectedResult:
-      "La cita queda programada exactamente con la hora personalizada elegida y se muestra en la agenda y ficha de la gestante.",
-    beforeCaption: "Antes: Solo 7 horas fijas sin opción manual",
-    afterCaption: "Después: Grilla 07:00-20:00 + campo '+ Otra hora (HH:MM)'",
+      "La cita se agenda con la hora exacta personalizada (ej. 07:45) y se refleja en el resumen inferior.",
+    beforeCaption: "Antes: Solo permitia elegir bloques cerrados sin hora personalizada.",
+    afterCaption: "Captura Real Frontend: Hora personalizada '07:45' activa y lista para guardar",
   },
 ];
 
+// ============================================================================
+// PRIMITIVAS VECTORIALES NATIVAS PARA ICONOS Y ENCABEZADOS
+// ============================================================================
+
+function drawVectorCheckIcon(
+  doc: jsPDF,
+  cx: number,
+  cy: number,
+  r: number,
+  bg: [number, number, number] = [12, 129, 116],
+): void {
+  doc.setFillColor(bg[0], bg[1], bg[2]);
+  doc.circle(cx, cy, r, "F");
+  doc.setDrawColor(255, 255, 255);
+  doc.setLineWidth(0.45);
+  doc.line(cx - r * 0.45, cy + r * 0.02, cx - r * 0.1, cy + r * 0.38);
+  doc.line(cx - r * 0.1, cy + r * 0.38, cx + r * 0.48, cy - r * 0.35);
+}
+
+function drawVectorCrossIcon(
+  doc: jsPDF,
+  cx: number,
+  cy: number,
+  r: number,
+  bg: [number, number, number] = [214, 69, 69],
+): void {
+  doc.setFillColor(bg[0], bg[1], bg[2]);
+  doc.circle(cx, cy, r, "F");
+  doc.setDrawColor(255, 255, 255);
+  doc.setLineWidth(0.45);
+  const d = r * 0.42;
+  doc.line(cx - d, cy - d, cx + d, cy + d);
+  doc.line(cx + d, cy - d, cx - d, cy + d);
+}
+
 function drawPageHeader(doc: jsPDF, subtitle: string): void {
-  // Franja institucional superior
-  doc.setFillColor(91, 42, 94); // Ciruela #5B2A5E
-  doc.rect(0, 0, 210, 16, "F");
+  doc.setFillColor(91, 42, 94); // Ciruela institucional #5B2A5E
+  doc.rect(0, 0, 210, 15, "F");
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
+  doc.setFontSize(9.8);
   doc.setTextColor(255, 255, 255);
-  doc.text("VITMATERNA · C.S. TALAVERA — MANUAL DE PRUEBAS PARA EL CLIENTE", 12, 7.2);
+  doc.text("VITMATERNA - C.S. TALAVERA | MANUAL DE PRUEBAS CON CAPTURAS REALES", 12, 6.8);
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
+  doc.setFontSize(7.8);
   doc.setTextColor(244, 236, 245);
-  doc.text(subtitle, 12, 12.5);
+  doc.text(subtitle, 12, 11.8);
 }
 
 function drawPageFooter(doc: jsPDF, pageNum: number, totalPages: number): void {
   doc.setDrawColor(234, 220, 198);
   doc.setLineWidth(0.3);
-  doc.line(12, 285, 198, 285);
+  doc.line(12, 286, 198, 286);
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(7.5);
+  doc.setFontSize(7.2);
   doc.setTextColor(110, 101, 87);
   doc.text(
-    "Repositorio: github.com/JoseLuisQL/vitmaterna · Guía de Validación Manual de Issues (#37 – #50)",
+    "Repositorio: github.com/JoseLuisQL/vitmaterna - Guia Oficial con Capturas Reales del Frontend (#37 al #50)",
     12,
-    290,
+    290.5,
   );
   doc.setFont("helvetica", "bold");
-  doc.text(`Página ${pageNum} de ${totalPages}`, 198, 290, { align: "right" });
+  doc.text(`Pagina ${pageNum} de ${totalPages}`, 198, 290.5, { align: "right" });
 }
 
 /**
- * Dibuja las capturas comparativas ("ANTES" a la izquierda, "DESPUÉS" a la derecha)
- * simulando fielmente la interfaz real de VitMaterna para cada Issue (#37 al #50).
- */
-function drawIssueVisualCapture(
-  doc: jsPDF,
-  issue: IssueManualEntry,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-): void {
-  const halfW = (w - 6) / 2;
-  const leftX = x;
-  const rightX = x + halfW + 6;
-
-  // --- Marco ANTES (Izquierda) ---
-  doc.setFillColor(253, 245, 245);
-  doc.setDrawColor(232, 180, 180);
-  doc.setLineWidth(0.4);
-  doc.roundedRect(leftX, y, halfW, h, 3, 3, "FD");
-
-  // Barra superior Antes
-  doc.setFillColor(198, 56, 56);
-  doc.roundedRect(leftX, y, halfW, 7, 3, 3, "F");
-  doc.rect(leftX, y + 4, halfW, 3, "F");
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7);
-  doc.setTextColor(255, 255, 255);
-  doc.text(`ANTES (PROBLEMA REPORTADO — ISSUE #${issue.number})`, leftX + 3, y + 4.8);
-
-  // --- Marco DESPUÉS (Derecha) ---
-  doc.setFillColor(250, 244, 234); // gwarm.bg (#FAF4EA)
-  doc.setDrawColor(12, 129, 116); // gwarm.teal (#0C8174)
-  doc.setLineWidth(0.5);
-  doc.roundedRect(rightX, y, halfW, h, 3, 3, "FD");
-
-  // Barra superior Después
-  doc.setFillColor(12, 129, 116);
-  doc.roundedRect(rightX, y, halfW, 7, 3, 3, "F");
-  doc.rect(rightX, y + 4, halfW, 3, "F");
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7);
-  doc.setTextColor(255, 255, 255);
-  doc.text(`DESPUÉS (SOLUCIÓN EN VITMATERNA — ISSUE #${issue.number})`, rightX + 3, y + 4.8);
-
-  const innerY = y + 9.5;
-  const innerH = h - 16.5;
-
-  // Dibujar ventana simulada en ANTES
-  doc.setFillColor(255, 255, 255);
-  doc.setDrawColor(225, 200, 200);
-  doc.roundedRect(leftX + 3, innerY, halfW - 6, innerH, 2, 2, "FD");
-
-  // Dibujar ventana simulada en DESPUÉS
-  doc.setFillColor(255, 255, 255);
-  doc.setDrawColor(234, 220, 198);
-  doc.roundedRect(rightX + 3, innerY, halfW - 6, innerH, 2, 2, "FD");
-
-  // Contenido específico por Issue para que el cliente identifique exactamente qué mirar en pantalla
-  const lx = leftX + 6;
-  const rx = rightX + 6;
-  const cw = halfW - 12;
-
-  switch (issue.number) {
-    case 37: {
-      // Antes: Al cambiar ventana vuelve a Login
-      doc.setFillColor(251, 237, 237);
-      doc.roundedRect(lx, innerY + 3, cw, 11, 2, 2, "F");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7);
-      doc.setTextColor(180, 40, 40);
-      doc.text("Sesión expirada al minimizar ventana", lx + 3, innerY + 7.5);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(6.5);
-      doc.text("Redirigido a /login (Token perdido)", lx + 3, innerY + 11.8);
-
-      doc.setFillColor(245, 245, 245);
-      doc.roundedRect(lx, innerY + 17, cw, 14, 2, 2, "F");
-      doc.setTextColor(100, 100, 100);
-      doc.text("Iniciar sesión — Ingresa tu DNI Nuevamente", lx + 3, innerY + 25);
-
-      // Después: Sesión persistente
-      doc.setFillColor(227, 241, 238);
-      doc.roundedRect(rx, innerY + 3, cw, 12, 2, 2, "F");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7);
-      doc.setTextColor(10, 107, 96);
-      doc.text("Sesión Activa: Obst. Rosa Quispe (43000100)", rx + 3, innerY + 7.5);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(6.5);
-      doc.text("localStorage + AsyncStorage (vitmaterna:session:v3)", rx + 3, innerY + 12);
-
-      doc.setFillColor(244, 236, 245);
-      doc.roundedRect(rx, innerY + 18, cw, 13, 2, 2, "F");
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(91, 42, 94);
-      doc.text("Padrón de Gestantes permanece abierto al volver", rx + 3, innerY + 25.5);
-      break;
-    }
-    case 38: {
-      // Antes: Formulario sin Obstetra responsable
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7);
-      doc.setTextColor(90, 90, 90);
-      doc.text("Nuevo usuario (Rol: Gestante)", lx, innerY + 6);
-      doc.setFillColor(248, 248, 248);
-      doc.roundedRect(lx, innerY + 8, cw, 9, 1.5, 1.5, "F");
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(6.5);
-      doc.text("DNI: 45109988  |  Nombres: María Flores", lx + 2, innerY + 13.5);
-      doc.setFillColor(251, 237, 237);
-      doc.roundedRect(lx, innerY + 19, cw, 11, 1.5, 1.5, "F");
-      doc.setTextColor(180, 40, 40);
-      doc.text("× Sin opción para elegir Obstetra responsable", lx + 2, innerY + 25.5);
-
-      // Después: Selector de Obstetra responsable + botón Cambiar
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7);
-      doc.setTextColor(51, 48, 42);
-      doc.text("Obstetra responsable (Selector Activo):", rx, innerY + 6);
-      doc.setFillColor(227, 241, 238);
-      doc.setDrawColor(12, 129, 116);
-      doc.roundedRect(rx, innerY + 8, cw, 10, 1.5, 1.5, "FD");
-      doc.setTextColor(10, 107, 96);
-      doc.text("✓ Rosa Quispe · DNI 43000100 (Seleccionada)", rx + 2, innerY + 14.2);
-
-      doc.setFillColor(250, 244, 234);
-      doc.setDrawColor(234, 220, 198);
-      doc.roundedRect(rx, innerY + 20, cw, 10, 1.5, 1.5, "FD");
-      doc.setTextColor(110, 101, 87);
-      doc.text("○ Marco Huamán · DNI 43000101   [Cambiar]", rx + 2, innerY + 26.2);
-      break;
-    }
-    case 39: {
-      // Antes: Ficha de gestante sin botón eliminar
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7);
-      doc.setTextColor(90, 90, 90);
-      doc.text("Ficha de Gestante: Luzmila Ayquipa", lx, innerY + 6);
-      doc.setFillColor(245, 245, 245);
-      doc.roundedRect(lx, innerY + 9, cw, 9, 1.5, 1.5, "F");
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(6.5);
-      doc.text("[ Actualizar datos ]   [ Programar cita ]", lx + 3, innerY + 14.8);
-      doc.setTextColor(180, 40, 40);
-      doc.text("× No existía botón para eliminar gestante", lx + 2, innerY + 25);
-
-      // Después: Botón Eliminar gestante + Modal de confirmación
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7);
-      doc.setTextColor(51, 48, 42);
-      doc.text("Ficha de Gestante -> Zona inferior:", rx, innerY + 6);
-      doc.setFillColor(251, 237, 237);
-      doc.setDrawColor(214, 69, 69);
-      doc.roundedRect(rx, innerY + 8.5, cw, 9.5, 2, 2, "FD");
-      doc.setTextColor(198, 40, 40);
-      doc.text("🗑  Eliminar gestante", rx + cw / 2 - 14, innerY + 14.5);
-
-      doc.setFillColor(255, 253, 247);
-      doc.setDrawColor(223, 209, 184);
-      doc.roundedRect(rx, innerY + 20, cw, 11, 2, 2, "FD");
-      doc.setFontSize(6.3);
-      doc.setTextColor(51, 48, 42);
-      doc.text("¿Eliminar a esta gestante?  [Cancelar]  [Sí, eliminar]", rx + 2, innerY + 26.8);
-      break;
-    }
-    case 40: {
-      // Antes: IMC manual
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7);
-      doc.setTextColor(90, 90, 90);
-      doc.text("Datos Clínicos (Antes):", lx, innerY + 6);
-      doc.setFillColor(251, 237, 237);
-      doc.roundedRect(lx, innerY + 9, cw, 12, 1.5, 1.5, "F");
-      doc.setTextColor(180, 40, 40);
-      doc.setFontSize(6.5);
-      doc.text("IMC pregestacional: [ 24.1 ] (Digitación manual)", lx + 2, innerY + 14.5);
-      doc.text("× Faltaban campos de Peso (kg) y Talla (m)", lx + 2, innerY + 19);
-
-      // Después: Peso + Talla -> IMC Automático
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(6.8);
-      doc.setTextColor(51, 48, 42);
-      doc.text("Peso (kg): [ 60 ]    Talla (m o cm): [ 1.55 ]", rx, innerY + 6.5);
-
-      doc.setFillColor(227, 241, 238);
-      doc.setDrawColor(12, 129, 116);
-      doc.roundedRect(rx, innerY + 9.5, cw, 20, 2, 2, "FD");
-      doc.setFontSize(6.5);
-      doc.setTextColor(10, 107, 96);
-      doc.text("IMC PREGESTACIONAL (AUTOMÁTICO)", rx + 3, innerY + 14.5);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      doc.text("25.0 kg/m²  ·  Sobrepeso", rx + 3, innerY + 21.5);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(6);
-      doc.text("Fórmula: 60 kg / (1.55 m × 1.55 m) = 24.97 -> 25.0", rx + 3, innerY + 26.8);
-      break;
-    }
-    case 41: {
-      // Antes: 3 columnas estrechas sin verse el número
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(6.8);
-      doc.setTextColor(180, 40, 40);
-      doc.text("Móvil Antes: 3 columnas comprimidas", lx, innerY + 6);
-      const colW = (cw - 4) / 3;
-      ["Gestas", "Cesáreas", "Abortos"].forEach((lbl, idx) => {
-        const cx = lx + idx * (colW + 2);
-        doc.setFillColor(251, 237, 237);
-        doc.roundedRect(cx, innerY + 9, colW, 18, 1.5, 1.5, "F");
-        doc.setFontSize(6);
-        doc.setTextColor(100, 100, 100);
-        doc.text(lbl, cx + 2, innerY + 14);
-        doc.setTextColor(190, 40, 40);
-        doc.text("[-][?][+]", cx + 2, innerY + 22);
-      });
-
-      // Después: Filas apiladas con número grande de 22px
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(6.8);
-      doc.setTextColor(10, 107, 96);
-      doc.text("Móvil Después: Filas amplias con número claro", rx, innerY + 5.5);
-      const rows = [
-        { label: "Gestas", val: "2" },
-        { label: "Cesáreas previas", val: "1" },
-        { label: "Abortos", val: "0" },
-      ];
-      rows.forEach((r, idx) => {
-        const ry = innerY + 7.5 + idx * 8;
-        doc.setFillColor(250, 244, 234);
-        doc.setDrawColor(234, 220, 198);
-        doc.roundedRect(rx, ry, cw, 6.8, 1.5, 1.5, "FD");
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(6.5);
-        doc.setTextColor(51, 48, 42);
-        doc.text(r.label, rx + 2.5, ry + 4.6);
-        doc.setTextColor(12, 129, 116);
-        doc.text(`[ − ]    ${r.val}    [ + ]`, rx + cw - 24, ry + 4.6);
-      });
-      break;
-    }
-    case 42: {
-      // Antes: Comunidad
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7);
-      doc.setTextColor(180, 40, 40);
-      doc.text("Etiqueta Anterior:", lx, innerY + 7);
-      doc.setFillColor(251, 237, 237);
-      doc.roundedRect(lx, innerY + 10, cw, 16, 2, 2, "F");
-      doc.setTextColor(120, 40, 40);
-      doc.text("Comunidad *", lx + 3, innerY + 16);
-      doc.setFont("helvetica", "normal");
-      doc.text("[ Ccaccacha / Pampamarca ]", lx + 3, innerY + 22);
-
-      // Después: Dirección
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7);
-      doc.setTextColor(10, 107, 96);
-      doc.text("Etiqueta Actualizada en todos los formularios:", rx, innerY + 7);
-      doc.setFillColor(227, 241, 238);
-      doc.setDrawColor(12, 129, 116);
-      doc.roundedRect(rx, innerY + 10, cw, 16, 2, 2, "FD");
-      doc.setTextColor(10, 107, 96);
-      doc.text("Dirección *", rx + 3, innerY + 16);
-      doc.setFont("helvetica", "normal");
-      doc.text("[ Jr. Apurímac 245 · C.S. Talavera ]", rx + 3, innerY + 22);
-      break;
-    }
-    case 43: {
-      // Antes: Error Ruta no encontrada
-      doc.setFillColor(251, 237, 237);
-      doc.roundedRect(lx, innerY + 4, cw, 24, 2, 2, "F");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7.5);
-      doc.setTextColor(198, 40, 40);
-      doc.text("Error al eliminar usuario en Admin:", lx + 3, innerY + 11);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(7);
-      doc.text("× 'Ruta no encontrada' (HTTP 404)", lx + 3, innerY + 17);
-      doc.text("× El usuario permanecía en la lista", lx + 3, innerY + 23);
-
-      // Después: Papelera funcional + Toast de éxito
-      doc.setFillColor(250, 244, 234);
-      doc.setDrawColor(234, 220, 198);
-      doc.roundedRect(rx, innerY + 3, cw, 13, 2, 2, "FD");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(6.8);
-      doc.setTextColor(51, 48, 42);
-      doc.text("Juan Pérez · DNI 44556677 (Obstetra)", rx + 3, innerY + 8.5);
-      doc.setTextColor(198, 40, 40);
-      doc.text("[ 🗑 Eliminar ]", rx + cw - 21, innerY + 8.5);
-
-      doc.setFillColor(227, 241, 238);
-      doc.roundedRect(rx, innerY + 18.5, cw, 10, 2, 2, "F");
-      doc.setTextColor(10, 107, 96);
-      doc.text("✓ Usuario eliminado correctamente", rx + 3, innerY + 24.8);
-      break;
-    }
-    case 44: {
-      // Antes: Sin FPP destacada
-      doc.setFillColor(251, 237, 237);
-      doc.roundedRect(lx, innerY + 4, cw, 23, 2, 2, "F");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7);
-      doc.setTextColor(180, 40, 40);
-      doc.text("Perfil de Gestante (Antes):", lx + 3, innerY + 11);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(6.5);
-      doc.text("Solo mostraba semanas (32 sem), sin tarjeta", lx + 3, innerY + 17);
-      doc.text("visible de Fecha Probable de Parto (FPP).", lx + 3, innerY + 22);
-
-      // Después: Tarjeta FPP prominente
-      doc.setFillColor(227, 241, 238);
-      doc.setDrawColor(12, 129, 116);
-      doc.roundedRect(rx, innerY + 3, cw, 25, 2.5, 2.5, "FD");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(6.5);
-      doc.setTextColor(10, 107, 96);
-      doc.text("📅  FECHA PROBABLE DE PARTO (FPP)", rx + 3, innerY + 9);
-      doc.setFontSize(9.5);
-      doc.setTextColor(51, 48, 42);
-      doc.text("15 de junio de 2025", rx + 3, innerY + 16);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(6.2);
-      doc.setTextColor(110, 101, 87);
-      doc.text("Calculada por FUM (08 sep 2024) · 32 semanas", rx + 3, innerY + 22.5);
-      break;
-    }
-    case 45: {
-      // Antes: Error Open-WA 404
-      doc.setFillColor(251, 237, 237);
-      doc.roundedRect(lx, innerY + 4, cw, 24, 2, 2, "F");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7);
-      doc.setTextColor(198, 40, 40);
-      doc.text("Open-WA Antes (ID: vitmaterna):", lx + 3, innerY + 10);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(6.3);
-      doc.text("× HTTP 404: Session 'vitmaterna' not found", lx + 3, innerY + 16);
-      doc.text("× No resolvía el UUID real de la sesión", lx + 3, innerY + 22);
-
-      // Después: Open-WA conectado con UUID resuelto
-      doc.setFillColor(227, 241, 238);
-      doc.setDrawColor(12, 129, 116);
-      doc.roundedRect(rx, innerY + 3, cw, 25, 2, 2, "FD");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(6.8);
-      doc.setTextColor(10, 107, 96);
-      doc.text("✓ Conectado a https://openwa.qware.me", rx + 3, innerY + 9);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(6.2);
-      doc.setTextColor(51, 48, 42);
-      doc.text("Sesión: cliente1 -> UUID 19024686-72a5... (working)", rx + 3, innerY + 15);
-      doc.text("Teléfono: +51 900 206 738 · Envío de prueba EXITOSO", rx + 3, innerY + 21.5);
-      break;
-    }
-    case 46: {
-      // Antes: Todos ven todas las gestantes
-      doc.setFillColor(251, 237, 237);
-      doc.roundedRect(lx, innerY + 4, cw, 24, 2, 2, "F");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(7);
-      doc.setTextColor(198, 40, 40);
-      doc.text("Padrón sin filtro por Obstetra:", lx + 3, innerY + 10);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(6.3);
-      doc.text("× Rosa Quispe veía gestantes de Marco Huamán", lx + 3, innerY + 16);
-      doc.text("× Alertas y chats mezclados entre obstetras", lx + 3, innerY + 22);
-
-      // Después: Filtrado estricto por obstetraDni
-      doc.setFillColor(227, 241, 238);
-      doc.setDrawColor(12, 129, 116);
-      doc.roundedRect(rx, innerY + 3, cw, 25, 2, 2, "FD");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(6.8);
-      doc.setTextColor(10, 107, 96);
-      doc.text("✓ Bandeja exclusiva por Obstetra autenticada", rx + 3, innerY + 9);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(6.2);
-      doc.setTextColor(51, 48, 42);
-      doc.text("• Obst. Rosa Quispe (43000100) -> Sus gestantes", rx + 3, innerY + 15.5);
-      doc.text("• Obst. Marco Huamán (43000101) -> Sus gestantes", rx + 3, innerY + 21.5);
-      break;
-    }
-    case 47: {
-      // Antes: Teclado cubre el input
-      doc.setFillColor(245, 245, 245);
-      doc.roundedRect(lx, innerY + 3, cw, 12, 1.5, 1.5, "F");
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(6.3);
-      doc.setTextColor(80, 80, 80);
-      doc.text("Chat: Hola obstetra Rosa, tengo una consulta...", lx + 2, innerY + 10);
-      doc.setFillColor(70, 75, 85);
-      doc.roundedRect(lx, innerY + 14, cw, 15, 1.5, 1.5, "F");
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(255, 180, 180);
-      doc.text("[ TECLADO MÓVIL CUBRÍA CAJA DE TEXTO ]", lx + 2, innerY + 23);
-
-      // Después: Caja de texto elevada sobre el teclado
-      doc.setFillColor(227, 241, 238);
-      doc.setDrawColor(12, 129, 116);
-      doc.roundedRect(rx, innerY + 3, cw, 11, 2, 2, "FD");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(6.5);
-      doc.setTextColor(10, 107, 96);
-      doc.text("[ Escribe tu mensaje aquí... ]        [Enviar ➤]", rx + 2, innerY + 9.8);
-      doc.setFillColor(90, 96, 108);
-      doc.roundedRect(rx, innerY + 15.5, cw, 13.5, 1.5, 1.5, "F");
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(6.2);
-      doc.text("Q  W  E  R  T  Y  U  I  O  P  (Teclado debajo)", rx + 3, innerY + 23.5);
-      break;
-    }
-    case 48: {
-      // Antes: Solo 14 días
-      doc.setFillColor(251, 237, 237);
-      doc.roundedRect(lx, innerY + 4, cw, 24, 2, 2, "F");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(6.8);
-      doc.setTextColor(198, 40, 40);
-      doc.text("Selector de Fecha (Antes):", lx + 3, innerY + 10);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(6.2);
-      doc.text("[Hoy] [Mañ] [Jue] ... (Máximo 14 días)", lx + 3, innerY + 16);
-      doc.text("× Imposible elegir fechas del próximo mes", lx + 3, innerY + 22);
-
-      // Después: Botón Calendario + Modal Mensual
-      doc.setFillColor(227, 241, 238);
-      doc.setDrawColor(12, 129, 116);
-      doc.roundedRect(rx, innerY + 3, cw, 25, 2, 2, "FD");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(6.8);
-      doc.setTextColor(10, 107, 96);
-      doc.text("¿Qué día?                 [ 📅 Calendario ]", rx + 3, innerY + 8.5);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(6.2);
-      doc.setTextColor(51, 48, 42);
-      doc.text("◀   Mayo / Junio 2025   ▶   (Hasta +9 meses)", rx + 3, innerY + 15);
-      doc.text("L  M  X  J  V  S  D  -> Selección libre de día", rx + 3, innerY + 21.5);
-      break;
-    }
-    case 49: {
-      // Antes: Modal vacío
-      doc.setFillColor(251, 237, 237);
-      doc.roundedRect(lx, innerY + 4, cw, 24, 2, 2, "F");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(6.8);
-      doc.setTextColor(198, 40, 40);
-      doc.text("Modal Asignar Lecturas (Antes):", lx + 3, innerY + 10);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(6.2);
-      doc.text("× Lista en blanco en celular (FlatList height 0)", lx + 3, innerY + 16);
-      doc.text("× Sin soporte para Videos, PDFs o Imágenes", lx + 3, innerY + 22);
-
-      // Después: Lista visible + Multimedia
-      doc.setFillColor(227, 241, 238);
-      doc.setDrawColor(12, 129, 116);
-      doc.roundedRect(rx, innerY + 3, cw, 25, 2, 2, "FD");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(6.5);
-      doc.setTextColor(10, 107, 96);
-      doc.text("[ + Crear nuevo contenido educativo (Video/PDF) ]", rx + 2.5, innerY + 8.5);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(6.1);
-      doc.setTextColor(51, 48, 42);
-      doc.text("☑ Hierro y alimentación rica en sangre (Lectura)", rx + 2.5, innerY + 15);
-      doc.text("☑ Señales de peligro en el embarazo (Video/PDF)", rx + 2.5, innerY + 21);
-      break;
-    }
-    case 50: {
-      // Antes: 7 horarios fijos
-      doc.setFillColor(251, 237, 237);
-      doc.roundedRect(lx, innerY + 4, cw, 24, 2, 2, "F");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(6.8);
-      doc.setTextColor(198, 40, 40);
-      doc.text("¿A qué hora? (Antes):", lx + 3, innerY + 10);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(6.2);
-      doc.text("Solo 08:00 a 16:00 en bloques fijos", lx + 3, innerY + 16);
-      doc.text("× Sin opción para escribir hora exacta (HH:MM)", lx + 3, innerY + 22);
-
-      // Después: Grilla 07:00-20:00 + Otra hora (HH:MM)
-      doc.setFillColor(227, 241, 238);
-      doc.setDrawColor(12, 129, 116);
-      doc.roundedRect(rx, innerY + 3, cw, 25, 2, 2, "FD");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(6.5);
-      doc.setTextColor(10, 107, 96);
-      doc.text("[07:00] [08:00] ... [18:00] [19:00] [20:00]", rx + 2.5, innerY + 9);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(6.2);
-      doc.setTextColor(51, 48, 42);
-      doc.text("[ + Otra hora (HH:MM) ] -> [ 07:45 ] [Usar 07:45]", rx + 2.5, innerY + 16);
-      doc.text("✓ Permite agendar cualquier hora del día (00:00-23:59)", rx + 2.5, innerY + 22.5);
-      break;
-    }
-  }
-}
-
-/**
- * Construye el documento jsPDF completo con portada, tabla de credenciales,
- * matriz de issues y fichas ilustradas de prueba manual para los Issues #37 al #50.
+ * Construye el documento jsPDF completo con portada, tabla de credenciales reales,
+ * matriz de issues y las 14 fichas con las CAPTURAS DE PANTALLA REALES del frontend.
  */
 export function generateManualTestingPdfDoc(): jsPDF {
   const doc = new jsPDF({
@@ -847,251 +384,393 @@ export function generateManualTestingPdfDoc(): jsPDF {
   });
 
   // =========================================================================
-  // PÁGINA 1: PORTADA EJECUTIVA, CREDENCIALES Y MATRIZ DE ISSUES (#37 AL #50)
+  // PAGINA 1: PORTADA EJECUTIVA, CREDENCIALES REALES Y MATRIZ (#37 AL #50)
   // =========================================================================
-  drawPageHeader(doc, "Guía Oficial de Validación Manual con Capturas de Interfaz (Issues #37 al #50)");
+  drawPageHeader(
+    doc,
+    "Guia Paso a Paso para el Cliente con Capturas de Pantalla Reales del Frontend (Issues #37 al #50)",
+  );
 
-  // Bloque de Título Principal
-  doc.setFillColor(250, 244, 234); // Crema VitMaterna
+  // Bloque de Titulo Principal
+  doc.setFillColor(250, 244, 234);
   doc.setDrawColor(234, 220, 198);
-  doc.roundedRect(12, 21, 186, 28, 3, 3, "FD");
+  doc.roundedRect(12, 19.5, 186, 26, 3, 3, "FD");
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
+  doc.setFontSize(13);
   doc.setTextColor(91, 42, 94);
-  doc.text("MANUAL DE PRUEBAS MANUALES — CORRECCIÓN DE ISSUES #37 AL #50", 16, 29.5);
+  doc.text("MANUAL DE PRUEBAS MANUALES - CORRECCION DE ISSUES #37 AL #50", 16, 27);
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.8);
+  doc.setFontSize(8.4);
   doc.setTextColor(51, 48, 42);
   doc.text(
-    "Este documento detalla paso a paso cómo validar manualmente en la aplicación Web y móvil (APK) cada una de las 14",
+    "Este manual contiene los pasos detallados y las capturas de pantalla reales del frontend de VitMaterna para validar",
     16,
-    36,
+    33.2,
   );
   doc.text(
-    "correcciones solicitadas en el repositorio oficial (github.com/JoseLuisQL/vitmaterna/issues), incluyendo capturas",
+    "cada una de las 14 correcciones solicitadas en GitHub (github.com/JoseLuisQL/vitmaterna/issues). Cada captura real",
     16,
-    40.8,
+    37.8,
   );
   doc.text(
-    "comparativas (Antes vs. Después), credenciales de prueba por rol y resultados esperados.",
+    "incluye recuadros rojos y marcadores numerados (1), (2) que indican exactamente que elemento probar en pantalla.",
     16,
-    45.6,
+    42.4,
   );
 
-  // 1. Tabla de Credenciales de Acceso para el Cliente
+  // 1. Tabla de Credenciales Reales de Acceso
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(9.5);
+  doc.setFontSize(9.2);
   doc.setTextColor(91, 42, 94);
-  doc.text("1. CREDENCIALES DE ACCESO PARA EJECUTAR LAS PRUEBAS", 12, 56);
+  doc.text("1. CREDENCIALES REALES DE ACCESO PARA EJECUTAR LAS PRUEBAS", 12, 52);
 
   autoTable(doc, {
-    startY: 58.5,
+    startY: 54.2,
     margin: { left: 12, right: 12 },
-    head: [["Rol en el Sistema", "Nombre de Usuario", "DNI (Usuario)", "Contraseña", "Uso en las Pruebas"]],
+    head: [
+      ["Rol en el Sistema", "Nombre de Usuario", "DNI (Usuario)", "Contrasena", "Issues que permite validar"],
+    ],
     body: [
       [
-        "Administrador(a)",
-        "Carmen Flores (Admin)",
-        "41000200",
+        "Administradora",
+        "Patricia Salas Vega",
+        "22222222",
         "Test@1234",
-        "Probar Issues #38, #40, #42, #43, #45, #49",
+        "Issues #37, #38, #42, #43, #45, #49",
       ],
       [
         "Obstetra Principal",
-        "Obst. Rosa Quispe",
-        "43000100",
+        "Obst. Carmen Rojas Paredes",
+        "11111111",
         "Test@1234",
-        "Probar Issues #37, #38, #39, #40, #41, #42, #44, #46, #47, #48, #49, #50",
+        "Issues #37, #38, #39, #40, #41, #42, #44, #46, #48, #49, #50",
       ],
       [
         "Segundo Obstetra",
-        "Obst. Marco Huamán",
-        "43000101",
+        "Obst. Marco Huaman Quispe",
+        "12121212",
         "Test@1234",
-        "Probar transferencia y filtrado exclusivo de gestantes (#38 y #46)",
+        "Issues #38 y #46 (Transferencia y filtrado exclusivo por obstetra)",
       ],
       [
-        "Gestante",
-        "Luzmila Ayquipa",
-        "45100001",
+        "Gestante 1",
+        "Ana Quispe Mamani",
+        "33333333",
         "Test@1234",
-        "Probar persistencia (#37), teclado en chat (#47) y educación (#49)",
+        "Issues #37 (Persistencia), #47 (Teclado en Chat movil) y #49 (Educacion)",
+      ],
+      [
+        "Gestante 2",
+        "Lucia Huaman Ccorimanya",
+        "44444444",
+        "Test@1234",
+        "Pruebas adicionales de perfil gestante, alertas y citas",
       ],
     ],
     theme: "grid",
     headStyles: {
       fillColor: [91, 42, 94],
       textColor: [255, 255, 255],
-      fontSize: 8,
+      fontSize: 7.8,
       fontStyle: "bold",
-      cellPadding: 2.2,
+      cellPadding: 1.9,
     },
     bodyStyles: {
-      fontSize: 7.8,
+      fontSize: 7.5,
       textColor: [51, 48, 42],
-      cellPadding: 2,
+      cellPadding: 1.7,
     },
     alternateRowStyles: {
       fillColor: [250, 244, 234],
     },
     columnStyles: {
-      0: { fontStyle: "bold", cellWidth: 32 },
-      1: { cellWidth: 36 },
-      2: { fontStyle: "bold", halign: "center", cellWidth: 24 },
-      3: { fontStyle: "bold", halign: "center", cellWidth: 24 },
+      0: { fontStyle: "bold", cellWidth: 30 },
+      1: { cellWidth: 40 },
+      2: { fontStyle: "bold", halign: "center", cellWidth: 23 },
+      3: { fontStyle: "bold", halign: "center", cellWidth: 23 },
       4: { cellWidth: 70 },
     },
   });
 
-  const afterCredsY = ((doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? 95) + 7;
+  const afterCredsY =
+    ((doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY ?? 96) + 6;
 
   // 2. Matriz Resumen de los 14 Issues (#37 al #50)
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(9.5);
+  doc.setFontSize(9.2);
   doc.setTextColor(91, 42, 94);
-  doc.text("2. MATRIZ RESUMEN DE CORRECCIONES VALIDADAS (ISSUES #37 AL #50)", 12, afterCredsY);
+  doc.text("2. MATRIZ DE TRAZABILIDAD DE ISSUES CORREGIDOS (#37 AL #50)", 12, afterCredsY);
 
   autoTable(doc, {
-    startY: afterCredsY + 2.5,
+    startY: afterCredsY + 2.2,
     margin: { left: 12, right: 12 },
-    head: [["Issue", " requerimiento / Corrección Implementada", "Rol", "Estado"]],
+    head: [["Issue", "Requerimiento / Correccion Validada con Captura Real", "Rol", "Estado"]],
     body: ISSUES_MANUAL_DATA.map((item) => [
       `#${item.number}`,
       item.title,
       item.role,
-      "RESUELTO ✓",
+      "VALIDADO [OK]",
     ]),
     theme: "grid",
     headStyles: {
       fillColor: [12, 129, 116],
       textColor: [255, 255, 255],
-      fontSize: 8,
+      fontSize: 7.8,
       fontStyle: "bold",
-      cellPadding: 2,
+      cellPadding: 1.8,
     },
     bodyStyles: {
-      fontSize: 7.5,
+      fontSize: 7.3,
       textColor: [51, 48, 42],
-      cellPadding: 1.8,
+      cellPadding: 1.6,
     },
     alternateRowStyles: {
       fillColor: [250, 244, 234],
     },
     columnStyles: {
-      0: { fontStyle: "bold", halign: "center", cellWidth: 16 },
-      1: { cellWidth: 108 },
+      0: { fontStyle: "bold", halign: "center", cellWidth: 15 },
+      1: { cellWidth: 107 },
       2: { cellWidth: 38 },
-      3: { fontStyle: "bold", halign: "center", textColor: [10, 107, 96], cellWidth: 24 },
+      3: { fontStyle: "bold", halign: "center", textColor: [10, 107, 96], cellWidth: 26 },
     },
   });
 
   // =========================================================================
-  // PÁGINAS 2 A 8: FICHAS DETALLADAS CON CAPTURAS Y PASOS (2 ISSUES POR PÁGINA)
+  // PAGINAS 2 A 8: FICHAS CON CAPTURAS DE PANTALLA REALES DEL FRONTEND
   // =========================================================================
   for (let i = 0; i < ISSUES_MANUAL_DATA.length; i += 2) {
     doc.addPage();
     const firstIssue = ISSUES_MANUAL_DATA[i];
     const secondIssue = ISSUES_MANUAL_DATA[i + 1];
     const rangeLabel = secondIssue
-      ? `Fichas de Prueba Manual y Capturas: Issue #${firstIssue.number} e Issue #${secondIssue.number}`
-      : `Ficha de Prueba Manual y Captura: Issue #${firstIssue.number}`;
+      ? `Capturas Reales del Frontend y Pasos de Prueba: Issue #${firstIssue.number} e Issue #${secondIssue.number}`
+      : `Captura Real del Frontend y Pasos de Prueba: Issue #${firstIssue.number}`;
 
     drawPageHeader(doc, rangeLabel);
 
     const drawSingleIssueBlock = (issue: IssueManualEntry, startY: number): void => {
-      // Contenedor exterior de la ficha
+      // Contenedor exterior de la ficha (186mm ancho x 129mm alto)
       doc.setFillColor(255, 255, 255);
       doc.setDrawColor(223, 209, 184);
       doc.setLineWidth(0.4);
-      doc.roundedRect(12, startY, 186, 127, 3, 3, "FD");
+      doc.roundedRect(12, startY, 186, 129, 3, 3, "FD");
 
       // Cabecera de la ficha
       doc.setFillColor(91, 42, 94);
-      doc.roundedRect(12, startY, 186, 9, 3, 3, "F");
-      doc.rect(12, startY + 5, 186, 4, "F");
+      doc.roundedRect(12, startY, 186, 8.0, 3, 3, "F");
+      doc.rect(12, startY + 4.5, 186, 3.5, "F");
 
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
+      doc.setFontSize(8.5);
       doc.setTextColor(255, 255, 255);
-      doc.text(`ISSUE #${issue.number}: ${issue.title.toUpperCase()}`, 15, startY + 6);
+      doc.text(`ISSUE #${issue.number}: ${issue.title.toUpperCase()}`, 15, startY + 5.4);
 
       // Sub-barra de metadatos (Rol + Ruta en la App)
       doc.setFillColor(244, 236, 245);
-      doc.rect(12.2, startY + 9, 185.6, 6.5, "F");
+      doc.rect(12.2, startY + 8.0, 185.6, 5.5, "F");
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(7.2);
+      doc.setFontSize(6.8);
       doc.setTextColor(91, 42, 94);
-      doc.text(`Rol de prueba: ${issue.role}`, 15, startY + 13.5);
+      doc.text(`Rol: ${issue.role}`, 15, startY + 11.7);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(51, 48, 42);
-      doc.text(`Ubicación en la App: ${issue.screenPath}`, 88, startY + 13.5);
+      doc.text(`Ubicacion: ${issue.screenPath}`, 82, startY + 11.7);
 
-      // Problema y Solución
-      let curY = startY + 19.5;
+      // Problema y Solucion en la parte superior
+      let curY = startY + 16.8;
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(7.5);
-      doc.setTextColor(198, 40, 40);
-      doc.text("Problema reportado:", 15, curY);
+      doc.setFontSize(6.9);
+      doc.setTextColor(190, 40, 40);
+      doc.text("Problema:", 15, curY);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(51, 48, 42);
-      const probLines = doc.splitTextToSize(issue.problemSummary, 148);
-      doc.text(probLines, 43, curY);
-      curY += Math.max(probLines.length * 3.6, 4.2) + 1;
+      const probLines = doc.splitTextToSize(issue.problemSummary, 156);
+      doc.text(probLines, 29, curY);
+      curY += Math.max(probLines.length * 3.1, 3.4) + 0.6;
 
       doc.setFont("helvetica", "bold");
       doc.setTextColor(10, 107, 96);
-      doc.text("Solución aplicada:", 15, curY);
+      doc.text("Solucion:", 15, curY);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(51, 48, 42);
-      const solLines = doc.splitTextToSize(issue.solutionSummary, 148);
-      doc.text(solLines, 43, curY);
-      curY += Math.max(solLines.length * 3.6, 4.2) + 2;
+      const solLines = doc.splitTextToSize(issue.solutionSummary, 156);
+      doc.text(solLines, 29, curY);
 
-      // Captura visual comparativa (Antes vs Después)
-      const capY = startY + 37.5;
-      drawIssueVisualCapture(doc, issue, 15, capY, 180, 40);
+      // =====================================================================
+      // ZONA PRINCIPAL DIVIDIDA (startY + 30.5mm hasta startY + 126.5mm -> 96mm)
+      // Izquierda (71mm): Antes + Pasos Numerados + Resultado Esperado
+      // Derecha (108mm): CAPTURA DE PANTALLA REAL DEL FRONTEND EN ALTA RESOLUCION
+      // =====================================================================
+      const bodyTopY = startY + 30.5;
+      const leftColX = 14.5;
+      const leftColW = 70.5;
+      const rightColX = 87.5;
+      const rightColW = 108.0;
 
-      // Pasos numerados para probar manualmente
-      let stepsY = capY + 43.5;
+      // 1. Recuadro compacto "ANTES (Problema reportado)"
+      doc.setFillColor(253, 244, 244);
+      doc.setDrawColor(225, 165, 165);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(leftColX, bodyTopY, leftColW, 13.5, 1.8, 1.8, "FD");
+      drawVectorCrossIcon(doc, leftColX + 3.2, bodyTopY + 3.6, 1.4, [190, 40, 40]);
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(7.8);
-      doc.setTextColor(91, 42, 94);
-      doc.text("PASOS PARA PROBAR MANUALMENTE:", 15, stepsY);
-      stepsY += 4;
-
+      doc.setFontSize(6.3);
+      doc.setTextColor(185, 35, 35);
+      doc.text("ANTES (PROBLEMA EN GITHUB):", leftColX + 5.8, bodyTopY + 4.3);
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(7.3);
+      doc.setFontSize(6.2);
+      doc.setTextColor(90, 40, 40);
+      const befLines = doc.splitTextToSize(issue.beforeCaption, leftColW - 5);
+      doc.text(befLines, leftColX + 2.5, bodyTopY + 8.2);
+
+      // 2. Recuadro de "PASOS PARA PROBAR MANUALMENTE"
+      const stepsBoxY = bodyTopY + 15.2;
+      const stepsBoxH = 56.5;
+      doc.setFillColor(250, 244, 234);
+      doc.setDrawColor(234, 220, 198);
+      doc.roundedRect(leftColX, stepsBoxY, leftColW, stepsBoxH, 1.8, 1.8, "FD");
+
+      doc.setFillColor(91, 42, 94);
+      doc.roundedRect(leftColX, stepsBoxY, leftColW, 5.5, 1.8, 1.8, "F");
+      doc.rect(leftColX, stepsBoxY + 3, leftColW, 2.5, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(6.3);
+      doc.setTextColor(255, 255, 255);
+      doc.text("PASOS PARA PROBAR MANUALMENTE:", leftColX + 2.5, stepsBoxY + 3.8);
+
+      let sY = stepsBoxY + 9.0;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(6.4);
       doc.setTextColor(51, 48, 42);
       for (const step of issue.steps) {
-        const lines = doc.splitTextToSize(step, 178);
-        doc.text(lines, 16, stepsY);
-        stepsY += lines.length * 3.5 + 0.8;
+        const sLines = doc.splitTextToSize(step, leftColW - 5);
+        doc.text(sLines, leftColX + 2.5, sY);
+        sY += sLines.length * 3.15 + 1.4;
       }
 
-      // Resultado esperado
-      const resY = startY + 114.5;
+      // 3. Recuadro de "RESULTADO ESPERADO"
+      const expBoxY = stepsBoxY + stepsBoxH + 1.8;
+      const expBoxH = 21.5;
       doc.setFillColor(227, 241, 238);
       doc.setDrawColor(12, 129, 116);
-      doc.roundedRect(15, resY, 180, 9.5, 2, 2, "FD");
+      doc.setLineWidth(0.35);
+      doc.roundedRect(leftColX, expBoxY, leftColW, expBoxH, 1.8, 1.8, "FD");
+      drawVectorCheckIcon(doc, leftColX + 3.5, expBoxY + 3.8, 1.5);
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(7.2);
+      doc.setFontSize(6.3);
       doc.setTextColor(10, 107, 96);
-      doc.text("RESULTADO ESPERADO:", 18, resY + 4.2);
+      doc.text("RESULTADO ESPERADO:", leftColX + 6.2, expBoxY + 4.5);
       doc.setFont("helvetica", "normal");
-      doc.setTextColor(51, 48, 42);
-      const expLines = doc.splitTextToSize(issue.expectedResult, 142);
-      doc.text(expLines, 50, resY + 4.2);
+      doc.setFontSize(6.3);
+      doc.setTextColor(35, 55, 50);
+      const expLines = doc.splitTextToSize(issue.expectedResult, leftColW - 5);
+      doc.text(expLines, leftColX + 2.5, expBoxY + 8.8);
+
+      // =====================================================================
+      // 4. PANEL DERECHO: CAPTURA DE PANTALLA REAL DEL FRONTEND (JPEG)
+      // =====================================================================
+      const totalRightH = 95.0;
+      doc.setFillColor(244, 247, 246);
+      doc.setDrawColor(12, 129, 116);
+      doc.setLineWidth(0.45);
+      doc.roundedRect(rightColX, bodyTopY, rightColW, totalRightH, 2.2, 2.2, "FD");
+
+      // Barra superior verde de la captura real
+      doc.setFillColor(12, 129, 116);
+      doc.roundedRect(rightColX, bodyTopY, rightColW, 6.0, 2.2, 2.2, "F");
+      doc.rect(rightColX, bodyTopY + 3, rightColW, 3.0, "F");
+      drawVectorCheckIcon(doc, rightColX + 3.5, bodyTopY + 3.0, 1.5, [8, 92, 82]);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(6.2);
+      doc.setTextColor(255, 255, 255);
+      doc.text(issue.afterCaption.toUpperCase(), rightColX + 6.5, bodyTopY + 4.0);
+
+      const screenshotDataUri = REAL_ISSUE_SCREENSHOTS[issue.number];
+      if (screenshotDataUri) {
+        if (issue.isMobileCapture) {
+          // Captura movil real (410 x 760 -> ratio 0.5395): alto 84mm -> ancho 45.3mm
+          const imgH = 84.5;
+          const imgW = 45.6;
+          const imgX = rightColX + 6;
+          const imgY = bodyTopY + 8.0;
+
+          // Marco de dispositivo celular alrededor de la captura real
+          doc.setFillColor(35, 33, 30);
+          doc.roundedRect(imgX - 1.5, imgY - 1.5, imgW + 3, imgH + 3, 2.5, 2.5, "F");
+          doc.addImage(screenshotDataUri, "JPEG", imgX, imgY, imgW, imgH);
+
+          // Leyenda explicativa al costado derecho de la captura movil
+          const sideX = imgX + imgW + 5;
+          const sideW = rightColW - (imgW + 14);
+          doc.setFillColor(255, 255, 255);
+          doc.setDrawColor(210, 228, 224);
+          doc.roundedRect(sideX, imgY + 4, sideW, 76, 2, 2, "FD");
+
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(6.8);
+          doc.setTextColor(10, 107, 96);
+          doc.text("VISTA MOVIL REAL", sideX + 3, imgY + 11);
+          doc.setFontSize(6.2);
+          doc.setTextColor(91, 42, 94);
+          doc.text("(410 x 760 px - APK / Web)", sideX + 3, imgY + 15.5);
+
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(6.2);
+          doc.setTextColor(51, 48, 42);
+          const mobileNote =
+            issue.number === 41
+              ? "La captura real izquierda muestra la pantalla 'Actualizar datos' en resolucion movil. Los contadores de Gestaciones (2), Cesareas (0) y Abortos (0) muestran tanto el resumen superior como los botones '-' y '+' con el numero central claramente visible."
+              : "La captura real izquierda muestra la pantalla de Chat de la Gestante en resolucion movil. Al tocar la caja de texto inferior, KeyboardAvoidingView mantiene el campo de mensaje y el boton de enviar por encima del borde inferior.";
+          const noteLines = doc.splitTextToSize(mobileNote, sideW - 6);
+          doc.text(noteLines, sideX + 3, imgY + 22);
+        } else {
+          // Captura escritorio real (1180 x 740 -> ratio 1.5946): ancho 104mm -> alto 65.2mm
+          const imgW = 104.0;
+          const imgH = 65.2;
+          const imgX = rightColX + 2.0;
+          const imgY = bodyTopY + 7.8;
+
+          // Sombra/borde alrededor de la captura real
+          doc.setFillColor(255, 255, 255);
+          doc.setDrawColor(200, 215, 212);
+          doc.setLineWidth(0.3);
+          doc.rect(imgX - 0.5, imgY - 0.5, imgW + 1, imgH + 1, "FD");
+          doc.addImage(screenshotDataUri, "JPEG", imgX, imgY, imgW, imgH);
+
+          // Pie descriptivo de la captura real
+          const capFootY = imgY + imgH + 2.2;
+          doc.setFillColor(255, 255, 255);
+          doc.setDrawColor(215, 230, 226);
+          doc.roundedRect(imgX, capFootY, imgW, 17.5, 1.5, 1.5, "FD");
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(6.2);
+          doc.setTextColor(91, 42, 94);
+          doc.text(
+            `GUIA VISUAL DE LA CAPTURA REAL (ISSUE #${issue.number}):`,
+            imgX + 2.5,
+            capFootY + 4.5,
+          );
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(6.0);
+          doc.setTextColor(51, 48, 42);
+          const footDesc = doc.splitTextToSize(
+            `Los recuadros rojos con circulos numerados en la captura superior corresponden a la interfaz real de VitMaterna en '${issue.screenPath}'. Siga los pasos del panel izquierdo para reproducir la validacion.`,
+            imgW - 5,
+          );
+          doc.text(footDesc, imgX + 2.5, capFootY + 8.8);
+        }
+      }
     };
 
-    drawSingleIssueBlock(firstIssue, 20);
+    drawSingleIssueBlock(firstIssue, 19);
     if (secondIssue) {
       drawSingleIssueBlock(secondIssue, 152);
     }
   }
 
-  // Numerar todas las páginas
+  // Numerar todas las paginas
   const totalPages = doc.getNumberOfPages();
   for (let p = 1; p <= totalPages; p++) {
     doc.setPage(p);
@@ -1103,7 +782,7 @@ export function generateManualTestingPdfDoc(): jsPDF {
 
 /**
  * Descarga o comparte el PDF del Manual de Pruebas Manuales (Issues #37 al #50)
- * tanto en navegador Web como en dispositivos móviles (Expo / APK Android).
+ * tanto en navegador Web como en dispositivos moviles (Expo / APK Android).
  */
 export async function exportManualTestingPdf(): Promise<void> {
   const fileName = "Manual_Pruebas_Issues_37_al_50_VitMaterna.pdf";
@@ -1129,7 +808,7 @@ export async function exportManualTestingPdf(): Promise<void> {
   if (await Sharing.isAvailableAsync()) {
     await Sharing.shareAsync(dest, {
       mimeType: "application/pdf",
-      dialogTitle: "Manual de Pruebas Manuales — Issues #37 al #50 (PDF)",
+      dialogTitle: "Manual de Pruebas Manuales - Issues #37 al #50 (PDF)",
       UTI: "com.adobe.pdf",
     });
   }

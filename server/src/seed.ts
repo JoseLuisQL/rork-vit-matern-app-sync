@@ -249,6 +249,16 @@ function buildUsers(): SeedUser[] {
       createdAtISO,
     },
     {
+      dni: "12121212",
+      password: "Test@1234",
+      role: "obstetra",
+      firstName: "Marco",
+      lastName: "Huamán Quispe",
+      active: true,
+      phone: "983 444 555",
+      createdAtISO,
+    },
+    {
       dni: "33333333",
       password: "Test@1234",
       role: "gestante",

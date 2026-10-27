@@ -28,7 +28,14 @@ function ensureWebBuild(): void {
     });
   }
   if (fs.existsSync(indexHtml)) {
-    const html = fs.readFileSync(indexHtml, "utf-8");
+    let html = fs.readFileSync(indexHtml, "utf-8");
+    const webJsDir = path.join(DIST_DIR, "_expo", "static", "js", "web");
+    if (fs.existsSync(webJsDir)) {
+      const entryFile = fs.readdirSync(webJsDir).find((f) => f.startsWith("entry-") && f.endsWith(".js"));
+      if (entryFile) {
+        html = html.replace(/\/_expo\/static\/js\/web\/entry-[a-f0-9]+\.js/g, `/_expo/static/js/web/${entryFile}`);
+      }
+    }
     if (!html.includes('property="og:title"')) {
       const desc =
         "Plataforma digital de salud prenatal para gestantes de zonas rurales andinas (C.S. Talavera, Andahuaylas) con seguimiento de controles prenatales, suplementación, alertas clínicas y modo offline-first.";
@@ -38,8 +45,9 @@ function ensureWebBuild(): void {
         `<meta property="og:title" content="VitMaterna" />`,
         `<meta property="og:description" content="${desc}" />`,
       ].join("\n    ");
-      fs.writeFileSync(indexHtml, html.replace("<title>VitMaterna</title>", metaTags), "utf-8");
+      html = html.replace("<title>VitMaterna</title>", metaTags);
     }
+    fs.writeFileSync(indexHtml, html, "utf-8");
   }
 }
 
