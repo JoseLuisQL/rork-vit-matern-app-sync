@@ -14,6 +14,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { gShadow, gfonts, gwarm, semantic, spacing, withAlpha } from "@/constants/theme";
@@ -33,6 +34,7 @@ export function EditProfileModal({
   onClose,
   accentColor = gwarm.teal,
 }: EditProfileModalProps): React.ReactElement | null {
+  const { height: windowHeight } = useWindowDimensions();
   const { user, online, updateProfile } = useApp();
   const { show: showToast } = useToast();
 
@@ -103,6 +105,8 @@ export function EditProfileModal({
 
   if (!visible || !user) return null;
 
+  const maxModalHeight = Math.min(Math.max(Math.round(windowHeight * 0.88), 360), 680);
+
   return (
     <Modal
       visible={visible}
@@ -115,7 +119,7 @@ export function EditProfileModal({
         style={styles.backdrop}
       >
         <Pressable style={styles.backdropPress} onPress={onClose} />
-        <View style={styles.card}>
+        <View style={[styles.card, { maxHeight: maxModalHeight }]}>
           <View style={styles.header}>
             <View style={styles.headerTitleWrap}>
               <View style={[styles.headerIconWrap, { backgroundColor: withAlpha(accentColor, 0.12) }]}>
@@ -138,7 +142,8 @@ export function EditProfileModal({
             style={styles.scroll}
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled
+            showsVerticalScrollIndicator
           >
             {/* DNI fijo */}
             <View style={styles.fieldBlock}>
@@ -312,7 +317,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   scroll: {
-    flexGrow: 0,
+    flexShrink: 1,
+    minHeight: 0,
+    ...Platform.select({
+      web: {
+        overflowY: "auto" as any,
+        WebkitOverflowScrolling: "touch" as any,
+      },
+    }),
   },
   scrollContent: {
     padding: 20,

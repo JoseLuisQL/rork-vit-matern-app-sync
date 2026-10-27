@@ -18,17 +18,19 @@ import {
 import React, { useMemo, useState } from "react";
 import {
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Switch,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { CATEGORY_ILU, GICON } from "@/constants/illustrations";
 import { gShadow, gfonts, gwarm, warmBlue, warmPlum, withAlpha } from "@/constants/theme";
 import { useApp, useArticleAssignments, useArticles } from "@/providers/AppProvider";
-import type { Article, ArticleMediaType } from "@/types";
+import type { ArticleMediaType } from "@/types";
 import { AppButton } from "@/components/AppButton";
 import { EmptyState } from "@/components/EmptyState";
 import { Illustration } from "@/components/gestante/Illustration";
@@ -63,6 +65,7 @@ export function AssignArticlesModal({
   patientName,
   onClose,
 }: AssignArticlesModalProps): React.ReactElement | null {
+  const { height: windowHeight } = useWindowDimensions();
   const articles = useArticles();
   const assignments = useArticleAssignments();
   const { assignArticle, assignAllArticles } = useApp();
@@ -134,6 +137,8 @@ export function AssignArticlesModal({
 
   if (!visible) return null;
 
+  const modalHeight = Math.min(Math.max(Math.round(windowHeight * 0.86), 360), 740);
+
   return (
     <Modal
       visible={visible}
@@ -143,8 +148,8 @@ export function AssignArticlesModal({
     >
       <View style={styles.backdrop}>
         <Pressable style={styles.backdropPress} onPress={onClose} />
-        <View style={styles.card}>
-          {/* Header */}
+        <View style={[styles.card, { height: modalHeight, maxHeight: modalHeight }]}>
+          {/* Header fijo */}
           <View style={styles.header}>
             <View style={styles.headerTitleWrap}>
               <View style={styles.headerIconWrap}>
@@ -154,7 +159,7 @@ export function AssignArticlesModal({
                 <Text style={styles.title}>Asignar Contenidos Educativos</Text>
                 <Text style={styles.subtitle} numberOfLines={1}>
                   Paciente: {patientName} · {assignedArticleIds.size} de{" "}
-                  {activeArticles.length} recursos asignados (Lecturas, Videos, PDFs, Imágenes)
+                  {activeArticles.length} recursos asignados
                 </Text>
               </View>
             </View>
@@ -169,209 +174,221 @@ export function AssignArticlesModal({
             </Pressable>
           </View>
 
-          {/* Quick Actions & Filters */}
-          <View style={styles.toolbar}>
-            <View style={styles.toolbarTopRow}>
-              <Pressable
-                onPress={handleToggleAll}
-                style={[
-                  styles.selectAllBtn,
-                  allAssigned && styles.selectAllBtnActive,
-                ]}
-                testID="btn-toggle-all-articles"
-              >
-                {allAssigned ? (
-                  <CheckCheck size={16} color={warmBlue.main} />
-                ) : (
-                  <Square size={16} color={gwarm.inkSoft} />
-                )}
-                <Text
-                  style={[
-                    styles.selectAllText,
-                    allAssigned && styles.selectAllTextActive,
-                  ]}
-                >
-                  {allAssigned ? "Desasignar todos" : "Asignar todos"}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => setEditorVisible(true)}
-                style={styles.newMaterialBtn}
-                testID="btn-agregar-material-educativo"
-              >
-                <Plus size={15} color="#FFFFFF" />
-                <Text style={styles.newMaterialBtnText}>
-                  Agregar material (Video, PDF, Imagen)
-                </Text>
-              </Pressable>
-            </View>
-
-            {/* Filtro por Formato (Todos, Lecturas, Videos, PDFs, Imágenes) */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.catScroll}
-            >
-              {MEDIA_FILTERS.map((mf) => {
-                const active = selectedMedia === mf.key;
-                return (
-                  <Pressable
-                    key={mf.key}
-                    onPress={() => setSelectedMedia(mf.key)}
-                    style={[styles.catChip, active && styles.catChipActive]}
-                    testID={`filtro-media-${mf.key}`}
-                  >
-                    <Text
-                      style={[
-                        styles.catChipText,
-                        active && styles.catChipTextActive,
-                      ]}
-                    >
-                      {mf.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-
-            {/* Categorías temáticas */}
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.catScroll}
-            >
-              {categories.map((cat) => {
-                const active = selectedCategory === cat;
-                return (
-                  <Pressable
-                    key={cat}
-                    onPress={() => setSelectedCategory(cat)}
-                    style={[styles.catChip, active && styles.catChipActive]}
-                  >
-                    <Text
-                      style={[
-                        styles.catChipText,
-                        active && styles.catChipTextActive,
-                      ]}
-                    >
-                      {cat}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </View>
-
-          {/* List of articles */}
+          {/* Cuerpo desplazable: incluye barra de herramientas, filtros y lista de recursos */}
           <ScrollView
             style={styles.scroll}
             contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
+            showsVerticalScrollIndicator
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="handled"
           >
-            {filteredArticles.length === 0 ? (
-              <EmptyState
-                icon={BookOpen}
-                title="No hay recursos en este filtro"
-                text="Prueba con otra categoría o agrega un nuevo video, PDF o imagen."
-              />
-            ) : (
-              filteredArticles.map((art) => {
-                const isAssigned = assignedArticleIds.has(art.id);
-                const mType: ArticleMediaType = art.mediaType ?? "lectura";
-                const mBadge = MEDIA_BADGE[mType] ?? MEDIA_BADGE.lectura;
-                const linkCount = art.links?.length ?? 0;
-                return (
-                  <Pressable
-                    key={art.id}
-                    onPress={() => handleToggle(art.id)}
+            {/* Quick Actions & Filters */}
+            <View style={styles.toolbar}>
+              <View style={styles.toolbarTopRow}>
+                <Pressable
+                  onPress={handleToggleAll}
+                  style={[
+                    styles.selectAllBtn,
+                    allAssigned && styles.selectAllBtnActive,
+                  ]}
+                  testID="btn-toggle-all-articles"
+                >
+                  {allAssigned ? (
+                    <CheckCheck size={16} color={warmBlue.main} />
+                  ) : (
+                    <Square size={16} color={gwarm.inkSoft} />
+                  )}
+                  <Text
                     style={[
-                      styles.articleItem,
-                      isAssigned && styles.articleItemAssigned,
+                      styles.selectAllText,
+                      allAssigned && styles.selectAllTextActive,
                     ]}
-                    testID={`toggle-articulo-${art.id}`}
                   >
-                    <View style={styles.iluWrap}>
-                      {art.imageUrl ? (
-                        <Image
-                          source={{ uri: art.imageUrl }}
-                          style={styles.thumbImage}
-                          contentFit="cover"
-                        />
-                      ) : mType === "video" ? (
-                        <Video size={24} color={gwarm.rose} />
-                      ) : mType === "pdf" ? (
-                        <FileText size={24} color={warmPlum.main} />
-                      ) : mType === "imagen" ? (
-                        <ImageIcon size={24} color={gwarm.tealDeep} />
-                      ) : (
-                        <Illustration
-                          source={CATEGORY_ILU[art.category] ?? GICON.libro}
-                          width={38}
-                          height={38}
-                        />
-                      )}
-                    </View>
+                    {allAssigned ? "Desasignar todos" : "Asignar todos"}
+                  </Text>
+                </Pressable>
 
-                    <View style={styles.articleInfo}>
-                      <View style={styles.metaRow}>
-                        <View style={[styles.catBadge, { backgroundColor: mBadge.bg }]}>
-                          <Text style={[styles.catBadgeText, { color: mBadge.color }]}>
-                            {mBadge.label}
-                          </Text>
-                        </View>
-                        <View style={styles.catBadge}>
-                          <Text style={styles.catBadgeText}>{art.category}</Text>
-                        </View>
-                        <View style={styles.timeBadge}>
-                          <Clock size={11} color={gwarm.inkFaint} />
-                          <Text style={styles.timeBadgeText}>
-                            {art.minutes || 3} min
-                          </Text>
-                        </View>
-                        {linkCount > 0 ? (
-                          <View style={styles.timeBadge}>
-                            <LinkIcon size={11} color={gwarm.tealDeep} />
-                            <Text style={[styles.timeBadgeText, { color: gwarm.tealDeep }]}>
-                              {linkCount} {linkCount === 1 ? "recurso" : "recursos"}
-                            </Text>
-                          </View>
-                        ) : null}
-                      </View>
-                      <Text style={styles.articleTitle} numberOfLines={2}>
-                        {art.title}
-                      </Text>
-                      <Text style={styles.articleSummary} numberOfLines={2}>
-                        {art.summary}
-                      </Text>
-                    </View>
+                <Pressable
+                  onPress={() => setEditorVisible(true)}
+                  style={styles.newMaterialBtn}
+                  testID="btn-agregar-material-educativo"
+                >
+                  <Plus size={15} color="#FFFFFF" />
+                  <Text style={styles.newMaterialBtnText}>
+                    Agregar material (Video, PDF, Imagen)
+                  </Text>
+                </Pressable>
+              </View>
 
-                    <View style={styles.switchCol}>
-                      <Switch
-                        value={isAssigned}
-                        onValueChange={() => handleToggle(art.id)}
-                        trackColor={{
-                          true: warmBlue.main,
-                          false: gwarm.borderStrong,
-                        }}
-                        thumbColor="#FFFFFF"
-                      />
+              {/* Filtro por Formato (Todos, Lecturas, Videos, PDFs, Imágenes) */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                nestedScrollEnabled
+                contentContainerStyle={styles.catScroll}
+              >
+                {MEDIA_FILTERS.map((mf) => {
+                  const active = selectedMedia === mf.key;
+                  return (
+                    <Pressable
+                      key={mf.key}
+                      onPress={() => setSelectedMedia(mf.key)}
+                      style={[styles.catChip, active && styles.catChipActive]}
+                      testID={`filtro-media-${mf.key}`}
+                    >
                       <Text
                         style={[
-                          styles.switchStatusText,
-                          isAssigned && { color: warmBlue.main, fontWeight: "600" },
+                          styles.catChipText,
+                          active && styles.catChipTextActive,
                         ]}
                       >
-                        {isAssigned ? "Asignado" : "No asignado"}
+                        {mf.label}
                       </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+
+              {/* Categorías temáticas */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                nestedScrollEnabled
+                contentContainerStyle={styles.catScroll}
+              >
+                {categories.map((cat) => {
+                  const active = selectedCategory === cat;
+                  return (
+                    <Pressable
+                      key={cat}
+                      onPress={() => setSelectedCategory(cat)}
+                      style={[styles.catChip, active && styles.catChipActive]}
+                    >
+                      <Text
+                        style={[
+                          styles.catChipText,
+                          active && styles.catChipTextActive,
+                        ]}
+                      >
+                        {cat}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            {/* Lista de artículos */}
+            <View style={styles.listSection}>
+              {filteredArticles.length === 0 ? (
+                <EmptyState
+                  icon={BookOpen}
+                  title="No hay recursos en este filtro"
+                  text="Prueba con otra categoría o agrega un nuevo video, PDF o imagen."
+                />
+              ) : (
+                filteredArticles.map((art) => {
+                  const isAssigned = assignedArticleIds.has(art.id);
+                  const mType: ArticleMediaType = art.mediaType ?? "lectura";
+                  const mBadge = MEDIA_BADGE[mType] ?? MEDIA_BADGE.lectura;
+                  const linkCount = art.links?.length ?? 0;
+                  return (
+                    <View
+                      key={art.id}
+                      style={[
+                        styles.articleItem,
+                        isAssigned && styles.articleItemAssigned,
+                      ]}
+                      testID={`toggle-articulo-${art.id}`}
+                    >
+                      <View style={styles.iluWrap}>
+                        {art.imageUrl ? (
+                          <Image
+                            source={{ uri: art.imageUrl }}
+                            style={styles.thumbImage}
+                            contentFit="cover"
+                          />
+                        ) : mType === "video" ? (
+                          <Video size={24} color={gwarm.rose} />
+                        ) : mType === "pdf" ? (
+                          <FileText size={24} color={warmPlum.main} />
+                        ) : mType === "imagen" ? (
+                          <ImageIcon size={24} color={gwarm.tealDeep} />
+                        ) : (
+                          <Illustration
+                            source={CATEGORY_ILU[art.category] ?? GICON.libro}
+                            width={38}
+                            height={38}
+                          />
+                        )}
+                      </View>
+
+                      <Pressable
+                        onPress={() => handleToggle(art.id)}
+                        style={styles.articleInfo}
+                      >
+                        <View style={styles.metaRow}>
+                          <View style={[styles.catBadge, { backgroundColor: mBadge.bg }]}>
+                            <Text style={[styles.catBadgeText, { color: mBadge.color }]}>
+                              {mBadge.label}
+                            </Text>
+                          </View>
+                          <View style={styles.catBadge}>
+                            <Text style={styles.catBadgeText}>{art.category}</Text>
+                          </View>
+                          <View style={styles.timeBadge}>
+                            <Clock size={11} color={gwarm.inkFaint} />
+                            <Text style={styles.timeBadgeText}>
+                              {art.minutes || 3} min
+                            </Text>
+                          </View>
+                          {linkCount > 0 ? (
+                            <View style={styles.timeBadge}>
+                              <LinkIcon size={11} color={gwarm.tealDeep} />
+                              <Text style={[styles.timeBadgeText, { color: gwarm.tealDeep }]}>
+                                {linkCount} {linkCount === 1 ? "recurso" : "recursos"}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </View>
+                        <Text style={styles.articleTitle} numberOfLines={2}>
+                          {art.title}
+                        </Text>
+                        <Text style={styles.articleSummary} numberOfLines={2}>
+                          {art.summary}
+                        </Text>
+                      </Pressable>
+
+                      <Pressable
+                        onPress={() => handleToggle(art.id)}
+                        style={styles.switchCol}
+                      >
+                        <Switch
+                          value={isAssigned}
+                          onValueChange={() => handleToggle(art.id)}
+                          trackColor={{
+                            true: warmBlue.main,
+                            false: gwarm.borderStrong,
+                          }}
+                          thumbColor="#FFFFFF"
+                        />
+                        <Text
+                          style={[
+                            styles.switchStatusText,
+                            isAssigned && { color: warmBlue.main, fontWeight: "600" },
+                          ]}
+                        >
+                          {isAssigned ? "Asignado" : "No asignado"}
+                        </Text>
+                      </Pressable>
                     </View>
-                  </Pressable>
-                );
-              })
-            )}
+                  );
+                })
+              )}
+            </View>
           </ScrollView>
 
-          {/* Footer */}
+          {/* Footer fijo siempre visible */}
           <View style={styles.footer}>
             <AppButton
               title="Listo"
@@ -398,7 +415,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(28, 25, 23, 0.5)",
     alignItems: "center",
     justifyContent: "center",
-    padding: 16,
+    padding: 12,
   },
   backdropPress: {
     ...StyleSheet.absoluteFillObject,
@@ -406,9 +423,7 @@ const styles = StyleSheet.create({
   card: {
     width: "100%",
     maxWidth: 640,
-    maxHeight: "90%",
-    minHeight: 420,
-    flexShrink: 1,
+    flexDirection: "column",
     backgroundColor: gwarm.surface,
     borderRadius: 24,
     borderWidth: 1,
@@ -421,11 +436,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: gwarm.border,
     backgroundColor: gwarm.surfaceSoft,
+    flexShrink: 0,
   },
   headerTitleWrap: {
     flexDirection: "row",
@@ -443,21 +459,21 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: gfonts.hand,
-    fontSize: 19,
-    lineHeight: 24,
+    fontSize: 18.5,
+    lineHeight: 23,
     color: gwarm.ink,
   },
   subtitle: {
     fontFamily: gfonts.handBody,
-    fontSize: 13,
-    lineHeight: 17,
+    fontSize: 12.5,
+    lineHeight: 16,
     color: gwarm.inkSoft,
   },
   closeBtn: {
     padding: 6,
     borderRadius: 8,
-    minWidth: 44,
-    minHeight: 44,
+    minWidth: 40,
+    minHeight: 40,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -466,7 +482,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: gwarm.border,
-    gap: 10,
+    gap: 8,
   },
   toolbarTopRow: {
     flexDirection: "row",
@@ -483,7 +499,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 10,
     backgroundColor: warmBlue.main,
-    minHeight: 40,
+    minHeight: 38,
   },
   newMaterialBtnText: {
     fontFamily: gfonts.hand,
@@ -495,13 +511,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 7,
     borderRadius: 10,
     backgroundColor: gwarm.surfaceSoft,
     borderWidth: 1,
     borderColor: gwarm.border,
     alignSelf: "flex-start",
-    minHeight: 44,
+    minHeight: 38,
   },
   selectAllBtnActive: {
     borderColor: withAlpha(warmBlue.main, 0.4),
@@ -526,7 +542,7 @@ const styles = StyleSheet.create({
     backgroundColor: gwarm.surfaceSoft,
     borderWidth: 1,
     borderColor: gwarm.border,
-    minHeight: 44,
+    minHeight: 38,
     justifyContent: "center",
   },
   catChipActive: {
@@ -542,11 +558,19 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
   },
   scroll: {
-    flexGrow: 1,
-    flexShrink: 1,
-    minHeight: 220,
+    flex: 1,
+    minHeight: 0,
+    ...Platform.select({
+      web: {
+        overflowY: "auto" as any,
+        WebkitOverflowScrolling: "touch" as any,
+      },
+    }),
   },
   scrollContent: {
+    paddingBottom: 16,
+  },
+  listSection: {
     padding: 16,
     gap: 10,
   },
@@ -572,6 +596,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
+    flexShrink: 0,
   },
   thumbImage: {
     width: "100%",
@@ -584,6 +609,7 @@ const styles = StyleSheet.create({
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
+    flexWrap: "wrap",
     gap: 6,
   },
   catBadge: {
@@ -623,6 +649,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 4,
     minWidth: 70,
+    flexShrink: 0,
   },
   switchStatusText: {
     fontFamily: gfonts.handBody,
@@ -630,9 +657,11 @@ const styles = StyleSheet.create({
     color: gwarm.inkFaint,
   },
   footer: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderTopWidth: 1,
     borderTopColor: gwarm.border,
     backgroundColor: gwarm.surfaceSoft,
+    flexShrink: 0,
   },
 });

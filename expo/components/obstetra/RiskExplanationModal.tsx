@@ -22,6 +22,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { gfonts, gwarm, risk, warmPlum } from "@/constants/theme";
@@ -49,10 +50,13 @@ export function RiskExplanationModal({
   onClose,
   patient,
 }: RiskExplanationModalProps): React.ReactElement | null {
+  const { height: windowHeight } = useWindowDimensions();
   const { isDesktop, isTablet } = useResponsive();
   const isWide = isDesktop || isTablet;
 
   if (!visible || !patient) return null;
+
+  const modalHeight = Math.min(Math.max(Math.round(windowHeight * 0.86), 360), 740);
 
   const riskPalette = risk[patient.riskLevel];
 
@@ -289,14 +293,14 @@ export function RiskExplanationModal({
       statusBarTranslucent
     >
       <View style={styles.backdrop}>
-        <View style={[styles.modalCard, isWide && styles.modalCardWide]}>
+        <View style={[styles.modalCard, isWide && styles.modalCardWide, { height: modalHeight, maxHeight: modalHeight }]}>
           {/* Cabecera */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <View style={styles.iconWrap}>
                 <HelpCircle size={20} color={warmPlum.main} />
               </View>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.headerTitle}>Evaluación del Riesgo Obstétrico</Text>
                 <Text style={styles.headerSubtitle}>
                   Norma Técnica de Salud MINSA · Semáforo de Riesgo
@@ -316,7 +320,8 @@ export function RiskExplanationModal({
           <ScrollView
             style={styles.scrollArea}
             contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled
+            showsVerticalScrollIndicator
           >
             {/* Tarjeta Resumen del Paciente */}
             <View
@@ -564,6 +569,13 @@ const styles = StyleSheet.create({
   },
   scrollArea: {
     flex: 1,
+    minHeight: 0,
+    ...Platform.select({
+      web: {
+        overflowY: "auto" as any,
+        WebkitOverflowScrolling: "touch" as any,
+      },
+    }),
   },
   scrollContent: {
     padding: 18,

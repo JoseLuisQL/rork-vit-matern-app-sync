@@ -27,6 +27,7 @@ import {
   Switch,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { gShadow, gfonts, gwarm, semantic, spacing, warmPlum, withAlpha } from "@/constants/theme";
@@ -66,6 +67,7 @@ export function ArticleEditorModal({
   article,
   onClose,
 }: ArticleEditorModalProps): React.ReactElement | null {
+  const { height: windowHeight } = useWindowDimensions();
   const { adminSaveArticle, online } = useApp();
   const { show: showToast } = useToast();
 
@@ -259,6 +261,8 @@ export function ArticleEditorModal({
 
   if (!visible) return null;
 
+  const modalHeight = Math.min(Math.max(Math.round(windowHeight * 0.88), 380), 780);
+
   return (
     <Modal
       visible={visible}
@@ -271,14 +275,14 @@ export function ArticleEditorModal({
         style={styles.backdrop}
       >
         <Pressable style={styles.backdropPress} onPress={onClose} />
-        <View style={styles.card}>
+        <View style={[styles.card, { height: modalHeight, maxHeight: modalHeight }]}>
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerTitleWrap}>
               <View style={styles.headerIconWrap}>
                 <BookOpen size={20} color={warmPlum.main} />
               </View>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.title}>
                   {article ? "Editar contenido educativo" : "Nuevo contenido educativo"}
                 </Text>
@@ -303,7 +307,8 @@ export function ArticleEditorModal({
             style={styles.scroll}
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled
+            showsVerticalScrollIndicator
           >
             {/* Título */}
             <View style={styles.fieldBlock}>
@@ -659,7 +664,7 @@ const styles = StyleSheet.create({
   card: {
     width: "100%",
     maxWidth: 680,
-    maxHeight: "92%",
+    flexDirection: "column",
     backgroundColor: gwarm.surface,
     borderRadius: 24,
     borderWidth: 1,
@@ -677,6 +682,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: gwarm.border,
     backgroundColor: gwarm.surfaceSoft,
+    flexShrink: 0,
   },
   headerTitleWrap: {
     flexDirection: "row",
@@ -713,7 +719,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   scroll: {
-    flexGrow: 0,
+    flex: 1,
+    minHeight: 0,
+    ...Platform.select({
+      web: {
+        overflowY: "auto" as any,
+        WebkitOverflowScrolling: "touch" as any,
+      },
+    }),
   },
   scrollContent: {
     padding: 20,
