@@ -3,6 +3,15 @@
     "name": "VitMaterna",
     "slug": "vitmaterna",
     "version": "1.1.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/9c570af3-937c-4d13-a87e-391294f3c3c2",
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "rork-app",

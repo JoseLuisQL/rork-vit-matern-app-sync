@@ -13,7 +13,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
+import * as Updates from "expo-updates";
 import React, { useEffect } from "react";
+import { AppState, Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { initNotifications, setupNotificationListeners } from "@/lib/notifications";
 import { MaintenanceGate } from "@/components/MaintenanceGate";
@@ -27,16 +29,40 @@ const queryClient = new QueryClient();
 
 initNotifications();
 
+async function checkAndApplyOtaUpdate() {
+  if (Platform.OS === "web" || __DEV__) return;
+  try {
+    if (!Updates.isEnabled) return;
+    const update = await Updates.checkForUpdateAsync();
+    if (update.isAvailable) {
+      await Updates.fetchUpdateAsync();
+      await Updates.reloadAsync();
+    }
+  } catch (err) {
+    console.log("[VitMaterna OTA] Verificación de actualización omitida:", err);
+  }
+}
+
 function NotificationResponder() {
   const router = useRouter();
   useEffect(() => {
-    return setupNotificationListeners((route) => {
+    void checkAndApplyOtaUpdate();
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        void checkAndApplyOtaUpdate();
+      }
+    });
+    const unsubscribeNotif = setupNotificationListeners((route) => {
       try {
         router.push(route as any);
       } catch (e) {
         console.warn("[VitMaterna] No se pudo navegar a la ruta de la notificación:", e);
       }
     });
+    return () => {
+      sub.remove();
+      unsubscribeNotif();
+    };
   }, [router]);
   return null;
 }
