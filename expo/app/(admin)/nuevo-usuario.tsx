@@ -154,7 +154,7 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
       showNotice(
         "Usuario creado",
         role === "gestante"
-          ? `${firstName.trim()} ya puede iniciar sesión. El servidor generó su cronograma de controles MINSA.`
+          ? `${firstName.trim()} ya puede iniciar sesión. Sus controles y citas prenatales se programan manualmente desde su ficha.`
           : `${firstName.trim()} ya puede iniciar sesión.`,
       );
       router.back();
@@ -350,7 +350,7 @@ export default function NuevoUsuarioScreen(): React.ReactElement {
                       placeholder="Seleccionar FUM en el calendario"
                       accent={accent.main}
                       isFum={true}
-                      hint="Con la FUM se calculan la edad gestacional, la FPP y los 8 controles."
+                      hint="Con la FUM se calculan automáticamente la edad gestacional y la fecha probable de parto (FPP)."
                       testID="nuevo-fum"
                     />
                     <View style={styles.row2}>

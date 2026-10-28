@@ -108,10 +108,18 @@ export default function ProgramarScreen(): React.ReactElement {
   );
   const [slot, setSlot] = useState<string | null>(null);
   const [customTime, setCustomTime] = useState<string>("");
-  const [motivo, setMotivo] = useState<string>("");
+  const [motivo, setMotivo] = useState<string>(appointment?.motivo ?? "");
+  const [notas, setNotas] = useState<string>(appointment?.notas ?? "");
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [serverFree, setServerFree] = useState<{ day: string; slots: string[] } | null>(null);
+
+  useEffect(() => {
+    if (appointment) {
+      setMotivo((prev) => (prev.trim().length > 0 ? prev : appointment.motivo));
+      setNotas((prev) => (prev.trim().length > 0 ? prev : appointment.notas ?? ""));
+    }
+  }, [appointment]);
 
   const days = useMemo(() => {
     const base = Array.from({ length: 14 }, (_, i) => addDaysToKey(todayKey, i));
@@ -179,6 +187,7 @@ export default function ProgramarScreen(): React.ReactElement {
         dateKey: day,
         time: slot,
         motivo: motivo.trim() || undefined,
+        notas: notas.trim() || undefined,
       });
       router.back();
     } catch (e) {
@@ -194,7 +203,7 @@ export default function ProgramarScreen(): React.ReactElement {
     } finally {
       setSubmitting(false);
     }
-  }, [patientId, slot, schedule, mode, appointment?.id, day, motivo, router]);
+  }, [patientId, slot, schedule, mode, appointment?.id, day, motivo, notas, router]);
 
   return (
     <View style={styles.container}>
@@ -423,15 +432,31 @@ export default function ProgramarScreen(): React.ReactElement {
               </Text>
             </View>
 
-            {mode !== "reprogramar" ? (
+            <Field
+              label="Motivo de la atención (opcional)"
+              value={motivo}
+              onChangeText={setMotivo}
+              onFocus={scrollToFocusedInput}
+              placeholder={
+                mode === "visita"
+                  ? "Ej. Seguimiento en casa, control de presión…"
+                  : "Ej. Control prenatal, ecografía, resultados de laboratorio…"
+              }
+              accent={accent.main}
+              maxLength={240}
+            />
+
+            {mode !== "visita" ? (
               <Field
-                label="Motivo (opcional)"
-                value={motivo}
-                onChangeText={setMotivo}
+                label="Indicaciones o notas adicionales (opcional)"
+                value={notas}
+                onChangeText={setNotas}
                 onFocus={scrollToFocusedInput}
-                placeholder={mode === "visita" ? "Motivo de la visita" : "Motivo de la cita"}
+                placeholder="Ej. Venir en ayunas, traer carné perinatal, muestra de orina…"
                 accent={accent.main}
-                maxLength={120}
+                multiline
+                maxLength={500}
+                hint="La gestante y el personal podrán ver estas indicaciones al abrir el detalle de la cita."
               />
             ) : null}
 

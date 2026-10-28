@@ -12,7 +12,9 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
+  Eye,
   HousePlus,
+  Trash2,
   XCircle,
 } from "lucide-react-native";
 import React, { useCallback, useMemo, useState } from "react";
@@ -21,6 +23,7 @@ import { gfonts, gShadow, gwarm, risk, warmBlue } from "@/constants/theme";
 import { ILU } from "@/constants/illustrations";
 import { useResponsive } from "@/hooks/useResponsive";
 import { avatarUri } from "@/lib/api";
+import { confirmAction } from "@/lib/confirm";
 import { addDaysToKey, capitalize, fechaCorta, fechaLarga } from "@/lib/format";
 import { useApp, usePatients } from "@/providers/AppProvider";
 import type { Appointment, PatientView, Visit } from "@/types";
@@ -31,6 +34,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { Field } from "@/components/Field";
 import { Illustration } from "@/components/gestante/Illustration";
 import { PopIn } from "@/components/gestante/PopIn";
+import { AppointmentDetailModal } from "@/components/obstetra/AppointmentDetailModal";
 import { PressableScale } from "@/components/PressableScale";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { StatusWord } from "@/components/Badges";
@@ -57,6 +61,7 @@ export default function AgendaScreen(): React.ReactElement {
   const [showRequests, setShowRequests] = useState<boolean>(false);
   const [completingVisitId, setCompletingVisitId] = useState<string | null>(null);
   const [visitResult, setVisitResult] = useState<string>("");
+  const [selectedApptId, setSelectedApptId] = useState<string | null>(null);
 
   const day = selectedDay ?? todayKey;
   const days = useMemo(
@@ -85,6 +90,14 @@ export default function AgendaScreen(): React.ReactElement {
   const dayVisits = useMemo(
     () => (view?.visits ?? []).filter((v) => v.dateKey === day),
     [view?.visits, day],
+  );
+
+  const selectedAppt = useMemo(
+    () =>
+      selectedApptId
+        ? (view?.appointments ?? []).find((a) => a.id === selectedApptId) ?? null
+        : null,
+    [view?.appointments, selectedApptId],
   );
 
   const timeline = useMemo<TimelineItem[]>(() => {
@@ -138,6 +151,46 @@ export default function AgendaScreen(): React.ReactElement {
     [dispatch, online, patientName, show],
   );
 
+  const handleDeleteAppointment = useCallback(
+    async (appt: Appointment) => {
+      const ok = await confirmAction({
+        title: "Eliminar cita",
+        message: `¿Seguro que deseas eliminar la cita "${appt.motivo}" de ${patientName(appt.patientId)} del ${fechaCorta(appt.dateKey)} a las ${appt.time}?`,
+        confirmText: "Sí, eliminar",
+        destructive: true,
+      });
+      if (!ok) return;
+      dispatch({ type: "delete_appointment", appointmentId: appt.id });
+      show(
+        online
+          ? "Cita eliminada de la agenda ✓"
+          : "Cita eliminada · se sincronizará con señal",
+        online ? "success" : "info",
+      );
+    },
+    [dispatch, online, patientName, show],
+  );
+
+  const handleDeleteVisit = useCallback(
+    async (visit: Visit) => {
+      const ok = await confirmAction({
+        title: "Eliminar visita domiciliaria",
+        message: `¿Seguro que deseas eliminar la visita de ${patientName(visit.patientId)} del ${fechaCorta(visit.dateKey)} a las ${visit.time}?`,
+        confirmText: "Sí, eliminar",
+        destructive: true,
+      });
+      if (!ok) return;
+      dispatch({ type: "delete_visit", visitId: visit.id });
+      show(
+        online
+          ? "Visita eliminada de la agenda ✓"
+          : "Visita eliminada · se sincronizará con señal",
+        online ? "success" : "info",
+      );
+    },
+    [dispatch, online, patientName, show],
+  );
+
   const saveVisitResult = (visitId: string) => {
     const text = visitResult.trim();
     if (text.length === 0) return;
@@ -156,15 +209,18 @@ export default function AgendaScreen(): React.ReactElement {
     patientId: string,
     subtitle: string,
     rightNode: React.ReactNode,
+    onPressDetail?: () => void,
   ): React.ReactElement => {
     const p = patientOf(patientId);
     return (
       <View style={styles.cardTop}>
         <PressableScale
-          onPress={() =>
-            router.push({ pathname: "/(obstetra)/gestante/[id]", params: { id: patientId } })
+          onPress={
+            onPressDetail ??
+            (() =>
+              router.push({ pathname: "/(obstetra)/gestante/[id]", params: { id: patientId } }))
           }
-          accessibilityLabel={`Ficha de ${patientName(patientId)}`}
+          accessibilityLabel={`Detalle de ${patientName(patientId)}`}
           style={styles.cardPerson}
         >
           <Avatar
@@ -178,7 +234,7 @@ export default function AgendaScreen(): React.ReactElement {
             <Text style={styles.cardName} numberOfLines={1}>
               {patientName(patientId)}
             </Text>
-            <Text style={styles.cardMeta} numberOfLines={1}>
+            <Text style={styles.cardMeta} numberOfLines={2}>
               {subtitle}
             </Text>
           </View>
@@ -347,7 +403,35 @@ export default function AgendaScreen(): React.ReactElement {
                     {!isLast ? <View style={styles.tlLine} /> : null}
                   </View>
                   <View style={styles.tlCard}>
-                    {renderPatientRow(appt.patientId, appt.motivo, <StatusWord estado={appt.estado} />)}
+                    {renderPatientRow(
+                      appt.patientId,
+                      appt.motivo,
+                      <View style={styles.cardRightGroup}>
+                        <StatusWord estado={appt.estado} />
+                        <PressableScale
+                          onPress={() => setSelectedApptId(appt.id)}
+                          accessibilityLabel={`Ver detalle de cita ${appt.motivo}`}
+                          style={styles.iconActionBtn}
+                          testID={`agenda-detalle-${appt.id}`}
+                        >
+                          <Eye size={15} color={accent.main} strokeWidth={2.2} />
+                        </PressableScale>
+                        <PressableScale
+                          onPress={() => void handleDeleteAppointment(appt)}
+                          accessibilityLabel={`Eliminar cita ${appt.motivo}`}
+                          style={[styles.iconActionBtn, styles.iconDeleteBtn]}
+                          testID={`agenda-eliminar-${appt.id}`}
+                        >
+                          <Trash2 size={15} color={gwarm.rose} strokeWidth={2.2} />
+                        </PressableScale>
+                      </View>,
+                      () => setSelectedApptId(appt.id),
+                    )}
+                    {appt.notas ? (
+                      <Text style={styles.notesPreview} numberOfLines={2}>
+                        Nota: {appt.notas}
+                      </Text>
+                    ) : null}
                     {canMark ? (
                       <View style={styles.actionsRow}>
                         <AppButton
@@ -409,11 +493,21 @@ export default function AgendaScreen(): React.ReactElement {
                   {renderPatientRow(
                     visit.patientId,
                     visit.motivo,
-                    <Text
-                      style={[styles.visitState, { color: done ? gwarm.teal : accent.main }]}
-                    >
-                      {done ? "Realizada" : "Pendiente"}
-                    </Text>,
+                    <View style={styles.cardRightGroup}>
+                      <Text
+                        style={[styles.visitState, { color: done ? gwarm.teal : accent.main }]}
+                      >
+                        {done ? "Realizada" : "Pendiente"}
+                      </Text>
+                      <PressableScale
+                        onPress={() => void handleDeleteVisit(visit)}
+                        accessibilityLabel={`Eliminar visita ${visit.motivo}`}
+                        style={[styles.iconActionBtn, styles.iconDeleteBtn]}
+                        testID={`agenda-eliminar-visita-${visit.id}`}
+                      >
+                        <Trash2 size={15} color={gwarm.rose} strokeWidth={2.2} />
+                      </PressableScale>
+                    </View>,
                   )}
                   {done && visit.resultado ? (
                     <Text style={styles.visitResult}>{visit.resultado}</Text>
@@ -518,6 +612,44 @@ export default function AgendaScreen(): React.ReactElement {
           )}
         </WebContainer>
       </ScrollView>
+
+      <AppointmentDetailModal
+        visible={selectedAppt !== null}
+        appointment={selectedAppt}
+        patient={selectedAppt ? patientOf(selectedAppt.patientId) : null}
+        onClose={() => setSelectedApptId(null)}
+        onReschedule={(appt) =>
+          router.push({
+            pathname: "/(obstetra)/programar",
+            params: { mode: "reprogramar", appointmentId: appt.id },
+          })
+        }
+        onMarkStatus={(appt, estado) => markAttendance(appt.id, appt.patientId, estado)}
+        onUpdateDetails={(appt, fields) => {
+          dispatch({
+            type: "update_appointment_details",
+            appointmentId: appt.id,
+            motivo: fields.motivo,
+            notas: fields.notas,
+            lugar: fields.lugar,
+          });
+          show(
+            online
+              ? "Detalles de la cita actualizados ✓"
+              : "Detalles guardados · se sincronizarán con señal",
+            online ? "success" : "info",
+          );
+        }}
+        onDelete={(appt) => {
+          dispatch({ type: "delete_appointment", appointmentId: appt.id });
+          show(
+            online
+              ? "Cita eliminada de la agenda ✓"
+              : "Cita eliminada · se sincronizará con señal",
+            online ? "success" : "info",
+          );
+        }}
+      />
     </View>
   );
 }
@@ -700,6 +832,36 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
+  },
+  cardRightGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flexShrink: 0,
+  },
+  iconActionBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 11,
+    backgroundColor: accent.soft,
+    borderWidth: 1,
+    borderColor: gwarm.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconDeleteBtn: {
+    backgroundColor: gwarm.roseSoft,
+    borderColor: gwarm.redMid,
+  },
+  notesPreview: {
+    fontFamily: gfonts.handBody,
+    fontSize: 12.5,
+    lineHeight: 17,
+    color: gwarm.inkSoft,
+    backgroundColor: gwarm.surfaceSoft,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
   cardInfo: { flex: 1, minWidth: 0, gap: 1 },
   cardName: {

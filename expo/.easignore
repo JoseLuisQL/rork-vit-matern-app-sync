@@ -8,6 +8,7 @@ node_modules/
 dist/
 web-build/
 expo-env.d.ts
+bun.lock
 
 # Native folders (managed workflow)
 ios/

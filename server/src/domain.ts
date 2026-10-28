@@ -61,7 +61,7 @@ export function publicUser(u: UserRecord): PublicUser {
     ...(u.phone ? { phone: u.phone } : {}),
     createdAtISO: u.createdAtISO,
     ...(u.avatarVersion ? { avatarVersion: u.avatarVersion } : {}),
-    autoControls: u.autoControls !== false,
+    autoControls: u.autoControls === true,
   };
 }
 

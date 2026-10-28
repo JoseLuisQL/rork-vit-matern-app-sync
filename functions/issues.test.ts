@@ -374,4 +374,126 @@ describe("GitHub Issues #38 - #50 Complete Verification Suite", () => {
     const domainIds = domainSnap.patients.map((p) => p.id);
     expect(domainIds).not.toContain(rawSeed.patients[0].id);
   });
+
+  it("Issue #52: Eliminar por completo la creación automática de controles y citas prenatales basadas en la FUM al registrar una gestante", async () => {
+    const { token: carmenToken } = await loginAs("11111111", "Test@1234");
+
+    // Registrar una nueva gestante desde la obstetra con FUM válida
+    const createRes = await callApi(
+      "POST",
+      "/api/admin/create-user",
+      {
+        dni: "77889900",
+        password: "Gestante@2026",
+        firstName: "Milagros",
+        lastName: "Cáceres",
+        role: "gestante",
+        phone: "987111222",
+        patient: {
+          fumKey: "2026-05-01",
+          age: 25,
+          community: "Talavera Centro",
+          hbObserved: 13.1,
+          bpSys: 110,
+          bpDia: 70,
+          weight: 58,
+          height: 1.58,
+          gestas: 1,
+          cesareas: 0,
+          abortos: 0,
+        },
+      },
+      carmenToken,
+    );
+    expect(createRes.status).toBe(200);
+
+    const milagros = createRes.data.snapshot.patients.find((p: any) => p.dni === "77889900");
+    expect(milagros).toBeDefined();
+    expect(milagros.fppKey).toBe(fppKeyFromFum("2026-05-01"));
+
+    // Verificar que NO se haya creado NINGUNA cita ni control automático para Milagros
+    const autoAppts = createRes.data.snapshot.appointments.filter(
+      (a: any) => a.patientId === milagros.id,
+    );
+    expect(autoAppts.length).toBe(0);
+    expect(milagros.nextAppointment).toBeNull();
+  });
+
+  it("Issue #51: Vista de detalle completa (motivo, indicaciones/notas, lugar) y opción de eliminar cita o visita", async () => {
+    const { token: carmenToken, snapshot: carmenSnap } = await loginAs("11111111", "Test@1234");
+    const milagros = carmenSnap.patients.find((p: any) => p.dni === "77889900")!;
+    expect(milagros).toBeDefined();
+
+    // 1. Programar manualmente una cita con motivo e indicaciones adicionales (notas)
+    const schedRes = await callApi(
+      "POST",
+      "/api/schedule",
+      {
+        mode: "cita",
+        patientId: milagros.id,
+        dateKey: "2027-03-10",
+        time: "09:30",
+        motivo: "Control prenatal 1 · Evaluación integral y ecografía",
+        notas: "Venir en ayunas, traer carné perinatal y muestra de orina matutina.",
+      },
+      carmenToken,
+    );
+    expect(schedRes.status).toBe(200);
+
+    const appt = schedRes.data.snapshot.appointments.find(
+      (a: any) => a.patientId === milagros.id && a.dateKey === "2027-03-10",
+    );
+    expect(appt).toBeDefined();
+    expect(appt.motivo).toBe("Control prenatal 1 · Evaluación integral y ecografía");
+    expect(appt.notas).toBe("Venir en ayunas, traer carné perinatal y muestra de orina matutina.");
+
+    // 2. Actualizar detalles de la cita (motivo, notas y lugar) desde el modal de detalle
+    const afterUpdateSnap = await syncState(carmenToken, [
+      {
+        id: "act-upd-appt-51",
+        type: "update_appointment_details",
+        appointmentId: appt.id,
+        motivo: "Control prenatal 1 · Ecografía + Laboratorio",
+        notas: "Traer DNI y carné perinatal actualizado.",
+        lugar: "Consultorio 2 - C.S. Talavera",
+        atISO: new Date().toISOString(),
+      },
+    ]);
+    const updatedAppt = afterUpdateSnap.appointments.find((a: any) => a.id === appt.id);
+    expect(updatedAppt).toBeDefined();
+    expect(updatedAppt.motivo).toBe("Control prenatal 1 · Ecografía + Laboratorio");
+    expect(updatedAppt.notas).toBe("Traer DNI y carné perinatal actualizado.");
+    expect(updatedAppt.lugar).toBe("Consultorio 2 - C.S. Talavera");
+
+    // 3. Verificar reductor optimista (applyOutbox) para update_appointment_details y delete_appointment
+    const optUpdated = applyOutbox(afterUpdateSnap, [
+      {
+        id: "opt-del-51",
+        type: "delete_appointment",
+        appointmentId: appt.id,
+        atISO: new Date().toISOString(),
+      },
+    ]);
+    expect(optUpdated.appointments.find((a: any) => a.id === appt.id)).toBeUndefined();
+
+    // 4. Eliminar la cita en el servidor mediante delete_appointment
+    const afterDeleteSnap = await syncState(carmenToken, [
+      {
+        id: "act-del-appt-51",
+        type: "delete_appointment",
+        appointmentId: appt.id,
+        atISO: new Date().toISOString(),
+      },
+    ]);
+    expect(afterDeleteSnap.appointments.find((a: any) => a.id === appt.id)).toBeUndefined();
+
+    // Limpiar usuario de prueba Milagros
+    const delMilagros = await callApi(
+      "POST",
+      "/api/admin/delete-user",
+      { dni: "77889900" },
+      carmenToken,
+    );
+    expect(delMilagros.status).toBe(200);
+  });
 });

@@ -63,6 +63,7 @@ export interface ScheduleParams {
   dateKey: string;
   time: string;
   motivo?: string;
+  notas?: string;
 }
 
 export interface UpdateProfileParams {

@@ -111,6 +111,8 @@ export interface Appointment {
   motivo: string;
   estado: AppointmentStatus;
   lugar: string;
+  /** Indicaciones o notas adicionales registradas para la cita. */
+  notas?: string;
 }
 
 export interface Supplement {
@@ -412,6 +414,27 @@ export type ClientAction =
       type: "assign_all_articles";
       patientId: string;
       assigned: boolean;
+    }
+  | {
+      id: string;
+      atISO: string;
+      type: "delete_appointment";
+      appointmentId: string;
+    }
+  | {
+      id: string;
+      atISO: string;
+      type: "update_appointment_details";
+      appointmentId: string;
+      motivo: string;
+      notas?: string;
+      lugar?: string;
+    }
+  | {
+      id: string;
+      atISO: string;
+      type: "delete_visit";
+      visitId: string;
     };
 
 /** Entrada de acción sin id/fecha (los pone el proveedor). */

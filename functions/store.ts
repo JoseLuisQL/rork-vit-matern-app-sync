@@ -662,6 +662,38 @@ export class VitmaternaStore extends DurableObjectBase {
         }
         return null;
       }
+      case "delete_appointment": {
+        if (user.role === "gestante") return "Solo el personal de salud puede eliminar citas";
+        const idx = db.appointments.findIndex((a) => a.id === action.appointmentId);
+        if (idx === -1) return "La cita ya no existe";
+        db.appointments.splice(idx, 1);
+        db.alerts = db.alerts.filter((al) => al.id !== `al-na-${action.appointmentId}`);
+        return null;
+      }
+      case "update_appointment_details": {
+        if (user.role === "gestante") return "Solo el personal de salud puede modificar citas";
+        const appt = db.appointments.find((a) => a.id === action.appointmentId);
+        if (!appt) return "La cita ya no existe";
+        if (action.motivo && action.motivo.trim().length > 0) {
+          appt.motivo = action.motivo.trim().slice(0, 160);
+        }
+        if (action.notas !== undefined) {
+          const cleanNotas = action.notas.trim().slice(0, 500);
+          if (cleanNotas.length > 0) appt.notas = cleanNotas;
+          else delete appt.notas;
+        }
+        if (action.lugar && action.lugar.trim().length > 0) {
+          appt.lugar = action.lugar.trim().slice(0, 120);
+        }
+        return null;
+      }
+      case "delete_visit": {
+        if (user.role === "gestante") return "Solo el personal de salud puede eliminar visitas";
+        const idx = db.visits.findIndex((v) => v.id === action.visitId);
+        if (idx === -1) return "La visita ya no existe";
+        db.visits.splice(idx, 1);
+        return null;
+      }
       default:
         return "Acción desconocida";
     }
@@ -874,10 +906,12 @@ export class VitmaternaStore extends DurableObjectBase {
       dateKey?: string;
       time?: string;
       motivo?: string;
+      notas?: string;
     };
     const todayKey = peruDayKey();
     const dateKey = (body.dateKey ?? "").trim();
     const time = (body.time ?? "").trim();
+    const cleanNotas = body.notas !== undefined ? body.notas.trim().slice(0, 500) : undefined;
 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return json({ error: "Fecha no válida" }, 400);
     if (dateKey < todayKey) return json({ error: "La fecha ya pasó. Elige un día desde hoy." }, 400);
@@ -901,6 +935,13 @@ export class VitmaternaStore extends DurableObjectBase {
       appt.dateKey = dateKey;
       appt.time = time;
       appt.estado = "programada";
+      if (body.motivo && body.motivo.trim().length > 0) {
+        appt.motivo = body.motivo.trim().slice(0, 160);
+      }
+      if (cleanNotas !== undefined) {
+        if (cleanNotas.length > 0) appt.notas = cleanNotas;
+        else delete appt.notas;
+      }
     } else if (body.mode === "cita") {
       const patient = db.patients.find((p) => p.id === body.patientId);
       if (!patient) return json({ error: "Paciente no encontrada" }, 404);
@@ -915,6 +956,7 @@ export class VitmaternaStore extends DurableObjectBase {
         motivo: (body.motivo ?? "Consulta adicional").trim() || "Consulta adicional",
         estado: "programada",
         lugar: HEALTH_CENTER,
+        ...(cleanNotas ? { notas: cleanNotas } : {}),
       });
     } else if (body.mode === "visita") {
       const patient = db.patients.find((p) => p.id === body.patientId);
@@ -1226,29 +1268,8 @@ export class VitmaternaStore extends DurableObjectBase {
         adherenceBase: 0,
       };
       db.patients.push(patient);
-
-      // Cronograma MINSA generado por el servidor solo si autoControls está activo.
-      const shouldAutoAssign = user.autoControls !== false;
-      if (shouldAutoAssign) {
-        MINSA_WEEKS.forEach((week, i) => {
-          const dateKey = addDaysToKey(patient.fumKey, week * 7);
-          if (dateKey < todayKey) return;
-          const preferred = ["09:00", "10:30", "11:30", "15:00"][i % 4];
-          const free = this.freeSlots(db, dateKey);
-          const time = free.includes(preferred) ? preferred : free[0] ?? preferred;
-          db.appointments.push({
-            id: `${patientId}-c${i + 1}`,
-            patientId: patientId as string,
-            control: i + 1,
-            week,
-            dateKey,
-            time,
-            motivo: `Control prenatal ${i + 1} de 8`,
-            estado: "programada",
-            lugar: HEALTH_CENTER,
-          });
-        });
-      }
+      // Issue #52: No se generan controles ni citas prenatales automáticas al registrar una gestante;
+      // el personal de obstetricia los programa manualmente según la agenda real del establecimiento.
     }
 
     db.users.push({
@@ -1260,6 +1281,7 @@ export class VitmaternaStore extends DurableObjectBase {
       active: true,
       patientId,
       phone: (body.phone ?? "").trim() || undefined,
+      autoControls: false,
       createdAtISO: new Date().toISOString(),
     });
 

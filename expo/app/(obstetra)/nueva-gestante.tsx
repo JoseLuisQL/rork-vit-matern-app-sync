@@ -139,12 +139,9 @@ export default function NuevaGestanteScreen(): React.ReactElement {
           abortos,
         },
       });
-      const isAuto = user?.autoControls !== false;
       showNotice(
         "Gestante registrada",
-        isAuto
-          ? `${firstName.trim()} ya puede iniciar sesión con su DNI. Su cronograma de 8 controles se generó automáticamente.`
-          : `${firstName.trim()} ya puede iniciar sesión con su DNI. Los controles se registrarán manualmente desde su ficha.`,
+        `${firstName.trim()} ya puede iniciar sesión con su DNI. Sus controles y citas prenatales se programan manualmente desde su ficha.`,
       );
       router.back();
     } catch (e) {
@@ -176,7 +173,6 @@ export default function NuevaGestanteScreen(): React.ReactElement {
     abortos,
     createUser,
     router,
-    user?.autoControls,
     user?.dni,
   ]);
 
@@ -276,11 +272,7 @@ export default function NuevaGestanteScreen(): React.ReactElement {
                   placeholder="Seleccionar FUM en el calendario"
                   accent={accent.main}
                   isFum={true}
-                  hint={
-                    user?.autoControls === false
-                      ? "Con la FUM se calculan la edad gestacional y la FPP (los controles los registrarás manualmente)."
-                      : "Con la FUM se calculan la edad gestacional, la FPP y los 8 controles."
-                  }
+                  hint="Con la FUM se calculan automáticamente la edad gestacional y la fecha probable de parto (FPP)."
                   testID="ng-fum"
                 />
                 <View style={styles.row2}>

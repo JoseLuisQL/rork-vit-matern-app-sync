@@ -3,9 +3,7 @@
     "name": "VitMaterna",
     "slug": "vitmaterna",
     "version": "1.1.0",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "1.1.0",
     "updates": {
       "url": "https://u.expo.dev/9c570af3-937c-4d13-a87e-391294f3c3c2",
       "enabled": true,

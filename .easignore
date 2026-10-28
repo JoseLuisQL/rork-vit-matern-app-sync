@@ -1,9 +1,24 @@
 # EAS Ignore configuration
 node_modules/
+**/node_modules/
 .expo/
 dist/
+expo/dist/
 web-build/
 expo-env.d.ts
+bun.lock
+**/bun.lock
+/package.json
+/package-lock.json
+/server.ts
+/tsconfig.json
+/deploy.sh
+/docker-compose.prod.yml
+server/
+functions/
+scripts/
+public/
+manual-pruebas-issues-vitmaterna.pdf
 
 ios/
 android/

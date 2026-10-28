@@ -777,9 +777,9 @@ export async function insertPatient(client: PoolClient, p: Patient): Promise<voi
 
 export async function insertAppointment(client: PoolClient, a: Appointment): Promise<void> {
   await client.query(
-    `INSERT INTO appointments (id, patient_id, control, week, date_key, time, motivo, estado, lugar)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-    [a.id, a.patientId, a.control, a.week, a.dateKey, a.time, a.motivo, a.estado, a.lugar],
+    `INSERT INTO appointments (id, patient_id, control, week, date_key, time, motivo, estado, lugar, notas)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+    [a.id, a.patientId, a.control, a.week, a.dateKey, a.time, a.motivo, a.estado, a.lugar, a.notas ?? null],
   );
 }
 
@@ -902,7 +902,7 @@ export async function insertUserRecord(
       u.patientId,
       u.phone,
       opts?.resetAvatar ? null : u.avatarVersion,
-      u.autoControls !== false,
+      u.autoControls === true,
       u.createdAtISO,
     ],
   );

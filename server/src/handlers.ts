@@ -235,10 +235,12 @@ export async function handleSchedule(c: AppContext): Promise<Response> {
     dateKey?: string;
     time?: string;
     motivo?: string;
+    notas?: string;
   }>(c);
   const todayKey = peruDayKey();
   const dateKey = body.dateKey ?? "";
   const time = body.time ?? "";
+  const cleanNotas = body.notas !== undefined ? body.notas.trim().slice(0, 500) : undefined;
 
   if (!isValidDayKey(dateKey)) return c.json({ error: "Fecha no válida" }, 400);
   if (dateKey < todayKey) {
@@ -260,9 +262,15 @@ export async function handleSchedule(c: AppContext): Promise<Response> {
       const apptRow = res.rows[0];
       if (!apptRow) return { kind: "notFound", error: "La cita ya no existe" };
       if ((await takenSlots(client, dateKey, apptId)).has(time)) return conflict(apptId);
+      const nextMotivo =
+        body.motivo && body.motivo.trim().length > 0
+          ? body.motivo.trim().slice(0, 160)
+          : apptRow.motivo;
+      const nextNotas =
+        cleanNotas !== undefined ? (cleanNotas.length > 0 ? cleanNotas : null) : (apptRow.notas ?? null);
       await client.query(
-        "UPDATE appointments SET date_key = $2, time = $3, estado = 'programada' WHERE id = $1",
-        [apptId, dateKey, time],
+        "UPDATE appointments SET date_key = $2, time = $3, estado = 'programada', motivo = $4, notas = $5 WHERE id = $1",
+        [apptId, dateKey, time, nextMotivo, nextNotas],
       );
 
       // Notificación WhatsApp de reprogramación
@@ -280,6 +288,8 @@ export async function handleSchedule(c: AppContext): Promise<Response> {
             ...mapAppointment(apptRow),
             dateKey,
             time,
+            motivo: nextMotivo,
+            ...(nextNotas ? { notas: nextNotas } : {}),
           },
           true,
           user,
@@ -325,6 +335,7 @@ export async function handleSchedule(c: AppContext): Promise<Response> {
         motivo: (body.motivo ?? (controlNum ? `Control prenatal ${controlNum} de 8` : "Consulta adicional")).trim() || "Consulta adicional",
         estado: "programada",
         lugar: HEALTH_CENTER,
+        ...(cleanNotas ? { notas: cleanNotas } : {}),
       };
       await insertAppointment(client, newAppt);
 
@@ -660,42 +671,13 @@ export async function handleCreateUser(c: AppContext): Promise<Response> {
         adherenceBase: 0,
       };
       await insertPatient(client, patient);
-
-      // Cronograma MINSA generado automáticamente solo si el usuario obstetra tiene habilitada la opción.
-      const shouldAutoAssign = user.autoControls !== false;
-      let firstAppt: Appointment | null = null;
-      if (shouldAutoAssign) {
-        for (const [i, week] of MINSA_WEEKS.entries()) {
-          const dateKey = addDaysToKey(fumKey, week * 7);
-          if (dateKey < todayKey) continue;
-          const preferred = ["09:00", "10:30", "11:30", "15:00"][i % 4] ?? "09:00";
-          const free = await freeSlotsFor(client, dateKey);
-          const time = free.includes(preferred) ? preferred : free[0] ?? preferred;
-          const appointment: Appointment = {
-            id: `${patientId}-c${i + 1}`,
-            patientId,
-            control: i + 1,
-            week,
-            dateKey,
-            time,
-            motivo: `Control prenatal ${i + 1} de 8`,
-            estado: "programada",
-            lugar: HEALTH_CENTER,
-          };
-          await insertAppointment(client, appointment);
-          if (!firstAppt) firstAppt = appointment;
-        }
-      }
-
-      if (firstAppt) {
-        const waConfig = await loadWhatsAppConfig(client);
-        void dispatchAppointmentNotification(client, waConfig, patient, firstAppt, false, user);
-      }
+      // Issue #52: No se generan controles ni citas prenatales automáticas al registrar una gestante;
+      // el personal de obstetricia los programa manualmente según la agenda real del establecimiento.
     }
 
     await client.query(
       `INSERT INTO users (dni, password_hash, role, first_name, last_name, active, patient_id, phone, auto_controls, created_at)
-       VALUES ($1, $2, $3, $4, $5, TRUE, $6, $7, TRUE, now())`,
+       VALUES ($1, $2, $3, $4, $5, TRUE, $6, $7, FALSE, now())`,
       [
         dni,
         hashPassword(password),

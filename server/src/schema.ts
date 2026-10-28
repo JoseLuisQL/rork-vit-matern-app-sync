@@ -285,5 +285,14 @@ UPDATE whatsapp_config
  WHERE id = 1;
 `,
   },
+  {
+    id: 7,
+    name: "disable-auto-controls-and-add-appointment-notes",
+    sql: `
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS notas TEXT;
+ALTER TABLE users ALTER COLUMN auto_controls SET DEFAULT FALSE;
+UPDATE users SET auto_controls = FALSE;
+`,
+  },
 ];
 

@@ -10,6 +10,7 @@ if [ -d .git ]; then
     echo "🔄 Sincronizando últimos cambios desde Git (origin/main)..."
     git fetch origin main
     git reset --hard origin/main
+    chmod +x deploy.sh 2>/dev/null || true
 fi
 
 # 2. Asegurar archivo .env.prod (desde .env existente o desde el contenedor en ejecución)

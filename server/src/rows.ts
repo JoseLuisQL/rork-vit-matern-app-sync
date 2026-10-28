@@ -85,6 +85,7 @@ export interface AppointmentRow {
   motivo: string;
   estado: AppointmentStatus;
   lugar: string;
+  notas?: string | null;
 }
 
 export interface SupplementRow {
@@ -160,7 +161,7 @@ export function mapUser(r: UserRow): UserRecord {
     phone: r.phone,
     createdAtISO: r.created_at,
     avatarVersion: r.avatar_version,
-    autoControls: r.auto_controls !== false,
+    autoControls: r.auto_controls === true,
   };
 }
 
@@ -202,6 +203,7 @@ export function mapAppointment(r: AppointmentRow): Appointment {
     motivo: r.motivo,
     estado: r.estado,
     lugar: r.lugar,
+    ...(r.notas ? { notas: r.notas } : {}),
   };
 }
 

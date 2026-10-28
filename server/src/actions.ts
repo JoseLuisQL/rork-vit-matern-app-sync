@@ -609,6 +609,47 @@ export async function applyAction(
       }
       return null;
     }
+    case "delete_appointment": {
+      if (user.role === "gestante") return "Solo el personal de salud puede eliminar citas";
+      const res = await client.query("DELETE FROM appointments WHERE id = $1", [
+        action.appointmentId,
+      ]);
+      if ((res.rowCount ?? 0) === 0) return "La cita ya no existe";
+      await client.query("DELETE FROM alerts WHERE id = $1", [`al-na-${action.appointmentId}`]);
+      return null;
+    }
+    case "update_appointment_details": {
+      if (user.role === "gestante") return "Solo el personal de salud puede modificar citas";
+      const res = await client.query<{ motivo: string; notas: string | null; lugar: string }>(
+        "SELECT motivo, notas, lugar FROM appointments WHERE id = $1",
+        [action.appointmentId],
+      );
+      const cur = res.rows[0];
+      if (!cur) return "La cita ya no existe";
+      const nextMotivo =
+        action.motivo && action.motivo.trim().length > 0
+          ? action.motivo.trim().slice(0, 160)
+          : cur.motivo;
+      const nextNotas =
+        action.notas !== undefined
+          ? action.notas.trim().slice(0, 500) || null
+          : cur.notas;
+      const nextLugar =
+        action.lugar && action.lugar.trim().length > 0
+          ? action.lugar.trim().slice(0, 120)
+          : cur.lugar;
+      await client.query(
+        "UPDATE appointments SET motivo = $2, notas = $3, lugar = $4 WHERE id = $1",
+        [action.appointmentId, nextMotivo, nextNotas, nextLugar],
+      );
+      return null;
+    }
+    case "delete_visit": {
+      if (user.role === "gestante") return "Solo el personal de salud puede eliminar visitas";
+      const res = await client.query("DELETE FROM visits WHERE id = $1", [action.visitId]);
+      if ((res.rowCount ?? 0) === 0) return "La visita ya no existe";
+      return null;
+    }
     default:
       return "Acción desconocida";
   }

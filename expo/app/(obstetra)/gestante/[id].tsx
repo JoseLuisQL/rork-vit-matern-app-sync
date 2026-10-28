@@ -32,6 +32,7 @@ import { countDoses, dayDoseTotals, timesLabel, timesPerDayOf } from "@/lib/dose
 import { fechaCompleta, fechaCorta, horaAmigable } from "@/lib/format";
 import { medIllustration } from "@/lib/medIllustration";
 import { useApp, usePatient } from "@/providers/AppProvider";
+import type { Appointment, Visit } from "@/types";
 import { AppButton } from "@/components/AppButton";
 import { Avatar } from "@/components/Avatar";
 import { Card } from "@/components/Card";
@@ -41,10 +42,12 @@ import { ProgressRing } from "@/components/ProgressRing";
 import { RiskBadge, StatusWord } from "@/components/Badges";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { SectionHeader } from "@/components/SectionHeader";
+import { useToast } from "@/components/Toast";
 import { Illustration } from "@/components/gestante/Illustration";
 import { PopIn } from "@/components/gestante/PopIn";
 import { WebCol, WebRow } from "@/components/web/WebGrid";
 import { WebContainer } from "@/components/web/WebContainer";
+import { AppointmentDetailModal } from "@/components/obstetra/AppointmentDetailModal";
 import { AssignArticlesModal } from "@/components/obstetra/AssignArticlesModal";
 import { RiskExplanationModal } from "@/components/obstetra/RiskExplanationModal";
 
@@ -101,10 +104,12 @@ function DatePill({ dateKey, color, soft }: { dateKey: string; color: string; so
 export default function FichaGestante(): React.ReactElement {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { view, todayKey, adminDeleteUser, online } = useApp();
+  const { view, todayKey, adminDeleteUser, dispatch, online } = useApp();
   const patient = usePatient(id);
+  const { show: showToast } = useToast();
   const { isDesktop, isTablet } = useResponsive();
   const [deleting, setDeleting] = useState<boolean>(false);
+  const [selectedApptId, setSelectedApptId] = useState<string | null>(null);
 
   const isWide = isDesktop || isTablet;
 
@@ -128,22 +133,96 @@ export default function FichaGestante(): React.ReactElement {
         a.dateKey >= todayKey &&
         (a.estado === "programada" || a.estado === "confirmada" || a.estado === "solicitud_reprogramacion"),
     );
-    return [...list]
-      .sort((a, b) => a.dateKey.localeCompare(b.dateKey) || a.time.localeCompare(b.time))
-      .slice(0, 3);
+    return [...list].sort((a, b) => a.dateKey.localeCompare(b.dateKey) || a.time.localeCompare(b.time));
   }, [view?.appointments, id, todayKey]);
 
   const past = useMemo(() => {
     const list = (view?.appointments ?? []).filter(
-      (a) => a.patientId === id && a.dateKey < todayKey,
+      (a) =>
+        a.patientId === id &&
+        (a.dateKey < todayKey || a.estado === "asistida" || a.estado === "no_asistida"),
     );
-    return [...list].sort((a, b) => b.dateKey.localeCompare(a.dateKey)).slice(0, 4);
+    return [...list].sort((a, b) => b.dateKey.localeCompare(a.dateKey) || b.time.localeCompare(a.time));
   }, [view?.appointments, id, todayKey]);
 
   const visits = useMemo(() => {
     const list = (view?.visits ?? []).filter((v) => v.patientId === id);
     return [...list].sort((a, b) => b.dateKey.localeCompare(a.dateKey));
   }, [view?.visits, id]);
+
+  const selectedAppointment = useMemo(
+    () =>
+      selectedApptId
+        ? (view?.appointments ?? []).find((a) => a.id === selectedApptId) ?? null
+        : null,
+    [selectedApptId, view?.appointments],
+  );
+
+  const handleDeleteAppointment = useCallback(
+    (appt: Appointment) => {
+      dispatch({ type: "delete_appointment", appointmentId: appt.id });
+      showToast(`Cita "${appt.motivo}" eliminada de la agenda`, "info");
+    },
+    [dispatch, showToast],
+  );
+
+  const handleConfirmRowDeleteAppointment = useCallback(
+    async (appt: Appointment) => {
+      const ok = await confirmAction({
+        title: "Eliminar cita programada",
+        message: `¿Deseas eliminar la cita "${appt.motivo}" del ${fechaCompleta(appt.dateKey)} a las ${horaAmigable(appt.time)}?`,
+        confirmText: "Sí, eliminar cita",
+        destructive: true,
+      });
+      if (!ok) return;
+      handleDeleteAppointment(appt);
+    },
+    [handleDeleteAppointment],
+  );
+
+  const handleUpdateAppointmentDetails = useCallback(
+    (appt: Appointment, fields: { motivo: string; notas?: string; lugar?: string }) => {
+      dispatch({
+        type: "update_appointment_details",
+        appointmentId: appt.id,
+        motivo: fields.motivo,
+        notas: fields.notas,
+        lugar: fields.lugar,
+      });
+      showToast("Detalles de la cita actualizados", "success");
+    },
+    [dispatch, showToast],
+  );
+
+  const handleMarkAppointmentStatus = useCallback(
+    (appt: Appointment, estado: "asistida" | "no_asistida") => {
+      dispatch({
+        type: "set_appointment_status",
+        appointmentId: appt.id,
+        estado,
+      });
+      showToast(
+        estado === "asistida" ? "Asistencia registrada ✓" : "Inasistencia registrada",
+        estado === "asistida" ? "success" : "info",
+      );
+    },
+    [dispatch, showToast],
+  );
+
+  const handleDeleteVisit = useCallback(
+    async (visit: Visit) => {
+      const ok = await confirmAction({
+        title: "Eliminar visita domiciliaria",
+        message: `¿Deseas eliminar la visita "${visit.motivo}" del ${fechaCompleta(visit.dateKey)}?`,
+        confirmText: "Sí, eliminar visita",
+        destructive: true,
+      });
+      if (!ok) return;
+      dispatch({ type: "delete_visit", visitId: visit.id });
+      showToast("Visita domiciliaria eliminada", "info");
+    },
+    [dispatch, showToast],
+  );
 
   const handleDeletePatient = useCallback(async () => {
     if (!patient) return;
@@ -497,7 +576,18 @@ export default function FichaGestante(): React.ReactElement {
       </PopIn>
 
       <PopIn delay={240}>
-        <SectionHeader title="Próximas citas" />
+        <SectionHeader
+          title="Próximas citas"
+          action={{
+            label: "Programar",
+            onPress: () =>
+              router.push({
+                pathname: "/(obstetra)/programar",
+                params: { mode: "cita", patientId: patient.id },
+              }),
+            color: accent.main,
+          }}
+        />
         {upcoming.length === 0 ? (
           <Card style={styles.emptyApptCard}>
             <Text style={styles.treatMeta}>Sin citas próximas.</Text>
@@ -517,18 +607,46 @@ export default function FichaGestante(): React.ReactElement {
           </Card>
         ) : (
           <Card style={styles.listCard}>
+            <Text style={styles.apptListHint}>
+              Toca cualquier cita para ver sus detalles completos, editar indicaciones o reprogramarla.
+            </Text>
             {upcoming.map((appt, index) => (
-              <View key={appt.id} style={[styles.apptRow, index > 0 && styles.rowBorder]}>
-                <DatePill dateKey={appt.dateKey} color={accent.deep} soft={accent.soft} />
-                <View style={styles.rowInfo}>
-                  <Text style={styles.apptTitle} numberOfLines={1}>
-                    {appt.motivo}
-                  </Text>
-                  <Text style={styles.apptMeta} numberOfLines={1}>
-                    A las {horaAmigable(appt.time)}
-                  </Text>
-                </View>
-                <StatusWord estado={appt.estado} />
+              <View
+                key={appt.id}
+                style={[styles.apptRow, index > 0 && styles.rowBorder]}
+              >
+                <PressableScale
+                  onPress={() => setSelectedApptId(appt.id)}
+                  accessibilityLabel={`Ver detalle de cita ${appt.motivo}`}
+                  style={styles.apptMainPress}
+                  testID={`cita-item-${appt.id}`}
+                >
+                  <DatePill dateKey={appt.dateKey} color={accent.deep} soft={accent.soft} />
+                  <View style={styles.rowInfo}>
+                    <Text style={styles.apptTitle} numberOfLines={2}>
+                      {appt.motivo}
+                    </Text>
+                    <Text style={styles.apptMeta} numberOfLines={1}>
+                      A las {horaAmigable(appt.time)} · {appt.lugar || "C.S. Talavera"}
+                    </Text>
+                    {appt.notas ? (
+                      <Text style={styles.apptNotesPreview} numberOfLines={1}>
+                        Nota: {appt.notas}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <StatusWord estado={appt.estado} />
+                </PressableScale>
+                <Pressable
+                  onPress={() => void handleConfirmRowDeleteAppointment(appt)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Eliminar cita ${appt.motivo}`}
+                  hitSlop={8}
+                  style={styles.deleteApptBtn}
+                  testID={`eliminar-cita-${appt.id}`}
+                >
+                  <Trash2 size={16} color={gwarm.rose} />
+                </Pressable>
               </View>
             ))}
           </Card>
@@ -540,12 +658,37 @@ export default function FichaGestante(): React.ReactElement {
           <SectionHeader title="Historial" />
           <Card style={styles.listCard}>
             {past.map((appt, index) => (
-              <View key={appt.id} style={[styles.apptRow, index > 0 && styles.rowBorder]}>
-                <Text style={styles.historyDate}>{fechaCorta(appt.dateKey)}</Text>
-                <Text style={styles.historyMotivo} numberOfLines={1}>
-                  {appt.motivo}
-                </Text>
-                <StatusWord estado={appt.estado} />
+              <View
+                key={appt.id}
+                style={[styles.apptRow, index > 0 && styles.rowBorder]}
+              >
+                <PressableScale
+                  onPress={() => setSelectedApptId(appt.id)}
+                  accessibilityLabel={`Ver detalle de cita histórica ${appt.motivo}`}
+                  style={styles.apptMainPress}
+                  testID={`historial-cita-${appt.id}`}
+                >
+                  <Text style={styles.historyDate}>{fechaCorta(appt.dateKey)}</Text>
+                  <View style={styles.rowInfo}>
+                    <Text style={styles.historyMotivo} numberOfLines={2}>
+                      {appt.motivo}
+                    </Text>
+                    <Text style={styles.apptMeta} numberOfLines={1}>
+                      A las {horaAmigable(appt.time)}
+                    </Text>
+                  </View>
+                  <StatusWord estado={appt.estado} />
+                </PressableScale>
+                <Pressable
+                  onPress={() => void handleConfirmRowDeleteAppointment(appt)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Eliminar cita histórica ${appt.motivo}`}
+                  hitSlop={8}
+                  style={styles.deleteApptBtn}
+                  testID={`eliminar-historial-${appt.id}`}
+                >
+                  <Trash2 size={15} color={gwarm.rose} />
+                </Pressable>
               </View>
             ))}
           </Card>
@@ -563,16 +706,30 @@ export default function FichaGestante(): React.ReactElement {
                     size={16}
                     color={visit.estado === "realizada" ? gwarm.teal : accent.main}
                   />
-                  <Text style={styles.apptTitle}>{fechaCompleta(visit.dateKey)}</Text>
+                  <Text style={styles.apptTitle}>
+                    {fechaCompleta(visit.dateKey)} · {horaAmigable(visit.time)}
+                  </Text>
                 </View>
-                <Text
-                  style={[
-                    styles.visitState,
-                    { color: visit.estado === "realizada" ? gwarm.teal : accent.main },
-                  ]}
-                >
-                  {visit.estado === "realizada" ? "Realizada" : "Pendiente"}
-                </Text>
+                <View style={styles.visitActionsRight}>
+                  <Text
+                    style={[
+                      styles.visitState,
+                      { color: visit.estado === "realizada" ? gwarm.teal : accent.main },
+                    ]}
+                  >
+                    {visit.estado === "realizada" ? "Realizada" : "Pendiente"}
+                  </Text>
+                  <Pressable
+                    onPress={() => void handleDeleteVisit(visit)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Eliminar visita ${visit.motivo}`}
+                    hitSlop={8}
+                    style={styles.deleteApptBtn}
+                    testID={`eliminar-visita-${visit.id}`}
+                  >
+                    <Trash2 size={15} color={gwarm.rose} />
+                  </Pressable>
+                </View>
               </View>
               <Text style={styles.apptMeta}>{visit.motivo}</Text>
               {visit.resultado ? <Text style={styles.visitResult}>{visit.resultado}</Text> : null}
@@ -633,6 +790,23 @@ export default function FichaGestante(): React.ReactElement {
         visible={riskModalVisible}
         patient={patient}
         onClose={() => setRiskModalVisible(false)}
+      />
+
+      <AppointmentDetailModal
+        visible={selectedAppointment !== null}
+        appointment={selectedAppointment}
+        patient={patient}
+        obstetraName={assignedObstetraName}
+        onClose={() => setSelectedApptId(null)}
+        onReschedule={(appt) =>
+          router.push({
+            pathname: "/(obstetra)/programar",
+            params: { mode: "reprogramar", appointmentId: appt.id, patientId: patient.id },
+          })
+        }
+        onMarkStatus={handleMarkAppointmentStatus}
+        onUpdateDetails={handleUpdateAppointmentDetails}
+        onDelete={handleDeleteAppointment}
       />
     </View>
   );
@@ -897,12 +1071,27 @@ const styles = StyleSheet.create({
   },
   emptyApptCard: { gap: 10, alignItems: "flex-start" },
   listCard: { paddingVertical: 6 },
+  apptListHint: {
+    fontFamily: gfonts.handBody,
+    fontSize: 12.5,
+    lineHeight: 17,
+    color: gwarm.inkSoft,
+    paddingHorizontal: 4,
+    paddingBottom: 4,
+  },
   apptRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 8,
     paddingVertical: 10,
     minHeight: 56,
+  },
+  apptMainPress: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
   rowBorder: { borderTopWidth: 1, borderTopColor: gwarm.border },
   rowInfo: { flex: 1, minWidth: 0, gap: 1 },
@@ -935,6 +1124,24 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     color: gwarm.inkSoft,
   },
+  apptNotesPreview: {
+    fontFamily: gfonts.handBody,
+    fontSize: 12,
+    lineHeight: 16,
+    color: gwarm.inkFaint,
+    fontStyle: "italic",
+  },
+  deleteApptBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    backgroundColor: gwarm.roseSoft,
+    borderWidth: 1,
+    borderColor: gwarm.redMid,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
   historyDate: {
     fontFamily: gfonts.hand,
     fontSize: 14.5,
@@ -959,6 +1166,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   visitTitleRow: { flexDirection: "row", alignItems: "center", gap: 6, flex: 1, minWidth: 0 },
+  visitActionsRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flexShrink: 0,
+  },
   visitState: {
     fontFamily: gfonts.hand,
     fontSize: 15,

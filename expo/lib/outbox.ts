@@ -292,6 +292,52 @@ export function applyOutbox(snapshot: Snapshot, actions: ClientAction[], user: U
         }
         break;
       }
+      case "delete_appointment": {
+        if (user?.role === "gestante") break;
+        const removed = s.appointments.find((a) => a.id === action.appointmentId);
+        s.appointments = s.appointments.filter((a) => a.id !== action.appointmentId);
+        s.alerts = s.alerts.filter((al) => al.id !== `al-na-${action.appointmentId}`);
+        if (removed) {
+          const p = s.patients.find((x) => x.id === removed.patientId);
+          if (p) {
+            const next = s.appointments
+              .filter(
+                (a) =>
+                  a.patientId === p.id &&
+                  a.dateKey >= s.todayKey &&
+                  (a.estado === "programada" ||
+                    a.estado === "confirmada" ||
+                    a.estado === "solicitud_reprogramacion"),
+              )
+              .sort((a, b) => a.dateKey.localeCompare(b.dateKey) || a.time.localeCompare(b.time));
+            p.nextAppointment = next[0] ?? null;
+          }
+        }
+        break;
+      }
+      case "update_appointment_details": {
+        if (user?.role === "gestante") break;
+        const appt = s.appointments.find((a) => a.id === action.appointmentId);
+        if (appt) {
+          if (action.motivo && action.motivo.trim().length > 0) {
+            appt.motivo = action.motivo.trim();
+          }
+          if (action.notas !== undefined) {
+            const cleanNotas = action.notas.trim();
+            if (cleanNotas.length > 0) appt.notas = cleanNotas;
+            else delete appt.notas;
+          }
+          if (action.lugar && action.lugar.trim().length > 0) {
+            appt.lugar = action.lugar.trim();
+          }
+        }
+        break;
+      }
+      case "delete_visit": {
+        if (user?.role === "gestante") break;
+        s.visits = s.visits.filter((v) => v.id !== action.visitId);
+        break;
+      }
     }
   }
   return s;
