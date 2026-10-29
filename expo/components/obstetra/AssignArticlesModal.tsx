@@ -39,14 +39,14 @@ import { ArticleEditorModal } from "@/components/admin/ArticleEditorModal";
 
 const MEDIA_FILTERS: { key: "todos" | ArticleMediaType; label: string }[] = [
   { key: "todos", label: "Todos" },
-  { key: "lectura", label: "Lecturas" },
-  { key: "video", label: "Videos" },
-  { key: "pdf", label: "PDFs" },
-  { key: "imagen", label: "Imágenes" },
+  { key: "imagen", label: "Imagen" },
+  { key: "lectura", label: "Texto" },
+  { key: "pdf", label: "PDF" },
+  { key: "video", label: "Video" },
 ];
 
 const MEDIA_BADGE: Record<ArticleMediaType, { label: string; color: string; bg: string }> = {
-  lectura: { label: "LECTURA", color: warmBlue.main, bg: withAlpha(warmBlue.main, 0.12) },
+  lectura: { label: "TEXTO", color: warmBlue.main, bg: withAlpha(warmBlue.main, 0.12) },
   video: { label: "VIDEO", color: gwarm.rose, bg: gwarm.redSoft },
   pdf: { label: "PDF", color: warmPlum.main, bg: warmPlum.soft },
   imagen: { label: "IMAGEN", color: gwarm.tealDeep, bg: gwarm.tealSoft },
@@ -71,7 +71,6 @@ export function AssignArticlesModal({
   const { assignArticle, assignAllArticles } = useApp();
   const { show: showToast } = useToast();
 
-  const [selectedCategory, setSelectedCategory] = useState<string>("Todas");
   const [selectedMedia, setSelectedMedia] = useState<"todos" | ArticleMediaType>("todos");
   const [editorVisible, setEditorVisible] = useState<boolean>(false);
 
@@ -92,22 +91,13 @@ export function AssignArticlesModal({
     return set;
   }, [assignments, patientId]);
 
-  const categories = useMemo(() => {
-    const set = new Set<string>();
-    for (const a of activeArticles) {
-      if (a.category) set.add(a.category);
-    }
-    return ["Todas", ...Array.from(set)];
-  }, [activeArticles]);
-
   const filteredArticles = useMemo(() => {
     return activeArticles.filter((a) => {
-      if (selectedCategory !== "Todas" && a.category !== selectedCategory) return false;
       const mType: ArticleMediaType = a.mediaType ?? "lectura";
       if (selectedMedia !== "todos" && mType !== selectedMedia) return false;
       return true;
     });
-  }, [activeArticles, selectedCategory, selectedMedia]);
+  }, [activeArticles, selectedMedia]);
 
   const allAssigned =
     activeArticles.length > 0 &&
@@ -215,12 +205,12 @@ export function AssignArticlesModal({
                 >
                   <Plus size={15} color="#FFFFFF" />
                   <Text style={styles.newMaterialBtnText}>
-                    Agregar material (Video, PDF, Imagen)
+                    Agregar contenido (Imagen, Texto, PDF, Video)
                   </Text>
                 </Pressable>
               </View>
 
-              {/* Filtro por Formato (Todos, Lecturas, Videos, PDFs, Imágenes) */}
+              {/* Filtro por Formato (Todos, Imagen, Texto, PDF, Video) */}
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -243,34 +233,6 @@ export function AssignArticlesModal({
                         ]}
                       >
                         {mf.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-
-              {/* Categorías temáticas */}
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                nestedScrollEnabled
-                contentContainerStyle={styles.catScroll}
-              >
-                {categories.map((cat) => {
-                  const active = selectedCategory === cat;
-                  return (
-                    <Pressable
-                      key={cat}
-                      onPress={() => setSelectedCategory(cat)}
-                      style={[styles.catChip, active && styles.catChipActive]}
-                    >
-                      <Text
-                        style={[
-                          styles.catChipText,
-                          active && styles.catChipTextActive,
-                        ]}
-                      >
-                        {cat}
                       </Text>
                     </Pressable>
                   );
@@ -403,6 +365,8 @@ export function AssignArticlesModal({
       <ArticleEditorModal
         visible={editorVisible}
         article={null}
+        patientId={patientId}
+        patientName={patientName}
         onClose={() => setEditorVisible(false)}
       />
     </Modal>

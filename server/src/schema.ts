@@ -294,5 +294,12 @@ ALTER TABLE users ALTER COLUMN auto_controls SET DEFAULT FALSE;
 UPDATE users SET auto_controls = FALSE;
 `,
   },
+  {
+    id: 8,
+    name: "add-article-indicaciones",
+    sql: `
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS indicaciones TEXT;
+`,
+  },
 ];
 

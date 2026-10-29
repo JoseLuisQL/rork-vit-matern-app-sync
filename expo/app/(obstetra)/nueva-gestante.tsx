@@ -188,8 +188,8 @@ export default function NuevaGestanteScreen(): React.ReactElement {
       </WebContainer>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 88 : 24}
+        behavior="padding"
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 24}
       >
         <ScrollView
           style={styles.flex}
@@ -441,7 +441,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: {
     padding: 16,
-    paddingBottom: 120,
+    paddingBottom: 48,
   },
   formStack: {
     gap: 12,

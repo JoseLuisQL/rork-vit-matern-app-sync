@@ -842,13 +842,14 @@ export async function insertVisitRow(client: PoolClient, v: Visit): Promise<void
 
 export async function insertArticle(client: PoolClient, art: Article): Promise<void> {
   await client.query(
-    `INSERT INTO articles (id, category, title, summary, body, minutes, active, media_type, media_url, image_url, links, created_at_iso, updated_at_iso)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+    `INSERT INTO articles (id, category, title, summary, body, indicaciones, minutes, active, media_type, media_url, image_url, links, created_at_iso, updated_at_iso)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
      ON CONFLICT (id) DO UPDATE SET
        category = EXCLUDED.category,
        title = EXCLUDED.title,
        summary = EXCLUDED.summary,
        body = EXCLUDED.body,
+       indicaciones = EXCLUDED.indicaciones,
        minutes = EXCLUDED.minutes,
        active = EXCLUDED.active,
        media_type = EXCLUDED.media_type,
@@ -862,6 +863,7 @@ export async function insertArticle(client: PoolClient, art: Article): Promise<v
       art.title,
       art.summary,
       art.body,
+      art.indicaciones ?? null,
       art.minutes,
       art.active,
       art.mediaType ?? "lectura",

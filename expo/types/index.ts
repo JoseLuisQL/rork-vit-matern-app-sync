@@ -264,11 +264,14 @@ export interface Article {
   minutes: number;
   summary: string;
   body: string[];
+  indicaciones?: string | null;
   active?: boolean;
   mediaType?: ArticleMediaType;
   mediaUrl?: string | null;
   imageUrl?: string | null;
   links?: ArticleLink[];
+  /** Solo al guardar desde obstetra: asigna inmediatamente el contenido a esta gestante. */
+  patientId?: string;
   createdAtISO?: string;
   updatedAtISO?: string;
 }

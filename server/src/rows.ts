@@ -380,6 +380,7 @@ export interface ArticleRow {
   title: string;
   summary: string;
   body: string[];
+  indicaciones?: string | null;
   minutes: number;
   active: boolean;
   media_type?: "lectura" | "video" | "imagen" | "pdf" | null;
@@ -414,6 +415,7 @@ export function mapArticle(r: ArticleRow): Article {
     title: r.title,
     summary: r.summary,
     body: Array.isArray(r.body) ? r.body : [],
+    indicaciones: r.indicaciones ?? null,
     minutes: Number(r.minutes) || 3,
     active: r.active !== false,
     mediaType: r.media_type ?? "lectura",

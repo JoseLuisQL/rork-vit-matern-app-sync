@@ -9,7 +9,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { CalendarCheck2, Check, Clock, HousePlus, Stethoscope, WifiOff } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { gfonts, gShadow, gwarm, risk, warmBlue } from "@/constants/theme";
 import { AGENDA_SLOTS } from "@/constants/labels";
 import { ILU } from "@/constants/illustrations";
@@ -71,25 +71,22 @@ export default function ProgramarScreen(): React.ReactElement {
 
   const [mode, setMode] = useState<Mode>(initialMode);
   const scrollRef = useRef<ScrollView>(null);
-  const [keyboardHeight, setKeyboardHeight] = useState<number>(0);
+  const fieldYRef = useRef<{ customTime: number; motivo: number; notas: number }>({
+    customTime: 0,
+    motivo: 0,
+    notas: 0,
+  });
 
-  const scrollToFocusedInput = useCallback(() => {
-    setTimeout(() => {
-      scrollRef.current?.scrollToEnd({ animated: true });
-    }, 150);
-  }, []);
-
-  useEffect(() => {
-    const showSub = Keyboard.addListener("keyboardDidShow", (e) => {
-      setKeyboardHeight(e.endCoordinates?.height ?? 280);
-    });
-    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
-      setKeyboardHeight(0);
-    });
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
+  const scrollToField = useCallback((field: "customTime" | "motivo" | "notas") => {
+    const targetY = fieldYRef.current[field];
+    if (targetY > 0) {
+      setTimeout(() => {
+        scrollRef.current?.scrollTo({
+          y: Math.max(0, targetY - 24),
+          animated: true,
+        });
+      }, 120);
+    }
   }, []);
 
   const appointment = useMemo(
@@ -216,16 +213,13 @@ export default function ProgramarScreen(): React.ReactElement {
       </WebContainer>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 96 : 84}
+        behavior="padding"
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 24}
       >
       <ScrollView
         ref={scrollRef}
         style={styles.flex}
-        contentContainerStyle={[
-          styles.content,
-          keyboardHeight > 0 && { paddingBottom: keyboardHeight + 140 },
-        ]}
+        contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -388,7 +382,12 @@ export default function ProgramarScreen(): React.ReactElement {
               }}
               accent={accent.main}
             />
-            <View style={styles.customTimeCard}>
+            <View
+              style={styles.customTimeCard}
+              onLayout={(e) => {
+                fieldYRef.current.customTime = e.nativeEvent.layout.y;
+              }}
+            >
               <View style={styles.customTimeHeader}>
                 <Clock size={16} color={accent.main} />
                 <Text style={styles.customTimeTitle}>¿Prefieres ingresar otra hora personalizada?</Text>
@@ -396,7 +395,7 @@ export default function ProgramarScreen(): React.ReactElement {
               <View style={styles.customTimeRow}>
                 <TextInput
                   value={customTime}
-                  onFocus={scrollToFocusedInput}
+                  onFocus={() => scrollToField("customTime")}
                   onChangeText={(txt) => {
                     const clean = txt.replace(/[^0-9:]/g, "").slice(0, 5);
                     let formatted = clean;
@@ -432,32 +431,44 @@ export default function ProgramarScreen(): React.ReactElement {
               </Text>
             </View>
 
-            <Field
-              label="Motivo de la atención (opcional)"
-              value={motivo}
-              onChangeText={setMotivo}
-              onFocus={scrollToFocusedInput}
-              placeholder={
-                mode === "visita"
-                  ? "Ej. Seguimiento en casa, control de presión…"
-                  : "Ej. Control prenatal, ecografía, resultados de laboratorio…"
-              }
-              accent={accent.main}
-              maxLength={240}
-            />
+            <View
+              onLayout={(e) => {
+                fieldYRef.current.motivo = e.nativeEvent.layout.y;
+              }}
+            >
+              <Field
+                label="Motivo de la atención (opcional)"
+                value={motivo}
+                onChangeText={setMotivo}
+                onFocus={() => scrollToField("motivo")}
+                placeholder={
+                  mode === "visita"
+                    ? "Ej. Seguimiento en casa, control de presión…"
+                    : "Ej. Control prenatal, ecografía, resultados de laboratorio…"
+                }
+                accent={accent.main}
+                maxLength={240}
+              />
+            </View>
 
             {mode !== "visita" ? (
-              <Field
-                label="Indicaciones o notas adicionales (opcional)"
-                value={notas}
-                onChangeText={setNotas}
-                onFocus={scrollToFocusedInput}
-                placeholder="Ej. Venir en ayunas, traer carné perinatal, muestra de orina…"
-                accent={accent.main}
-                multiline
-                maxLength={500}
-                hint="La gestante y el personal podrán ver estas indicaciones al abrir el detalle de la cita."
-              />
+              <View
+                onLayout={(e) => {
+                  fieldYRef.current.notas = e.nativeEvent.layout.y;
+                }}
+              >
+                <Field
+                  label="Indicaciones o notas adicionales (opcional)"
+                  value={notas}
+                  onChangeText={setNotas}
+                  onFocus={() => scrollToField("notas")}
+                  placeholder="Ej. Venir en ayunas, traer carné perinatal, muestra de orina…"
+                  accent={accent.main}
+                  multiline
+                  maxLength={500}
+                  hint="La gestante y el personal podrán ver estas indicaciones al abrir el detalle de la cita."
+                />
+              </View>
             ) : null}
 
             {error ? (
@@ -511,7 +522,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: {
     padding: 16,
-    paddingBottom: 120,
+    paddingBottom: 48,
   },
   formStack: {
     gap: 12,

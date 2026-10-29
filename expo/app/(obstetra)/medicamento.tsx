@@ -8,7 +8,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Check, Pill, Trash2, UserRound } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { gfonts, gShadow, gwarm, warmBlue } from "@/constants/theme";
 import { ILU } from "@/constants/illustrations";
 import { confirmAction } from "@/lib/confirm";
@@ -72,25 +72,18 @@ export default function MedicamentoScreen(): React.ReactElement {
   const patient = usePatient(patientId);
   const { show } = useToast();
   const scrollRef = useRef<ScrollView>(null);
-  const [keyboardHeight, setKeyboardHeight] = useState<number>(0);
+  const scheduleCardYRef = useRef<number>(0);
 
-  const scrollToBottom = useCallback(() => {
-    setTimeout(() => {
-      scrollRef.current?.scrollToEnd({ animated: true });
-    }, 150);
-  }, []);
-
-  useEffect(() => {
-    const showSub = Keyboard.addListener("keyboardDidShow", (e) => {
-      setKeyboardHeight(e.endCoordinates?.height ?? 280);
-    });
-    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
-      setKeyboardHeight(0);
-    });
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
+  const scrollToSchedule = useCallback(() => {
+    const targetY = scheduleCardYRef.current;
+    if (targetY > 0) {
+      setTimeout(() => {
+        scrollRef.current?.scrollTo({
+          y: Math.max(0, targetY - 24),
+          animated: true,
+        });
+      }, 120);
+    }
   }, []);
 
   const editing = useMemo(
@@ -212,16 +205,13 @@ export default function MedicamentoScreen(): React.ReactElement {
       </WebContainer>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 96 : 84}
+        behavior="padding"
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 24}
       >
       <ScrollView
         ref={scrollRef}
         style={styles.flex}
-        contentContainerStyle={[
-          styles.content,
-          keyboardHeight > 0 && { paddingBottom: keyboardHeight + 140 },
-        ]}
+        contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -313,35 +303,42 @@ export default function MedicamentoScreen(): React.ReactElement {
               </View>
             </Card>
 
-            <SectionHeader title="¿Cómo debe tomarlo?" />
-            <Card style={styles.formCard}>
-              <Field
-                label="Indicación (opcional)"
-                value={schedule}
-                onChangeText={setSchedule}
-                onFocus={scrollToBottom}
-                placeholder="En ayunas, con bastante agua…"
-                hint="Puedes dejarla vacía: las casillas y recordatorios funcionan igual. Solo es una ayudita que se muestra junto al nombre."
-                accent={accent.main}
-                testID="campo-med-indicacion"
-              />
-              <View style={styles.chipRow}>
-                {SCHEDULE_CHIPS.map((chip) => (
-                  <PressableScale
-                    key={chip}
-                    onPress={() => setSchedule(chip)}
-                    accessibilityLabel={`Indicación ${chip}`}
-                    style={[styles.smallChip, schedule === chip && styles.smallChipOn]}
-                  >
-                    <Text
-                      style={[styles.smallChipText, schedule === chip && styles.smallChipTextOn]}
+            <View
+              onLayout={(e) => {
+                scheduleCardYRef.current = e.nativeEvent.layout.y;
+              }}
+              style={{ gap: 12 }}
+            >
+              <SectionHeader title="¿Cómo debe tomarlo?" />
+              <Card style={styles.formCard}>
+                <Field
+                  label="Indicación (opcional)"
+                  value={schedule}
+                  onChangeText={setSchedule}
+                  onFocus={scrollToSchedule}
+                  placeholder="En ayunas, con bastante agua…"
+                  hint="Puedes dejarla vacía: las casillas y recordatorios funcionan igual. Solo es una ayudita que se muestra junto al nombre."
+                  accent={accent.main}
+                  testID="campo-med-indicacion"
+                />
+                <View style={styles.chipRow}>
+                  {SCHEDULE_CHIPS.map((chip) => (
+                    <PressableScale
+                      key={chip}
+                      onPress={() => setSchedule(chip)}
+                      accessibilityLabel={`Indicación ${chip}`}
+                      style={[styles.smallChip, schedule === chip && styles.smallChipOn]}
                     >
-                      {chip}
-                    </Text>
-                  </PressableScale>
-                ))}
-              </View>
-            </Card>
+                      <Text
+                        style={[styles.smallChipText, schedule === chip && styles.smallChipTextOn]}
+                      >
+                        {chip}
+                      </Text>
+                    </PressableScale>
+                  ))}
+                </View>
+              </Card>
+            </View>
 
             {error ? (
               <View style={styles.errorBox}>
@@ -383,7 +380,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: {
     padding: 16,
-    paddingBottom: 120,
+    paddingBottom: 48,
   },
   formStack: {
     gap: 12,

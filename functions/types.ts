@@ -268,6 +268,7 @@ export interface Article {
   title: string;
   summary: string;
   body: string[];
+  indicaciones?: string | null;
   minutes: number;
   active: boolean;
   mediaType?: ArticleMediaType;

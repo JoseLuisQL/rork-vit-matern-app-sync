@@ -5,11 +5,12 @@
  */
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { BookOpenCheck, ChevronRight, Clock3, ExternalLink } from "lucide-react-native";
+import { BookOpenCheck, ChevronRight, Clock3, ExternalLink, Stethoscope } from "lucide-react-native";
 import React, { useEffect, useMemo } from "react";
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { CATEGORY_ILU, GICON } from "@/constants/illustrations";
 import { gfonts, gwarm, spacing, withAlpha } from "@/constants/theme";
+import { openArticleMedia } from "@/lib/photo";
 import { useApp, useArticles } from "@/providers/AppProvider";
 import { EmptyState } from "@/components/EmptyState";
 import { GHeader } from "@/components/gestante/GHeader";
@@ -53,7 +54,7 @@ export default function ArticuloScreen(): React.ReactElement {
 
   const handleOpenLink = (url: string) => {
     if (!url) return;
-    Linking.openURL(url).catch(() => {});
+    void openArticleMedia(url, article.title);
   };
 
   return (
@@ -72,7 +73,7 @@ export default function ArticuloScreen(): React.ReactElement {
               <Image
                 source={{ uri: article.imageUrl }}
                 style={styles.heroImage}
-                contentFit="cover"
+                contentFit={article.mediaType === "imagen" ? "contain" : "cover"}
               />
             ) : (
               <Illustration
@@ -87,6 +88,16 @@ export default function ArticuloScreen(): React.ReactElement {
             <Clock3 size={14} color={gwarm.inkFaint} />
             <Text style={styles.meta}>{article.minutes || 3} min de lectura</Text>
           </View>
+
+          {article.indicaciones ? (
+            <View style={styles.indicacionesBox}>
+              <View style={styles.indicacionesHeader}>
+                <Stethoscope size={16} color={gwarm.teal} />
+                <Text style={styles.indicacionesTitle}>Indicaciones de tu obstetra</Text>
+              </View>
+              <Text style={styles.indicacionesText}>{article.indicaciones}</Text>
+            </View>
+          ) : null}
 
           <View style={styles.body}>
             {article.body.map((paragraph, index) => (
@@ -111,7 +122,9 @@ export default function ArticuloScreen(): React.ReactElement {
                       : "Ver imagen / infografía completa"}
                 </Text>
                 <Text style={styles.linkUrl} numberOfLines={1}>
-                  {article.mediaUrl}
+                  {article.mediaUrl.startsWith("data:")
+                    ? "Archivo adjunto por tu obstetra · Toca para abrir"
+                    : article.mediaUrl}
                 </Text>
               </View>
               <ExternalLink size={18} color={gwarm.teal} />
@@ -203,6 +216,31 @@ const styles = StyleSheet.create({
     fontFamily: gfonts.handBody,
     fontSize: 13.5,
     color: gwarm.inkFaint,
+  },
+  indicacionesBox: {
+    marginTop: spacing.md2,
+    backgroundColor: gwarm.tealSoft,
+    borderWidth: 1.5,
+    borderColor: withAlpha(gwarm.teal, 0.35),
+    borderRadius: 16,
+    padding: spacing.md,
+    gap: 6,
+  },
+  indicacionesHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  indicacionesTitle: {
+    fontFamily: gfonts.hand,
+    fontSize: 16,
+    color: gwarm.teal,
+  },
+  indicacionesText: {
+    fontFamily: gfonts.handBody,
+    fontSize: 15.5,
+    lineHeight: 24,
+    color: gwarm.ink,
   },
   body: {
     marginTop: spacing.md2,

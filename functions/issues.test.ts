@@ -496,4 +496,116 @@ describe("GitHub Issues #38 - #50 Complete Verification Suite", () => {
     );
     expect(delMilagros.status).toBe(200);
   });
+
+  it("Issue #53: Panel rápido y dinámico para agregar y enviar contenido educativo (Imagen, Texto, PDF, Video) con Indicaciones y paciente pre-seleccionada", async () => {
+    const { token: carmenToken, snapshot: carmenSnap } = await loginAs("11111111", "Test@1234");
+    const ana = carmenSnap.patients.find((p: any) => p.dni === "33333333")!;
+    expect(ana).toBeDefined();
+
+    // 1. Formato Imagen: título + archivo de imagen + indicaciones + patientId pre-seleccionada
+    const saveImgRes = await callApi(
+      "POST",
+      "/api/admin/article/save",
+      {
+        title: "Infografía: Alimentos ricos en hierro",
+        mediaType: "imagen",
+        imageUrl: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/",
+        mediaUrl: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/",
+        indicaciones: "Revisa esta tabla antes de preparar tu almuerzo diario.",
+        patientId: ana.id,
+      },
+      carmenToken,
+    );
+    expect(saveImgRes.status).toBe(200);
+    const imgArticle = saveImgRes.data.snapshot.articles.find(
+      (a: any) => a.title === "Infografía: Alimentos ricos en hierro",
+    );
+    expect(imgArticle).toBeDefined();
+    expect(imgArticle.mediaType).toBe("imagen");
+    expect(imgArticle.indicaciones).toBe(
+      "Revisa esta tabla antes de preparar tu almuerzo diario.",
+    );
+    // Verifica que fue asignado automáticamente a la paciente pre-seleccionada
+    expect(
+      saveImgRes.data.snapshot.articleAssignments.some(
+        (asgn: any) => asgn.patientId === ana.id && asgn.articleId === imgArticle.id,
+      ),
+    ).toBe(true);
+
+    // 2. Formato Texto: título + área de lectura + indicaciones + patientId
+    const saveTextRes = await callApi(
+      "POST",
+      "/api/admin/article/save",
+      {
+        title: "Cuidados para el descanso en el tercer trimestre",
+        mediaType: "lectura",
+        body: [
+          "Duerme preferiblemente sobre tu lado izquierdo con una almohada entre las rodillas.",
+          "Evita cenas pesadas dos horas antes de acostarte.",
+        ],
+        indicaciones: "Practica esta postura todas las noches.",
+        patientId: ana.id,
+      },
+      carmenToken,
+    );
+    expect(saveTextRes.status).toBe(200);
+    const textArticle = saveTextRes.data.snapshot.articles.find(
+      (a: any) => a.title === "Cuidados para el descanso en el tercer trimestre",
+    );
+    expect(textArticle).toBeDefined();
+    expect(textArticle.mediaType).toBe("lectura");
+    expect(textArticle.body.length).toBe(2);
+    expect(textArticle.indicaciones).toBe("Practica esta postura todas las noches.");
+
+    // 3. Formato PDF: título + archivo PDF subido + indicaciones + patientId
+    const savePdfRes = await callApi(
+      "POST",
+      "/api/admin/article/save",
+      {
+        title: "Cartilla MINSA de Signos de Alarma",
+        mediaType: "pdf",
+        mediaUrl: "data:application/pdf;base64,JVBERi0xLjQK",
+        indicaciones: "Descarga y ten a la mano esta cartilla en casa.",
+        patientId: ana.id,
+      },
+      carmenToken,
+    );
+    expect(savePdfRes.status).toBe(200);
+    const pdfArticle = savePdfRes.data.snapshot.articles.find(
+      (a: any) => a.title === "Cartilla MINSA de Signos de Alarma",
+    );
+    expect(pdfArticle).toBeDefined();
+    expect(pdfArticle.mediaType).toBe("pdf");
+    expect(pdfArticle.mediaUrl).toContain("data:application/pdf;base64,");
+    expect(pdfArticle.indicaciones).toBe("Descarga y ten a la mano esta cartilla en casa.");
+
+    // 4. Formato Video: título + URL del video + patientId (sin indicaciones opcionales)
+    const saveVidRes = await callApi(
+      "POST",
+      "/api/admin/article/save",
+      {
+        title: "Lactancia materna en la primera hora",
+        mediaType: "video",
+        mediaUrl: "https://www.youtube.com/watch?v=LactanciaMinsa",
+        patientId: ana.id,
+      },
+      carmenToken,
+    );
+    expect(saveVidRes.status).toBe(200);
+    const vidArticle = saveVidRes.data.snapshot.articles.find(
+      (a: any) => a.title === "Lactancia materna en la primera hora",
+    );
+    expect(vidArticle).toBeDefined();
+    expect(vidArticle.mediaType).toBe("video");
+    expect(vidArticle.indicaciones).toBeNull();
+
+    // 5. Verificar que la gestante Ana recibe los 4 contenidos asignados con sus indicaciones
+    const { snapshot: anaSnap } = await loginAs("33333333", "Test@1234");
+    const anaTitles = anaSnap.articles.map((a: any) => a.title);
+    expect(anaTitles).toContain("Infografía: Alimentos ricos en hierro");
+    expect(anaTitles).toContain("Cuidados para el descanso en el tercer trimestre");
+    expect(anaTitles).toContain("Cartilla MINSA de Signos de Alarma");
+    expect(anaTitles).toContain("Lactancia materna en la primera hora");
+  });
 });
+

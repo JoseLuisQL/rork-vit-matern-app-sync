@@ -1420,22 +1420,61 @@ export class VitmaternaStore extends DurableObjectBase {
       title?: string;
       summary?: string;
       body?: string[];
+      indicaciones?: string | null;
+      patientId?: string;
       minutes?: number;
       active?: boolean;
-      mediaType?: "lectura" | "video" | "imagen" | "pdf";
+      mediaType?: "lectura" | "texto" | "video" | "imagen" | "pdf";
       mediaUrl?: string | null;
       imageUrl?: string | null;
       links?: { label: string; url: string; kind?: "lectura" | "video" | "imagen" | "pdf" }[];
     };
     const title = (body.title ?? "").trim();
-    const category = (body.category ?? "").trim();
-    const summary = (body.summary ?? "").trim();
-    const articleBody = Array.isArray(body.body) ? body.body.map((p) => p.trim()).filter((p) => p.length > 0) : [];
+    if (!title) return json({ error: "El título es obligatorio" }, 400);
+
+    const mediaType: "lectura" | "video" | "imagen" | "pdf" =
+      body.mediaType === "video" || body.mediaType === "imagen" || body.mediaType === "pdf"
+        ? body.mediaType
+        : "lectura";
+
+    const indicaciones = body.indicaciones ? body.indicaciones.trim() : null;
+    const rawMediaUrl = body.mediaUrl ? body.mediaUrl.trim() : null;
+    const rawImageUrl = body.imageUrl ? body.imageUrl.trim() : null;
+    const imageUrl = rawImageUrl || (mediaType === "imagen" ? rawMediaUrl : null);
+    const mediaUrl = rawMediaUrl || (mediaType === "imagen" ? imageUrl : null);
+
+    if (mediaType === "imagen" && !imageUrl && !mediaUrl) {
+      return json({ error: "Sube un archivo de imagen para este contenido" }, 400);
+    }
+    if (mediaType === "pdf" && !mediaUrl) {
+      return json({ error: "Sube un archivo PDF para este contenido" }, 400);
+    }
+    if (mediaType === "video" && !mediaUrl) {
+      return json({ error: "Ingresa la URL del video" }, 400);
+    }
+
+    const rawBody = Array.isArray(body.body)
+      ? body.body.map((p) => p.trim()).filter((p) => p.length > 0)
+      : [];
+
+    if (mediaType === "lectura" && rawBody.length === 0) {
+      return json({ error: "Redacta el mensaje o lectura del contenido" }, 400);
+    }
+
+    const defaultSummary =
+      mediaType === "imagen"
+        ? "Imagen educativa asignada por tu obstetra."
+        : mediaType === "pdf"
+          ? "Documento PDF educativo asignado por tu obstetra."
+          : mediaType === "video"
+            ? "Video educativo recomendado por tu obstetra."
+            : rawBody[0]?.slice(0, 180) || "Lectura educativa prenatal.";
+
+    const summary = (body.summary ?? "").trim() || indicaciones || defaultSummary;
+    const articleBody = rawBody.length > 0 ? rawBody : [indicaciones || summary];
+    const category = (body.category ?? "").trim() || "Cuidado general";
     const minutes = Math.max(1, Math.min(60, Math.round(body.minutes ?? 3)));
     const active = body.active !== false;
-    const mediaType = body.mediaType ?? "lectura";
-    const mediaUrl = body.mediaUrl ? body.mediaUrl.trim() : null;
-    const imageUrl = body.imageUrl ? body.imageUrl.trim() : null;
     const links = Array.isArray(body.links)
       ? body.links
           .map((l) => ({
@@ -1445,11 +1484,6 @@ export class VitmaternaStore extends DurableObjectBase {
           }))
           .filter((l) => l.label.length > 0 && l.url.length > 0)
       : [];
-
-    if (!title) return json({ error: "El título es obligatorio" }, 400);
-    if (!category) return json({ error: "La categoría es obligatoria" }, 400);
-    if (!summary) return json({ error: "El resumen es obligatorio" }, 400);
-    if (articleBody.length === 0) return json({ error: "Agrega al menos un párrafo de contenido" }, 400);
 
     const id = body.id?.trim() || `art-${crypto.randomUUID().slice(0, 8)}`;
     db.articles = db.articles ?? [];
@@ -1461,6 +1495,7 @@ export class VitmaternaStore extends DurableObjectBase {
       title,
       summary,
       body: articleBody,
+      indicaciones,
       minutes,
       active,
       mediaType,
@@ -1475,6 +1510,22 @@ export class VitmaternaStore extends DurableObjectBase {
       db.articles[existingIndex] = article;
     } else {
       db.articles.push(article);
+    }
+
+    const targetPatientId = (body.patientId ?? "").trim();
+    if (targetPatientId) {
+      db.articleAssignments = db.articleAssignments ?? [];
+      const alreadyAssigned = db.articleAssignments.some(
+        (asgn) => asgn.patientId === targetPatientId && asgn.articleId === id,
+      );
+      if (!alreadyAssigned) {
+        db.articleAssignments.push({
+          patientId: targetPatientId,
+          articleId: id,
+          assignedByDni: user.dni,
+          assignedAtISO: now,
+        });
+      }
     }
 
     await this.save();
