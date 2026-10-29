@@ -13,19 +13,22 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "rork-app",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#FAF4EA",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#F6F8F8"
+      "backgroundColor": "#FAF4EA"
     },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "app.rork.ztb4shx7jxkj17tpuz62u"
     },
     "android": {
-      "versionCode": 2,
+      "versionCode": 3,
+      "allowBackup": false,
+      "backgroundColor": "#FAF4EA",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#E7F4F2"

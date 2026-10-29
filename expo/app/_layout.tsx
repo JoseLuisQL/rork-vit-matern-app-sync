@@ -18,6 +18,7 @@ import React, { useEffect } from "react";
 import { AppState, Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { initNotifications, setupNotificationListeners } from "@/lib/notifications";
+import { gwarm } from "@/constants/theme";
 import { MaintenanceGate } from "@/components/MaintenanceGate";
 import { ToastHost, ToastProvider } from "@/components/Toast";
 import { ConfirmHost, ConfirmProvider } from "@/components/ConfirmDialog";
@@ -69,7 +70,13 @@ function NotificationResponder() {
 
 function RootLayoutNav() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: gwarm.bg },
+        animation: "fade",
+      }}
+    >
       <Stack.Screen name="index" />
       <Stack.Screen name="login" />
       <Stack.Screen name="(gestante)" />
@@ -80,7 +87,7 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
@@ -88,14 +95,22 @@ export default function RootLayout() {
     PatrickHand_400Regular,
     Delius_400Regular,
   });
+  const [fontTimedOut, setFontTimedOut] = React.useState(false);
 
   useEffect(() => {
-    if (fontsLoaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded]);
+    const timer = setTimeout(() => setFontTimedOut(true), 2500);
+    return () => clearTimeout(timer);
+  }, []);
 
-  if (!fontsLoaded) {
+  const ready = fontsLoaded || Boolean(fontError) || fontTimedOut;
+
+  useEffect(() => {
+    if (ready) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [ready]);
+
+  if (!ready) {
     return null;
   }
 
@@ -105,8 +120,8 @@ export default function RootLayout() {
         <ConfirmProvider>
           <AppProvider>
             <NotificationResponder />
-            <GestureHandlerRootView style={{ flex: 1 }}>
-              <StatusBar style="dark" />
+            <GestureHandlerRootView style={{ flex: 1, backgroundColor: gwarm.bg }}>
+              <StatusBar style="dark" backgroundColor={gwarm.bg} />
               <RootLayoutNav />
               <MaintenanceGate />
               <ToastHost />

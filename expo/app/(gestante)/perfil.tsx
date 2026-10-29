@@ -124,9 +124,8 @@ export default function PerfilGestante(): React.ReactElement {
     });
     if (ok) {
       logout();
-      router.replace("/login");
     }
-  }, [logout, pendingCount, router]);
+  }, [logout, pendingCount]);
 
   if (!user || !patient || !view) {
     return <View style={styles.container} />;

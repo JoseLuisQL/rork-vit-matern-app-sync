@@ -76,25 +76,41 @@ export function ChatThread({
   const { view, user, dispatch, setChatPresence } = useApp();
   const [draft, setDraft] = useState<string>("");
   const [keyboardOpen, setKeyboardOpen] = useState<boolean>(false);
+  const [containerTopY, setContainerTopY] = useState<number>(0);
+  const containerRef = useRef<View>(null);
   const listRef = useRef<FlatList<Message>>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const myRole = user?.role === "obstetra" ? "obstetra" : "gestante";
   const presence = usePresence(myRole === "gestante" ? "obstetra" : convId);
   const canSend = draft.trim().length > 0;
 
-  useEffect(() => {
-    const showSub = Keyboard.addListener("keyboardDidShow", () => {
-      setKeyboardOpen(true);
-      listRef.current?.scrollToOffset({ offset: 0, animated: true });
+  const measureContainerTop = useCallback(() => {
+    if (Platform.OS === "web") return;
+    containerRef.current?.measureInWindow((_x, y) => {
+      if (typeof y === "number" && y > 0) {
+        setContainerTopY(y);
+      }
     });
-    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+  }, []);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showSub = Keyboard.addListener(showEvent, () => {
+      setKeyboardOpen(true);
+      measureContainerTop();
+      setTimeout(() => {
+        listRef.current?.scrollToOffset({ offset: 0, animated: true });
+      }, 60);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
       setKeyboardOpen(false);
     });
     return () => {
       showSub.remove();
       hideSub.remove();
     };
-  }, []);
+  }, [measureContainerTop]);
 
   // Con la pantalla abierta se avisa qué conversación se está viendo
   // (sincronización rápida + no llegan notificaciones de este chat).
@@ -292,55 +308,70 @@ export function ChatThread({
     </View>
   );
 
+  const effectiveTopOffset =
+    Platform.OS === "ios"
+      ? Math.max(containerTopY, insets.top + 76)
+      : Math.max(containerTopY, insets.top + 96) + 22;
+
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior="padding"
-      keyboardVerticalOffset={Platform.OS === "ios" ? 96 : 80}
-    >
-      <FlatList
-        ref={listRef}
-        data={messages}
-        keyExtractor={(m) => m.id}
-        renderItem={renderItem}
-        inverted
-        ListHeaderComponent={typingBubble}
-        ListFooterComponent={introCard}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        testID="chat-thread"
-      />
-      <View
-        style={[
-          styles.inputBar,
-          bottomInset && !keyboardOpen && { paddingBottom: Math.max(insets.bottom, spacing.sm2) },
-        ]}
+    <View ref={containerRef} style={styles.flex} onLayout={measureContainerTop}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior="padding"
+        keyboardVerticalOffset={effectiveTopOffset}
       >
-        <TextInput
-          value={draft}
-          onChangeText={handleChangeText}
-          placeholder="Escribe un mensaje…"
-          placeholderTextColor={gwarm.inkFaint}
-          style={styles.input}
-          multiline
-          maxLength={500}
-          testID="chat-input"
+        <FlatList
+          ref={listRef}
+          data={messages}
+          keyExtractor={(m) => m.id}
+          renderItem={renderItem}
+          inverted
+          ListHeaderComponent={typingBubble}
+          ListFooterComponent={introCard}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          testID="chat-thread"
         />
-        <PressableScale
-          onPress={handleSend}
-          disabled={!canSend}
-          accessibilityLabel="Enviar mensaje"
+        <View
           style={[
-            styles.sendButton,
-            { backgroundColor: canSend ? accent : gwarm.borderStrong },
+            styles.inputBar,
+            keyboardOpen
+              ? { paddingBottom: spacing.sm2 }
+              : bottomInset && { paddingBottom: Math.max(insets.bottom, spacing.sm2) },
           ]}
-          testID="chat-send"
         >
-          <Send size={20} color="#FFFFFF" />
-        </PressableScale>
-      </View>
-    </KeyboardAvoidingView>
+          <TextInput
+            value={draft}
+            onChangeText={handleChangeText}
+            onFocus={() => {
+              measureContainerTop();
+              setTimeout(() => {
+                listRef.current?.scrollToOffset({ offset: 0, animated: true });
+              }, 100);
+            }}
+            placeholder="Escribe un mensaje…"
+            placeholderTextColor={gwarm.inkFaint}
+            style={styles.input}
+            multiline
+            maxLength={500}
+            testID="chat-input"
+          />
+          <PressableScale
+            onPress={handleSend}
+            disabled={!canSend}
+            accessibilityLabel="Enviar mensaje"
+            style={[
+              styles.sendButton,
+              { backgroundColor: canSend ? accent : gwarm.borderStrong },
+            ]}
+            testID="chat-send"
+          >
+            <Send size={20} color="#FFFFFF" />
+          </PressableScale>
+        </View>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 

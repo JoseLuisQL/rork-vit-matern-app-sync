@@ -1,12 +1,13 @@
 /** Sección de la obstetra: tabs + ficha, chat por paciente, programación y perfil. */
 import { Redirect, Stack } from "expo-router";
 import React from "react";
+import { View } from "react-native";
 import { gwarm } from "@/constants/theme";
 import { useApp } from "@/providers/AppProvider";
 
 export default function ObstetraLayout(): React.ReactElement | null {
   const { hydrated, user } = useApp();
-  if (!hydrated) return null;
+  if (!hydrated) return <View style={{ flex: 1, backgroundColor: gwarm.bg }} />;
   if (!user) return <Redirect href="/login" />;
   if (user.role !== "obstetra") return <Redirect href="/" />;
 

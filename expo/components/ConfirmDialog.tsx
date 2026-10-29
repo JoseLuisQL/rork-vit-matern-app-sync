@@ -78,15 +78,18 @@ export function ConfirmProvider({
   const [activeDialog, setActiveDialog] = useState<ActiveDialogState | null>(
     null
   );
+  const activeDialogRef = useRef<ActiveDialogState | null>(null);
   const counter = useRef<number>(0);
 
   const closeDialog = useCallback((result: boolean) => {
-    setActiveDialog((current) => {
-      if (current) {
-        current.resolve(result);
-      }
-      return null;
-    });
+    const pending = activeDialogRef.current;
+    activeDialogRef.current = null;
+    setActiveDialog(null);
+    if (pending) {
+      setTimeout(() => {
+        pending.resolve(result);
+      }, 0);
+    }
   }, []);
 
   const showConfirm = useCallback(
@@ -98,6 +101,7 @@ export function ConfirmProvider({
           id: counter.current,
           resolve,
         };
+        activeDialogRef.current = dialogItem;
         setActiveDialog(dialogItem);
       });
     },
@@ -282,16 +286,20 @@ export function ConfirmHost(): React.ReactElement | null {
         useNativeDriver: Platform.OS !== "web",
       }).start();
     } else if (renderedDialog) {
-      Animated.timing(anim, {
-        toValue: 0,
-        duration: 180,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: Platform.OS !== "web",
-      }).start(({ finished }) => {
-        if (finished) {
-          setRenderedDialog(null);
-        }
-      });
+      if (Platform.OS !== "web") {
+        setRenderedDialog(null);
+      } else {
+        Animated.timing(anim, {
+          toValue: 0,
+          duration: 150,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: false,
+        }).start(({ finished }) => {
+          if (finished) {
+            setRenderedDialog(null);
+          }
+        });
+      }
     }
   }, [activeDialog, renderedDialog, anim]);
 

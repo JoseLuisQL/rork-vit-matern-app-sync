@@ -71,9 +71,8 @@ export default function PerfilObstetra(): React.ReactElement {
     });
     if (ok) {
       logout();
-      router.replace("/login");
     }
-  }, [logout, pendingCount, router]);
+  }, [logout, pendingCount]);
 
   if (!user || !view) return <View style={styles.container} />;
 

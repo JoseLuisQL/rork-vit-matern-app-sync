@@ -27,7 +27,6 @@ import { useResponsive } from "@/hooks/useResponsive";
 import { ApiError } from "@/lib/api";
 import { confirmAction } from "@/lib/confirm";
 import { tiempoRelativo } from "@/lib/format";
-import { exportManualTestingPdf } from "@/lib/manualTestingPdf";
 import { useApp } from "@/providers/AppProvider";
 import { AppButton } from "@/components/AppButton";
 import { Card } from "@/components/Card";
@@ -541,7 +540,9 @@ export default function SistemaScreen(): React.ReactElement {
           </Text>
           <AppButton
             title="Descargar Manual de Pruebas (PDF) — Issues #37 al #50"
-            onPress={() => void exportManualTestingPdf()}
+            onPress={() => {
+              void import("@/lib/manualTestingPdf").then((m) => m.exportManualTestingPdf());
+            }}
             color={gwarm.tealDeep}
             variant="solid"
             testID="btn-sistema-manual-pdf"

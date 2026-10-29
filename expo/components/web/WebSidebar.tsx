@@ -44,8 +44,7 @@ export function WebSidebar({ items, role }: WebSidebarProps): React.ReactElement
       destructive: true,
     });
     if (ok) {
-      await logout();
-      router.replace("/login");
+      logout();
     }
   };
 

@@ -42,9 +42,8 @@ export default function PerfilAdmin(): React.ReactElement {
     });
     if (ok) {
       logout();
-      router.replace("/login");
     }
-  }, [logout, router]);
+  }, [logout]);
 
   if (!user || !view) return <View style={styles.container} />;
 

@@ -59,7 +59,7 @@ export function ScreenHeader({
 
   return (
     <View style={styles.wrapper}>
-      <View style={[styles.container, { paddingTop: insets.top + spacing.sm2 }]}>\
+      <View style={[styles.container, { paddingTop: insets.top + spacing.sm2 }]}>
         <View style={styles.row}>
           {showBack ? (
             <PressableScale

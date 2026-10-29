@@ -44,12 +44,24 @@ import type {
   WhatsAppConfig,
 } from "@/types";
 
-const SESSION_KEY = "vm_session_v3";
+const SESSION_KEY = "vm_session_v4";
+const LEGACY_SESSION_KEYS = ["vm_session_v1", "vm_session_v2", "vm_session_v3"];
 const ARTICLES_KEY = "vm_articles_v1";
 const REMINDERS_KEY = "vm_reminders_v1";
 const SOUNDS_KEY = "vm_sounds_v1";
-const snapKey = (dni: string) => `vm_snap_v3_${dni}`;
-const outKey = (dni: string) => `vm_outbox_v3_${dni}`;
+const snapKey = (dni: string) => `vm_snap_v4_${dni}`;
+const outKey = (dni: string) => `vm_outbox_v4_${dni}`;
+
+function isValidSession(candidate: unknown): candidate is SessionState {
+  if (!candidate || typeof candidate !== "object") return false;
+  const s = candidate as Partial<SessionState>;
+  if (typeof s.token !== "string" || s.token.trim().length === 0) return false;
+  const u = s.user;
+  if (!u || typeof u !== "object") return false;
+  if (typeof u.dni !== "string" || u.dni.trim().length === 0) return false;
+  if (u.role !== "gestante" && u.role !== "obstetra" && u.role !== "admin") return false;
+  return true;
+}
 
 interface SessionState {
   token: string;
@@ -135,6 +147,9 @@ export const [AppProvider, useApp] = createContextHook(() => {
     let cancelled = false;
     (async () => {
       try {
+        // Limpiar llaves de sesión heredadas (ej. respaldos de Android Auto Backup con sesiones previas).
+        await AsyncStorage.multiRemove(LEGACY_SESSION_KEYS).catch(() => {});
+
         const [rawSession, rawArticles, rawReminders, rawSounds] = await Promise.all([
           AsyncStorage.getItem(SESSION_KEY),
           AsyncStorage.getItem(ARTICLES_KEY),
@@ -151,28 +166,34 @@ export const [AppProvider, useApp] = createContextHook(() => {
           setSoundsPreference(enabled);
         }
         if (rawSession) {
-          const s = JSON.parse(rawSession) as SessionState;
-          const [rawSnap, rawOut] = await Promise.all([
-            AsyncStorage.getItem(snapKey(s.user.dni)),
-            AsyncStorage.getItem(outKey(s.user.dni)),
-          ]);
-          if (!cancelled) {
-            sessionRef.current = s;
-            setSession(s);
-            if (rawSnap) {
-              const snap = JSON.parse(rawSnap) as Snapshot;
-              cachedRef.current = snap;
-              setCached(snap);
+          const parsed: unknown = JSON.parse(rawSession);
+          if (isValidSession(parsed)) {
+            const s = parsed;
+            const [rawSnap, rawOut] = await Promise.all([
+              AsyncStorage.getItem(snapKey(s.user.dni)),
+              AsyncStorage.getItem(outKey(s.user.dni)),
+            ]);
+            if (!cancelled) {
+              sessionRef.current = s;
+              setSession(s);
+              if (rawSnap) {
+                const snap = JSON.parse(rawSnap) as Snapshot;
+                cachedRef.current = snap;
+                setCached(snap);
+              }
+              if (rawOut) {
+                const o = JSON.parse(rawOut) as ClientAction[];
+                outboxRef.current = o;
+                setOutboxState(o);
+              }
             }
-            if (rawOut) {
-              const o = JSON.parse(rawOut) as ClientAction[];
-              outboxRef.current = o;
-              setOutboxState(o);
-            }
+          } else {
+            await AsyncStorage.removeItem(SESSION_KEY).catch(() => {});
           }
         }
       } catch (e) {
         console.log("[VitMaterna] Error al hidratar:", e);
+        await AsyncStorage.removeItem(SESSION_KEY).catch(() => {});
       }
       if (!cancelled) setHydrated(true);
     })();
@@ -224,13 +245,19 @@ export const [AppProvider, useApp] = createContextHook(() => {
     cachedRef.current = null;
     syncOkRef.current = false;
     firstSyncDoneRef.current = false;
+    chatPresenceRef.current = { convId: null, typing: false };
+    setActiveConvId(null);
     setSession(null);
     setCached(null);
     setOutboxState([]);
     setSyncOk(false);
     setAuthNotice(notice ?? null);
     cancelAllReminders().catch(() => {});
-    const keys = [SESSION_KEY, ...(dni ? [snapKey(dni), outKey(dni)] : [])];
+    const keys = [
+      SESSION_KEY,
+      ...LEGACY_SESSION_KEYS,
+      ...(dni ? [snapKey(dni), outKey(dni), `vm_snap_v3_${dni}`, `vm_outbox_v3_${dni}`] : []),
+    ];
     AsyncStorage.multiRemove(keys).catch(() => {});
   }, []);
 
